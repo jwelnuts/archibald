@@ -1,0 +1,35 @@
+{% extends "todo/base.html" %}
+
+{% block title %}MIO - Remove Task{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi task</h1>
+    <p class="muted">Seleziona un task da eliminare.</p>
+
+    {% if task %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ task.title }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/todo/">Annulla</a>
+      </form>
+    {% else %}
+      {% if tasks %}
+        <ul class="list">
+          {% for item in tasks %}
+            <li>
+              <span>{{ item.title }}</span>
+              <a class="btn" href="/todo/api/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun task disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

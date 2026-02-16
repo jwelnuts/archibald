@@ -1,0 +1,73 @@
+{% extends "transactions/base.html" %}
+
+{% block title %}MIO - Transactions{% endblock %}
+
+{% block content %}
+  <section class="hero" id="app-head">
+    <div class="hero-copy" id="app-header">
+      <h1>Transazioni</h1>
+      <p>Vista unificata per entrate, uscite e trasferimenti.</p>
+    </div>
+    <div class="hero-card" id="transactions-upcoming-panel">
+      <div class="card-title" id="upcoming-title">Totali per tipo</div>
+      <ul class="list" id="transactions-upcoming-list">
+        <li><span class="dot dot-green"></span><span>Entrate</span><span class="muted">{{ totals.IN|default:0 }}</span></li>
+        <li><span class="dot dot-red"></span><span>Uscite</span><span class="muted">{{ totals.OUT|default:0 }}</span></li>
+        <li><span class="dot dot-amber"></span><span>Trasferimenti</span><span class="muted">{{ totals.XFER|default:0 }}</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="panel" id="transactions-filters-panel">
+    <h2 id="transactions-filters-title">Filtri</h2>
+    <form class="form filter-form" method="get" action="" id="transactions-filters-form">
+      <div class="field">
+        <label for="type">Tipo</label>
+        <select id="type" name="type">
+          <option value="">Tutti</option>
+          <option value="IN" {% if filters.type == "IN" %}selected{% endif %}>Entrate</option>
+          <option value="OUT" {% if filters.type == "OUT" %}selected{% endif %}>Uscite</option>
+          <option value="XFER" {% if filters.type == "XFER" %}selected{% endif %}>Trasferimenti</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="from">Dal</label>
+        <input id="from" name="from" type="text" class="date-field" value="{{ filters.from }}">
+      </div>
+      <div class="field">
+        <label for="to">Al</label>
+        <input id="to" name="to" type="text" class="date-field" value="{{ filters.to }}">
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Applica</button>
+        <a class="btn" href="/transactions/">Reset</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" id="transactions-list-panel">
+    <h2 id="transactions-list-title">Ultime transazioni</h2>
+    {% if recent %}
+      <div class="log-table">
+        <div class="log-row log-head">
+          <span>Data</span>
+          <span>Tipo</span>
+          <span>Descrizione</span>
+          <span>Importo</span>
+          <span>Account</span>
+        </div>
+        {% for tx in recent %}
+          <div class="log-row">
+            <span>{{ tx.date }}</span>
+            <span>{{ tx.get_tx_type_display }}</span>
+            <span>{{ tx.payee|default:"-" }}</span>
+            <span>{{ tx.amount }} {{ tx.currency.code }}</span>
+            <span>{{ tx.account }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="note">Nessuna transazione disponibile.</div>
+    {% endif %}
+  </section>
+{% endblock %}

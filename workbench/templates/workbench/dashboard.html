@@ -1,0 +1,135 @@
+{% extends "workbench/base.html" %}
+
+{% block title %}MIO - Workbench Dashboard{% endblock %}
+
+{% block content %}
+  <section class="hero" id="app-head">
+    <div class="hero-copy" id="app-header">
+      <h1>Workbench operativo</h1>
+      <p>
+        Area trasversale per test, import e strumenti. Usala come laboratorio
+        per collegare i componenti senza toccare la produzione.
+      </p>
+      <div class="hero-actions" id="app-actions" data-module="workbench">
+        <a class="btn primary" href="/workbench/api/add" data-action="add">Nuova voce</a>
+        <a class="btn" href="/workbench/api/update" data-action="update">Aggiorna</a>
+        <a class="btn" href="/workbench/debug/logs" data-action="logs">Vedi log</a>
+        <a class="btn" href="/workbench/debug/schema" data-action="schema">Schema DB</a>
+      </div>
+    </div>
+    <div class="hero-card" id="workbench-upcoming-panel">
+      <div class="card-title" id="upcoming-title">Log recenti</div>
+      <ul class="list" id="workbench-upcoming-list">
+        {% if logs %}
+          {% for log in logs %}
+            <li>
+              <span class="dot dot-teal"></span>
+              <span>{{ log.action }} {{ log.app_label }}.{{ log.model_name }}</span>
+              <span class="muted">{{ log.created_at }}</span>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessun log disponibile.</li>
+        {% endif %}
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid" id="workbench-info-grid">
+    <article class="panel" id="workbench-info-panel">
+      <h2 id="workbench-stats-title">Strumenti</h2>
+      <div class="stat-row" id="workbench-info">
+        <div class="stat">
+          <div class="stat-label">Log totali</div>
+          <div class="stat-value">{{ counts.total_logs }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Debug</div>
+          <div class="stat-value">{{ counts.total_logs }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Eventi</div>
+          <div class="stat-value">{{ counts.total_logs }}</div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel" id="workbench-notes-panel">
+      <h2 id="workbench-notes-title">Note rapide</h2>
+      <div class="note">
+        Mantieni qui gli strumenti di supporto per tutto l ecosistema.
+      </div>
+      <div class="note">
+        Ogni modifica dovrebbe influire sui moduli separati in modo controllato.
+      </div>
+    </article>
+  </section>
+
+  <section class="debug-grid">
+    <article class="panel console">
+      <div class="panel-title">
+        <h2>Debug console</h2>
+        <span class="badge">LIVE</span>
+      </div>
+      <div class="console-window">
+        {% if logs %}
+          {% for log in logs %}
+            <div class="console-line">
+              <span class="tag ok">{{ log.action }}</span>
+              {{ log.app_label }}.{{ log.model_name }} -> {{ log.object_id|default:"-" }}
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="console-line"><span class="tag warn">INFO</span> Nessun log disponibile.</div>
+        {% endif %}
+      </div>
+      <div class="console-actions">
+        <button class="btn" type="button">Clear</button>
+        <button class="btn primary" type="button">Run diagnostics</button>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Feature toggles</h2>
+      <div class="toggle-list">
+        <label class="toggle">
+          <input type="checkbox" checked>
+          <span>Enable experimental budgets</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox">
+          <span>Sandboxed imports</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" checked>
+          <span>Extended audit logs</span>
+        </label>
+      </div>
+      <div class="note">
+        I toggle sono solo UI per ora: collega qui le feature flag reali.
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Test scenario</h2>
+      <form class="form">
+        <div class="field">
+          <label for="scenario">Scenario</label>
+          <select id="scenario" name="scenario">
+            <option>Import batch Q1</option>
+            <option>Stress cashflow</option>
+            <option>Subscription churn</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="payload">Payload</label>
+          <input id="payload" name="payload" type="text" placeholder="example: run=fast; mode=safe">
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="button">Run</button>
+          <button class="btn" type="button">Dry run</button>
+        </div>
+      </form>
+    </article>
+  </section>
+{% endblock %}

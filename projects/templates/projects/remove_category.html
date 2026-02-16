@@ -1,0 +1,35 @@
+{% extends "projects/base.html" %}
+
+{% block title %}MIO - Remove Category{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi categoria</h1>
+    <p class="muted">Seleziona una categoria da eliminare.</p>
+
+    {% if category %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ category.name }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/projects/categories/">Annulla</a>
+      </form>
+    {% else %}
+      {% if categories %}
+        <ul class="list">
+          {% for item in categories %}
+            <li>
+              <span>{{ item.name }}</span>
+              <a class="btn" href="/projects/categories/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna categoria disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

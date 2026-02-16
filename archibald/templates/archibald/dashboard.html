@@ -1,0 +1,530 @@
+{% extends "archibald/base.html" %}
+
+{% block title %}MIO - Archibald{% endblock %}
+
+{% block content %}
+  <section class="hero archibald-hero" id="archibald-head">
+    <div class="hero-copy archibald-hero-copy" id="archibald-header">
+      <div class="butler-badge">Magiordomo amico</div>
+      <h1>Archibald</h1>
+      <p>Il tuo assistente personale: discreto, premuroso, sempre presente. Dimmi cosa serve e lo preparo con calma ed eleganza.</p>
+      <div class="archibald-chips">
+        <button class="chip" type="button" data-prompt="Fammi un riepilogo delle spese di questa settimana.">Riepilogo settimana</button>
+        <button class="chip" type="button" data-prompt="Aiutami a pianificare il budget di marzo.">Pianifica budget</button>
+        <button class="chip" type="button" data-prompt="Controlla i promemoria di oggi.">Promemoria di oggi</button>
+        <button class="chip" type="button" data-prompt="Qual è il prossimo pagamento in scadenza?">Prossime scadenze</button>
+      </div>
+    </div>
+    <div class="hero-card archibald-hero-card">
+      <div class="butler-status">
+        <span class="status-dot"></span>
+        <div>
+          <div class="status-title">In servizio</div>
+          <div class="status-sub">Pronto ad assisterti, signore.</div>
+        </div>
+      </div>
+      <div class="butler-list">
+        <div>
+          <div class="butler-label">Focus del giorno</div>
+          <div class="butler-value">Ordine, chiarezza, serenità.</div>
+        </div>
+        <div>
+          <div class="butler-label">Rituali</div>
+          <div class="butler-value">Caffè, report, promemoria.</div>
+        </div>
+        <div>
+          <div class="butler-label">Tono</div>
+          <div class="butler-value">Amichevole e preciso.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="archibald-layout" id="archibald-grid">
+    <article class="panel archibald-conversation">
+      <div class="conversation-head">
+        <div>
+          <h2>Conversazione</h2>
+          <p class="conversation-sub">Un dialogo fluido e gentile, con memoria e contesto.</p>
+        </div>
+        <div class="conversation-pill">Archivio attivo</div>
+      </div>
+      <div class="chat archibald-chat" id="archibald-chat" data-day="{{ selected_day|date:'Y-m-d' }}" {% if messages %}data-oldest-id="{{ messages.0.id }}"{% endif %}>
+        {% if messages %}
+          {% for day in grouped_days %}
+            <div class="diary-day" data-day="{{ day.day }}">
+              <div class="diary-day-head">
+                <span>Capitolo</span>
+                <strong>{{ day.messages.0.created_at|date:"d M Y" }}</strong>
+              </div>
+              <div class="diary-page">
+                {% for msg in day.messages %}
+                  <div class="chat-message {{ msg.role|lower }}" data-day="{{ msg.created_at|date:'Y-m-d' }}">
+                    <div class="chat-bubble">
+                      <div class="chat-role">{{ msg.role|capfirst }}</div>
+                      <div class="chat-text">{{ msg.content }}</div>
+                      <div class="chat-meta">
+                        <span class="chat-time">{{ msg.created_at|date:"H:i" }}</span>
+                        <button class="chat-fav {% if msg.is_favorite %}active{% endif %}" type="button" data-id="{{ msg.id }}" aria-label="Preferito">★</button>
+                      </div>
+                    </div>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        {% else %}
+          <div class="chat-message system">
+            <div class="chat-bubble">
+              <div class="chat-role">Archibald</div>
+              <div class="chat-text">Come è andata la tua giornata? Sono qui per ascoltarti.</div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <form class="form archibald-form" method="post" action="">
+        {% csrf_token %}
+        <div class="field">
+          <label for="id_prompt">Messaggio</label>
+          <div id="archibald-editor-toolbar" class="editor-toolbar archibald-editor-toolbar">
+            <span class="ql-formats">
+              <button class="ql-bold"></button>
+              <button class="ql-italic"></button>
+              <button class="ql-underline"></button>
+            </span>
+            <span class="ql-formats">
+              <button class="ql-list" value="ordered"></button>
+              <button class="ql-list" value="bullet"></button>
+            </span>
+            <span class="ql-formats">
+              <button class="ql-link"></button>
+            </span>
+            <span class="ql-formats">
+              <button class="archibald-tool" type="button" data-prompt="Analizza le routine salvate nell'app.">Routine</button>
+              <button class="archibald-tool" type="button" data-prompt="Fammi un riepilogo delle spese di questa settimana.">Spese</button>
+              <button class="archibald-tool" type="button" data-prompt="Controlla i promemoria di oggi.">Promemoria</button>
+            </span>
+          </div>
+          <div id="archibald-editor" class="rich-editor archibald-editor"></div>
+          <div class="field" style="display:none;">
+            {{ form.prompt }}
+          </div>
+        </div>
+        <div class="actions archibald-actions">
+          <span class="helper-text">Premi invio oppure clicca “Invia”.</span>
+          <button class="btn primary" type="submit">Invia</button>
+        </div>
+      </form>
+    </article>
+
+    <aside class="panel archibald-side">
+      <h2>Plancia del maggiordomo</h2>
+      <p class="side-sub">Suggerimenti rapidi, scorciatoie e attenzioni personali.</p>
+      <div class="side-stack">
+        <div class="side-card">
+          <div class="side-label">Diario</div>
+          {% if diary_days %}
+            <div class="diary-nav">
+              {% for day in diary_days %}
+                <a class="diary-link {% if day == selected_day %}active{% endif %}" href="/archibald/?day={{ day|date:'Y-m-d' }}">
+                  <span>{{ day|date:"d M" }}</span>
+                  {% if day == today %}<em>Oggi</em>{% endif %}
+                </a>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="note">Nessuna pagina disponibile.</div>
+          {% endif %}
+        </div>
+        <div class="side-card">
+          <div class="side-label">Suggerimenti</div>
+          <div class="side-actions">
+            <button class="ghost-chip" type="button" data-prompt="Mostrami gli obiettivi di risparmio.">Obiettivi risparmio</button>
+            <button class="ghost-chip" type="button" data-prompt="Analizza le categorie più pesanti.">Categorie più pesanti</button>
+            <button class="ghost-chip" type="button" data-prompt="Prepara una lista di cose da pagare questa settimana.">Lista pagamenti</button>
+          </div>
+        </div>
+        <div class="side-card">
+          <div class="side-label">Snapshot intelligente</div>
+          <div class="side-sub">Aggiornata su richiesta</div>
+          <div class="side-actions">
+            <button class="ghost-chip" type="button" hx-get="/archibald/insights?kind=overview" hx-target="#archibald-insights" hx-swap="innerHTML">Panoramica</button>
+            <button class="ghost-chip" type="button" hx-get="/archibald/insights?kind=expenses" hx-target="#archibald-insights" hx-swap="innerHTML">Spese</button>
+            <button class="ghost-chip" type="button" hx-get="/archibald/insights?kind=subscriptions" hx-target="#archibald-insights" hx-swap="innerHTML">Abbonamenti</button>
+            <button class="ghost-chip" type="button" hx-get="/archibald/insights?kind=tasks" hx-target="#archibald-insights" hx-swap="innerHTML">Task</button>
+            <button class="ghost-chip" type="button" hx-get="/archibald/insights?kind=planner" hx-target="#archibald-insights" hx-swap="innerHTML">Planner</button>
+            <button class="ghost-chip" type="button" hx-get="/archibald/insights?kind=routines" hx-target="#archibald-insights" hx-swap="innerHTML">Routine</button>
+          </div>
+          <div id="archibald-insights" class="stat-row" hx-get="/archibald/insights?kind=overview" hx-trigger="load" hx-swap="innerHTML"></div>
+        </div>
+        <div class="side-card">
+          <div class="side-label">Dettagli utili</div>
+          <ul class="side-list">
+            <li>Diario finanziario aggiornato.</li>
+            <li>Promemoria intelligenti in arrivo.</li>
+            <li>Report personalizzato su richiesta.</li>
+          </ul>
+        </div>
+        <div class="side-card">
+          <div class="side-label">Stile di conversazione</div>
+          <div class="tone-row">
+            <span class="tone-chip">Calmo</span>
+            <span class="tone-chip">Professionale</span>
+            <span class="tone-chip">Empatico</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  {% if messages %}
+    <script>
+      (function () {
+        var chat = document.getElementById('archibald-chat');
+        if (!chat) return;
+
+        chat.scrollTop = chat.scrollHeight;
+
+        var loading = false;
+        var exhausted = false;
+
+        function formatDayLabel(day) {
+          if (!day) return '';
+          try {
+            var date = new Date(day + 'T00:00:00');
+            return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+          } catch (e) {
+            return day;
+          }
+        }
+
+        function makeDaySection(day) {
+          var wrapper = document.createElement('div');
+          wrapper.className = 'diary-day';
+          wrapper.setAttribute('data-day', day);
+
+          var head = document.createElement('div');
+          head.className = 'diary-day-head';
+          var label = document.createElement('span');
+          label.textContent = 'Capitolo';
+          var title = document.createElement('strong');
+          title.textContent = formatDayLabel(day);
+          head.appendChild(label);
+          head.appendChild(title);
+
+          var page = document.createElement('div');
+          page.className = 'diary-page';
+
+          wrapper.appendChild(head);
+          wrapper.appendChild(page);
+          return { wrapper: wrapper, page: page };
+        }
+
+        function buildMessageNode(msg) {
+          var wrapper = document.createElement('div');
+          wrapper.className = 'chat-message ' + msg.role;
+          if (msg.day) {
+            wrapper.setAttribute('data-day', msg.day);
+          }
+          var bubble = document.createElement('div');
+          bubble.className = 'chat-bubble';
+          var role = document.createElement('div');
+          role.className = 'chat-role';
+          role.textContent = msg.role.charAt(0).toUpperCase() + msg.role.slice(1);
+          var text = document.createElement('div');
+          text.className = 'chat-text';
+          text.textContent = msg.content;
+          var meta = document.createElement('div');
+          meta.className = 'chat-meta';
+          var time = document.createElement('span');
+          time.className = 'chat-time';
+          time.textContent = msg.time || '';
+          var fav = document.createElement('button');
+          fav.className = 'chat-fav' + (msg.is_favorite ? ' active' : '');
+          if (msg.id) {
+            fav.setAttribute('data-id', msg.id);
+          }
+          fav.setAttribute('type', 'button');
+          fav.setAttribute('aria-label', 'Preferito');
+          fav.textContent = '★';
+          meta.appendChild(time);
+          meta.appendChild(fav);
+          bubble.appendChild(role);
+          bubble.appendChild(text);
+          bubble.appendChild(meta);
+          wrapper.appendChild(bubble);
+          return wrapper;
+        }
+
+        function findFirstDay() {
+          var firstDay = chat.querySelector('.diary-day');
+          return firstDay ? firstDay.getAttribute('data-day') : null;
+        }
+
+        async function loadOlder() {
+          if (loading || exhausted) return;
+          var oldest = chat.getAttribute('data-oldest-id');
+          if (!oldest) return;
+          loading = true;
+          try {
+            var day = chat.getAttribute('data-day');
+            var resp = await fetch('/archibald/messages?before=' + oldest + (day ? '&day=' + day : ''), {credentials: 'same-origin'});
+            if (!resp.ok) {
+              loading = false;
+              return;
+            }
+            var data = await resp.json();
+            if (!data.messages || !data.messages.length) {
+              exhausted = true;
+              loading = false;
+              return;
+            }
+            chat.setAttribute('data-oldest-id', data.messages[0].id);
+            var prevHeight = chat.scrollHeight;
+            var frag = document.createDocumentFragment();
+            var firstDay = findFirstDay();
+            var daySection = null;
+            var currentDay = null;
+            data.messages.forEach(function (msg) {
+              var day = msg.day || null;
+              if (day && day !== currentDay) {
+                if (!(day === firstDay && chat.querySelector('.diary-day[data-day="' + day + '"]'))) {
+                  daySection = makeDaySection(day);
+                  frag.appendChild(daySection.wrapper);
+                } else {
+                  daySection = { page: chat.querySelector('.diary-day[data-day="' + day + '"] .diary-page') };
+                }
+                currentDay = day;
+              }
+              if (daySection && daySection.page) {
+                daySection.page.appendChild(buildMessageNode(msg));
+              } else {
+                frag.appendChild(buildMessageNode(msg));
+              }
+            });
+            chat.insertBefore(frag, chat.firstChild);
+            var newHeight = chat.scrollHeight;
+            chat.scrollTop = newHeight - prevHeight;
+          } finally {
+            loading = false;
+          }
+        }
+
+        chat.addEventListener('scroll', function () {
+          if (chat.scrollTop < 40) {
+            loadOlder();
+          }
+        });
+      })();
+    </script>
+  {% endif %}
+
+  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+  <script>
+    (function () {
+      var promptField = document.getElementById('id_prompt');
+      if (!promptField) return;
+      var editorEl = document.getElementById('archibald-editor');
+      var quill = null;
+      if (editorEl && window.Quill) {
+        promptField.required = false;
+        quill = new Quill('#archibald-editor', {
+          theme: 'snow',
+          modules: {
+            toolbar: '#archibald-editor-toolbar'
+          }
+        });
+      }
+
+      function formatDayLabel(day) {
+        if (!day) return '';
+        try {
+          var date = new Date(day + 'T00:00:00');
+          return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+        } catch (e) {
+          return day;
+        }
+      }
+
+      function setPrompt(text) {
+        if (!text) return;
+        if (quill) {
+          quill.setText(text);
+          quill.focus();
+        } else {
+          promptField.value = text;
+          promptField.focus();
+        }
+      }
+
+      document.querySelectorAll('[data-prompt]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          setPrompt(btn.getAttribute('data-prompt'));
+        });
+      });
+
+      var form = promptField.closest('form');
+      function getSelectedDay() {
+        var chatEl = document.getElementById('archibald-chat');
+        return chatEl ? chatEl.getAttribute('data-day') : null;
+      }
+
+      function ensureDiaryDay(day) {
+        var chatEl = document.getElementById('archibald-chat');
+        if (!chatEl) return null;
+        var existing = chatEl.querySelector('.diary-day[data-day="' + day + '"]');
+        if (existing) {
+          return existing.querySelector('.diary-page');
+        }
+        var wrapper = document.createElement('div');
+        wrapper.className = 'diary-day';
+        wrapper.setAttribute('data-day', day);
+
+        var head = document.createElement('div');
+        head.className = 'diary-day-head';
+        var label = document.createElement('span');
+        label.textContent = 'Capitolo';
+        var title = document.createElement('strong');
+        title.textContent = formatDayLabel(day);
+        head.appendChild(label);
+        head.appendChild(title);
+
+        var page = document.createElement('div');
+        page.className = 'diary-page';
+
+        wrapper.appendChild(head);
+        wrapper.appendChild(page);
+        chatEl.appendChild(wrapper);
+        return page;
+      }
+
+      function appendMessage(msg) {
+        var day = msg.day || getSelectedDay() || '';
+        var page = ensureDiaryDay(day);
+        if (!page) return;
+        var chatEl = document.getElementById('archibald-chat');
+        var wrapper = document.createElement('div');
+        wrapper.className = 'chat-message ' + msg.role;
+        wrapper.setAttribute('data-day', day);
+        var bubble = document.createElement('div');
+        bubble.className = 'chat-bubble';
+        var role = document.createElement('div');
+        role.className = 'chat-role';
+        role.textContent = msg.role.charAt(0).toUpperCase() + msg.role.slice(1);
+        var text = document.createElement('div');
+        text.className = 'chat-text';
+        text.textContent = msg.content;
+        var meta = document.createElement('div');
+        meta.className = 'chat-meta';
+        var time = document.createElement('span');
+        time.className = 'chat-time';
+        time.textContent = msg.time || new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+        var fav = document.createElement('button');
+        fav.className = 'chat-fav' + (msg.is_favorite ? ' active' : '');
+        if (msg.id) {
+          fav.setAttribute('data-id', msg.id);
+        }
+        fav.setAttribute('type', 'button');
+        fav.setAttribute('aria-label', 'Preferito');
+        fav.textContent = '★';
+        meta.appendChild(time);
+        meta.appendChild(fav);
+        bubble.appendChild(role);
+        bubble.appendChild(text);
+        bubble.appendChild(meta);
+        wrapper.appendChild(bubble);
+        page.appendChild(wrapper);
+        if (chatEl) {
+          chatEl.scrollTop = chatEl.scrollHeight;
+        }
+      }
+
+      function clearEditor() {
+        if (quill) {
+          quill.setText('');
+          quill.focus();
+        } else {
+          promptField.value = '';
+          promptField.focus();
+        }
+      }
+
+      function removeEmptyState() {
+        var emptyMsg = document.querySelector('#archibald-chat .chat-message.system');
+        if (emptyMsg) emptyMsg.remove();
+      }
+
+      if (form) {
+        form.addEventListener('submit', async function (event) {
+          var text = quill ? quill.getText().trim() : promptField.value.trim();
+          if (!text) {
+            event.preventDefault();
+            editorEl.focus();
+            alert('Scrivi un messaggio per Archibald.');
+            return;
+          }
+          event.preventDefault();
+          promptField.value = text;
+          var data = new FormData(form);
+          removeEmptyState();
+          appendMessage({ role: 'user', content: text });
+          clearEditor();
+          try {
+            var csrfToken = '';
+            var csrfMatch = document.cookie.match(/csrftoken=([^;]+)/);
+            if (csrfMatch) csrfToken = csrfMatch[1];
+            var resp = await fetch(form.action || window.location.href, {
+              method: 'POST',
+              body: data,
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': csrfToken },
+              credentials: 'same-origin'
+            });
+            if (!resp.ok) return;
+            var payload = await resp.json();
+            if (payload && payload.assistant) {
+              appendMessage(payload.assistant);
+            }
+          } catch (err) {
+            // fall back silently
+          }
+        });
+      }
+
+      var chat = document.getElementById('archibald-chat');
+      if (chat) {
+        chat.addEventListener('click', async function (event) {
+          var target = event.target;
+          if (!target.classList.contains('chat-fav')) return;
+          var msgId = target.getAttribute('data-id');
+          if (!msgId) return;
+          var formData = new FormData();
+          formData.append('id', msgId);
+          try {
+            var csrfToken = '';
+            var csrfMatch = document.cookie.match(/csrftoken=([^;]+)/);
+            if (csrfMatch) csrfToken = csrfMatch[1];
+            var resp = await fetch('/archibald/favorite', {
+              method: 'POST',
+              body: formData,
+              headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': csrfToken },
+              credentials: 'same-origin'
+            });
+            if (!resp.ok) return;
+            var result = await resp.json();
+            if (result && result.ok) {
+              if (result.is_favorite) {
+                target.classList.add('active');
+              } else {
+                target.classList.remove('active');
+              }
+            }
+          } catch (err) {
+            // ignore
+          }
+        });
+      }
+    })();
+  </script>
+{% endblock %}

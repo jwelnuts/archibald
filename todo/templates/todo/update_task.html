@@ -1,0 +1,66 @@
+{% extends "todo/base.html" %}
+
+{% block title %}MIO - Update Task{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Aggiorna task</h1>
+    <p class="muted">Seleziona un task da aggiornare.</p>
+
+    {% if task %}
+      {% if form.errors %}
+        <div class="warning-box">
+          Controlla i campi evidenziati.
+          <div class="form-errors">
+            {{ form.non_field_errors }}
+            {{ form.title.errors }}
+            {{ form.due_date.errors }}
+            {{ form.status.errors }}
+            {{ form.priority.errors }}
+            {{ form.note.errors }}
+          </div>
+        </div>
+      {% endif %}
+      <form class="form" method="post" action="">
+        {% csrf_token %}
+        <div class="field">
+          <label for="id_title">Titolo</label>
+          {{ form.title }}
+        </div>
+        <div class="field">
+          <label for="id_due_date">Scadenza</label>
+          {{ form.due_date }}
+        </div>
+        <div class="field">
+          <label for="id_status">Status</label>
+          {{ form.status }}
+        </div>
+        <div class="field">
+          <label for="id_priority">Priorita</label>
+          {{ form.priority }}
+        </div>
+        <div class="field">
+          <label for="id_note">Note</label>
+          {{ form.note }}
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Aggiorna</button>
+          <a class="btn" href="/todo/">Annulla</a>
+        </div>
+      </form>
+    {% else %}
+      {% if tasks %}
+        <ul class="list">
+          {% for item in tasks %}
+            <li>
+              <span>{{ item.title }}</span>
+              <a class="btn" href="/todo/api/update?id={{ item.id }}">Modifica</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun task disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

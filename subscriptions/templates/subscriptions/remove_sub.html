@@ -1,0 +1,34 @@
+{% extends "subscriptions/base.html" %}
+
+{% block title %}MIO - Remove Subscription{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi abbonamento</h1>
+    <p class="muted">Layout base per conferma rimozione.</p>
+    {% if sub %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ sub.name }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/subs/">Annulla</a>
+      </form>
+    {% else %}
+      {% if subs %}
+        <ul class="list">
+          {% for item in subs %}
+            <li>
+              <span>{{ item.name }}</span>
+              <a class="btn" href="/subs/api/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun abbonamento disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

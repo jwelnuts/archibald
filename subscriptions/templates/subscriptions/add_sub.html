@@ -1,0 +1,117 @@
+{% extends "subscriptions/base.html" %}
+
+{% block title %}MIO - Add Subscription{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Nuovo abbonamento</h1>
+    <p class="muted">
+      Layout base per inserimento dati. Collega il form ai modelli quando vuoi.
+    </p>
+    {% if form and form.errors %}
+      <div class="warning-box">
+        Controlla i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <form class="form form-compact" method="post" action="">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_name">Nome</label>
+        {{ form.name }}
+      </div>
+      <div class="field">
+        <label for="id_payee">Beneficiario</label>
+        {{ form.payee_choice }}
+        <input id="id_payee_name" name="payee_name" type="text" placeholder="Nome nuovo beneficiario" style="display:none;">
+      </div>
+      <div class="field">
+        <label for="id_category">Categoria</label>
+        {{ form.category_choice }}
+        <input id="id_category_name" name="category_name" type="text" placeholder="Nome nuova categoria" style="display:none;">
+      </div>
+      <div class="field">
+        <label for="id_project">Progetto</label>
+        {{ form.project }}
+      </div>
+      <div class="field">
+        <label for="id_account">Account</label>
+        {{ form.account }}
+      </div>
+      <div class="field">
+        <label for="id_amount">Importo</label>
+        {{ form.amount }}
+      </div>
+      <div class="field">
+        <label for="id_interval">Intervallo</label>
+        {{ form.interval }}
+      </div>
+      <div class="form-row">
+        <div class="field">
+          <label for="id_start_date">Data inizio</label>
+          {{ form.start_date }}
+        </div>
+        <div class="field">
+          <label for="id_next_due_date">Prossima scadenza</label>
+          {{ form.next_due_date }}
+        </div>
+        <div class="field">
+          <label for="id_interval_unit">Tipo</label>
+          {{ form.interval_unit }}
+        </div>
+      </div>
+      <details class="form-section">
+        <summary>Opzioni avanzate</summary>
+        <div class="field">
+          <label for="id_end_date">Data fine</label>
+          {{ form.end_date }}
+        </div>
+        <div class="field">
+          <label for="id_status">Status</label>
+          {{ form.status }}
+        </div>
+        <div class="field">
+          <label for="id_autopay">Autopay</label>
+          {{ form.autopay }}
+        </div>
+        <div class="field">
+          <label for="id_tags">Tag</label>
+          {{ form.tags }}
+        </div>
+        <div class="field">
+          <label for="id_note">Note</label>
+          {{ form.note }}
+        </div>
+      </details>
+      <div class="actions">
+        <button class="btn primary" type="submit">Salva</button>
+        <a class="btn" href="/subs/">Annulla</a>
+      </div>
+    </form>
+    <script>
+      (function () {
+        function bindSelect(selectId, inputId) {
+          var select = document.getElementById(selectId);
+          var input = document.getElementById(inputId);
+          if (!select || !input) return;
+          function toggle() {
+            var isNew = select.value === "__new__";
+            input.style.display = isNew ? "block" : "none";
+            if (!isNew) {
+              input.value = "";
+            }
+          }
+          select.addEventListener("change", toggle);
+          toggle();
+        }
+        bindSelect("id_payee_choice", "id_payee_name");
+        bindSelect("id_category_choice", "id_category_name");
+      })();
+    </script>
+  </section>
+{% endblock %}

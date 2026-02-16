@@ -1,0 +1,148 @@
+{% extends "routines/base.html" %}
+{% load routines_extras %}
+
+{% block title %}MIO - Routines{% endblock %}
+
+{% block content %}
+  <section class="hero" id="app-head">
+    <div class="hero-copy" id="app-header">
+      <h1>Le mie routine</h1>
+      <p>Gestisci le routine settimanali e segna cosa hai completato.</p>
+      <div class="hero-actions" id="app-actions" data-module="routines">
+        <a class="btn primary" href="/routines/api/add" data-action="add_routine">Nuova routine</a>
+        <a class="btn" href="/routines/items/add" data-action="add_item">Nuova attivita</a>
+      </div>
+    </div>
+    <div class="hero-card" id="routines-week-panel">
+      <div class="card-title">Settimana</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Inizio</div>
+          <div class="stat-value">{{ week_start|date:"d/m/Y" }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Fine</div>
+          <div class="stat-value">{{ week_end|date:"d/m/Y" }}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/routines/?week={{ prev_week }}">Settimana precedente</a>
+        <a class="btn" href="/routines/?week={{ next_week }}">Settimana successiva</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid routines-accordion" id="routines-grid">
+    {% for day in week_days %}
+      <details class="panel routine-day" {% if day.date == today %}open{% endif %}>
+        <summary class="routine-day-head">
+          <span class="routine-day-title">{{ day.label }} · {{ day.date|date:"d/m" }}</span>
+          {% if day.date == today %}
+            <span class="routine-day-chip">Oggi</span>
+          {% endif %}
+        </summary>
+        {% with items=grouped|get_item:day.index %}
+          {% if items %}
+            <ul class="list routine-day-list">
+              {% for entry in items %}
+                <li>
+                  <span>{{ entry.item.title }}</span>
+                  <span class="muted">{{ entry.item.routine.name }}{% if entry.item.project %} · {{ entry.item.project.name }}{% endif %}{% if entry.item.time_start %} · {{ entry.item.time_start|time:"H:i" }}{% endif %}{% if entry.item.time_end %}-{{ entry.item.time_end|time:"H:i" }}{% endif %}</span>
+                  <form method="post" action="/routines/check" class="routine-check-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="item_id" value="{{ entry.item.id }}">
+                    <input type="hidden" name="week" value="{{ week_start|date:"Y-m-d" }}">
+                    <div class="actions">
+                      <button
+                        class="btn primary routine-done-btn"
+                        type="button"
+                        data-item-id="{{ entry.item.id }}"
+                        data-week="{{ week_start|date:"Y-m-d" }}"
+                        data-title="{{ entry.item.title }}"
+                        data-schema-id="routine-schema-{{ entry.item.id }}"
+                        data-data-id="routine-data-{{ entry.item.id }}"
+                      >
+                        Fatto
+                      </button>
+                      <button class="btn danger" name="status" value="SKIPPED" type="submit">Saltato</button>
+                    </div>
+                  </form>
+                  {% with schema_id="routine-schema-"|add:entry.item.id data_id="routine-data-"|add:entry.item.id %}
+                    {{ entry.schema_fields|default:""|json_script:schema_id }}
+                    {{ entry.data|default:""|json_script:data_id }}
+                  {% endwith %}
+                  <span class="muted">{{ entry.status }}</span>
+                  <div class="actions routine-item-actions">
+                    <a class="btn" href="/routines/items/update?id={{ entry.item.id }}">Modifica</a>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="note">Nessuna attivita in questo giorno.</div>
+          {% endif %}
+        {% endwith %}
+      </details>
+    {% endfor %}
+  </section>
+
+  <section class="grid" id="routines-info-grid">
+    <article class="panel">
+      <h2>Stato settimana</h2>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Pianificati</div>
+          <div class="stat-value">{{ stats.planned }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Completati</div>
+          <div class="stat-value">{{ stats.done }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Saltati</div>
+          <div class="stat-value">{{ stats.skipped }}</div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Routine attive</h2>
+      {% if routines %}
+        <ul class="list">
+          {% for routine in routines %}
+            <li>
+              <span>{{ routine.name }}</span>
+              <span class="muted">{{ routine.description|default:"-" }}</span>
+              <span>
+                <a class="btn" href="/routines/api/update?id={{ routine.id }}">Modifica</a>
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna routine attiva.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <div class="modal" id="routine-modal" hidden>
+    <div class="modal-backdrop" data-modal-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="routine-modal-title">
+      <div class="modal-head">
+        <h3 id="routine-modal-title">Completa routine</h3>
+        <button class="modal-close" type="button" data-modal-close aria-label="Chiudi">×</button>
+      </div>
+      <form method="post" action="/routines/check" id="routine-modal-form" class="routine-check-form">
+        {% csrf_token %}
+        <input type="hidden" name="item_id" id="routine-modal-item">
+        <input type="hidden" name="week" id="routine-modal-week">
+        <input type="hidden" name="status" value="DONE">
+        <div class="routine-form-grid" id="routine-modal-fields"></div>
+        <div class="actions">
+          <button class="btn" type="button" data-modal-close>Annulla</button>
+          <button class="btn primary" type="submit">Conferma</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "planner/base.html" %}
+
+{% block title %}MIO - Planner{% endblock %}
+
+{% block content %}
+  <section class="hero" id="app-head">
+    <div class="hero-copy" id="app-header">
+      <h1>Planner</h1>
+      <p>Annota spese future, compleanni e obiettivi di risparmio.</p>
+      <div class="hero-actions" id="app-actions" data-module="planner">
+        <a class="btn primary" href="/planner/add" data-action="add">Nuova voce</a>
+      </div>
+    </div>
+    <div class="hero-card" id="planner-upcoming-panel">
+      <div class="card-title" id="upcoming-title">Prossimi promemoria</div>
+      <ul class="list" id="planner-upcoming-list">
+        {% if upcoming %}
+          {% for item in upcoming %}
+            <li>
+              <span class="dot dot-amber"></span>
+              <span>{{ item.title }}</span>
+              <span class="muted">{{ item.due_date|default:"-" }}</span>
+              <a class="btn" href="/planner/update?id={{ item.id }}">Aggiorna</a>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessun promemoria.</li>
+        {% endif %}
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid" id="planner-info-grid">
+    <article class="panel" id="planner-info-panel">
+      <h2 id="planner-stats-title">Stato</h2>
+      <div class="stat-row" id="planner-info">
+        <div class="stat">
+          <div class="stat-label">Pianificati</div>
+          <div class="stat-value">{{ counts.planned }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Completati</div>
+          <div class="stat-value">{{ counts.done }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Saltati</div>
+          <div class="stat-value">{{ counts.skipped }}</div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel" id="planner-notes-panel">
+      <h2 id="planner-notes-title">Note rapide</h2>
+      <div class="note">Usa il planner per budget futuri e promemoria personali.</div>
+    </article>
+  </section>
+{% endblock %}

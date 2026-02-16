@@ -1,0 +1,30 @@
+{% extends "projects/base.html" %}
+
+{% block title %}MIO - Categories{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h1>Categorie</h1>
+    <p class="muted">Lista delle categorie collegate al tuo profilo.</p>
+    <div class="actions">
+      <a class="btn primary" href="/projects/categories/add">Nuova categoria</a>
+    </div>
+
+    {% if categories %}
+      <ul class="list">
+        {% for category in categories %}
+          <li>
+            <span>{{ category.name }}</span>
+            <span class="muted">{{ category.parent|default:"-" }}</span>
+            <span>
+              <a class="btn" href="/projects/categories/update?id={{ category.id }}">Modifica</a>
+              <a class="btn" href="/projects/categories/remove?id={{ category.id }}">Rimuovi</a>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="note">Nessuna categoria disponibile.</div>
+    {% endif %}
+  </section>
+{% endblock %}

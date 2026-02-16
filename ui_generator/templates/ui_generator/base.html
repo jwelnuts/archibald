@@ -1,0 +1,59 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}MIO - UI Generator{% endblock %}</title>
+    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
+  </head>
+  <body>
+    <div class="page">
+      <header class="site-header">
+        <div class="brand">
+          <div class="brand-mark">MIO</div>
+          <div class="brand-text">
+            <div class="brand-title">Money Organizer</div>
+            <div class="brand-sub">UI Generator</div>
+          </div>
+        </div>
+        <nav class="site-nav">
+          <a href="/" class="nav-link">Dashboard</a>
+          <div class="nav-select">
+            <label for="app-switch" class="nav-label">App</label>
+            <select id="app-switch" onchange="if (this.value) window.location.href = this.value;">
+              <option value="">Seleziona...</option>
+              <option value="/subs/">Subscriptions</option>
+              <option value="/transactions/">Transactions</option>
+              <option value="/income/">Income</option>
+              <option value="/outcome/">Outcome</option>
+              <option value="/projects/">Projects</option>
+              <option value="/projects/categories/">Categories</option>
+              <option value="/todo/">Todo</option>
+              <option value="/planner/">Planner</option>
+              <option value="/routines/">Routines</option>
+              <option value="/archibald/">Archibald</option>
+              <option value="/workbench/">Workbench</option>
+              <option value="/core/accounts/">Accounts</option>
+              <option value="/profile/">Profilo</option>
+              <option value="/ui-generator/">UI Generator</option>
+            </select>
+          </div>
+          <a href="/accounts/logout/" class="nav-link">Logout</a>
+        </nav>
+      </header>
+
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="site-footer">
+        <span>Module: ui_generator</span>
+        <span>Version: alpha</span>
+      </footer>
+    </div>
+    {{ hero_actions_config|json_script:"hero-actions-config" }}
+    <script type="module" src="{% static 'core/app.js' %}"></script>
+  </body>
+</html>

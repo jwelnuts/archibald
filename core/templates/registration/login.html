@@ -1,0 +1,51 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MIO - Login</title>
+    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="shell-header">
+        <div class="brand">
+          <div class="brand-mark">MIO</div>
+          <div class="brand-text">
+            <div class="brand-title">Money Organizer</div>
+            <div class="brand-sub">Login</div>
+          </div>
+        </div>
+      </header>
+
+      <section class="panel login-panel">
+        <h1>Accedi</h1>
+        <p class="muted">Inserisci le credenziali per accedere alla dashboard.</p>
+
+        {% if form.errors %}
+          <div class="warning-box">Credenziali non valide. Riprova.</div>
+        {% endif %}
+
+        <form method="post">
+          {% csrf_token %}
+          <div class="form">
+            <div class="field">
+              <label for="id_username">Username</label>
+              <input id="id_username" name="username" type="text" autocomplete="username" required>
+            </div>
+            <div class="field">
+              <label for="id_password">Password</label>
+              <input id="id_password" name="password" type="password" autocomplete="current-password" required>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit">Login</button>
+              <a class="btn" href="/accounts/signup/">Crea account</a>
+            </div>
+          </div>
+        </form>
+      </section>
+    </div>
+  </body>
+</html>

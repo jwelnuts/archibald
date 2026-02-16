@@ -1,0 +1,34 @@
+{% extends "outcome/base.html" %}
+
+{% block title %}MIO - Remove Outcome{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi uscita</h1>
+    <p class="muted">Layout base per confermare una rimozione.</p>
+    {% if tx %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ tx.payee|default:"Uscita" }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/outcome/">Annulla</a>
+      </form>
+    {% else %}
+      {% if txs %}
+        <ul class="list">
+          {% for item in txs %}
+            <li>
+              <span>{{ item.payee|default:"Uscita" }} - {{ item.amount }} {{ item.currency.code }}</span>
+              <a class="btn" href="/outcome/api/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna uscita disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

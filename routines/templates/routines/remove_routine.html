@@ -1,0 +1,35 @@
+{% extends "routines/base.html" %}
+
+{% block title %}MIO - Remove Routine{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi routine</h1>
+    <p class="muted">Seleziona una routine da eliminare.</p>
+
+    {% if routine %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ routine.name }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/routines/">Annulla</a>
+      </form>
+    {% else %}
+      {% if routines %}
+        <ul class="list">
+          {% for item in routines %}
+            <li>
+              <span>{{ item.name }}</span>
+              <a class="btn" href="/routines/api/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna routine disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

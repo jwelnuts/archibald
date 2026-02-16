@@ -1,0 +1,120 @@
+{% extends "workbench/base.html" %}
+
+{% block title %}MIO - DB Schema{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h1>Schema DB</h1>
+    <p class="muted">Schema ERD dei modelli registrati nel progetto.</p>
+
+    {% if mermaid_erd %}
+      <div class="schema-diagram">
+        <div class="schema-toolbar">
+          <button class="btn" type="button" id="schema-zoom-in">Zoom +</button>
+          <button class="btn" type="button" id="schema-zoom-out">Zoom -</button>
+          <button class="btn" type="button" id="schema-reset">Reset</button>
+        </div>
+        <div class="schema-viewport" id="schema-viewport">
+          <div class="mermaid" id="schema-mermaid">
+            {{ mermaid_erd|safe }}
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="note">Nessun diagramma disponibile.</div>
+    {% endif %}
+
+    {% if models %}
+      <details class="schema-details">
+        <summary>Dettagli modelli</summary>
+        <div class="schema-grid">
+          {% for model in models %}
+            <div class="schema-card">
+              <div class="schema-head">
+                <div>
+                  <div class="schema-title">{{ model.app }}.{{ model.name }}</div>
+                  <div class="muted">Table: {{ model.table }}</div>
+                </div>
+              </div>
+              <div class="schema-table">
+                <div class="schema-row schema-head-row">
+                  <span>Campo</span>
+                  <span>Tipo</span>
+                  <span>Null</span>
+                  <span>Blank</span>
+                  <span>Relazione</span>
+                </div>
+                {% for field in model.fields %}
+                  <div class="schema-row">
+                    <span>{{ field.name }}</span>
+                    <span class="muted">{{ field.type }}</span>
+                    <span>{{ field.null }}</span>
+                    <span>{{ field.blank }}</span>
+                    <span class="muted">
+                      {% if field.relation %}{{ field.to }}{% else %}-{% endif %}
+                    </span>
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </details>
+    {% endif %}
+  </section>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/svg-pan-zoom@3.6.1/dist/svg-pan-zoom.min.js"></script>
+  <script>
+    (function () {
+      if (!window.mermaid) return;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: "default",
+        erDiagram: {
+          curve: "basis",
+          useMaxWidth: true
+        }
+      });
+
+      var panZoomInstance = null;
+
+      function initPanZoom() {
+        var svg = document.querySelector("#schema-mermaid svg");
+        if (!svg || !window.svgPanZoom) return;
+        if (panZoomInstance) {
+          panZoomInstance.destroy();
+        }
+        panZoomInstance = window.svgPanZoom(svg, {
+          zoomEnabled: true,
+          controlIconsEnabled: false,
+          fit: true,
+          center: true,
+          minZoom: 0.2,
+          maxZoom: 8
+        });
+
+        var zoomIn = document.getElementById("schema-zoom-in");
+        var zoomOut = document.getElementById("schema-zoom-out");
+        var reset = document.getElementById("schema-reset");
+
+        if (zoomIn) zoomIn.onclick = function () { panZoomInstance.zoomIn(); };
+        if (zoomOut) zoomOut.onclick = function () { panZoomInstance.zoomOut(); };
+        if (reset) reset.onclick = function () { panZoomInstance.resetZoom(); panZoomInstance.center(); };
+      }
+
+      function renderDiagram() {
+        var node = document.getElementById("schema-mermaid");
+        if (!node) return;
+        mermaid.run({ nodes: [node] }).then(function () {
+          initPanZoom();
+        });
+      }
+
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", renderDiagram);
+      } else {
+        renderDiagram();
+      }
+    })();
+  </script>
+{% endblock %}

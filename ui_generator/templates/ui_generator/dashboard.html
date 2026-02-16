@@ -1,0 +1,56 @@
+{% extends "ui_generator/base.html" %}
+
+{% block content %}
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>UI Generator</h1>
+      <p>
+        Descrivi i widget desiderati. La richiesta verra trasformata in un JSON
+        configurabile per costruire la dashboard dinamica.
+      </p>
+    </div>
+    <div class="hero-card">
+      <div class="card-title">Suggerimento</div>
+      <p class="muted">
+        Usa richieste chiare e strutturate: KPI, tabelle, grafici, liste e vincoli.
+      </p>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="card-title">Prompt per GPT</div>
+    <form class="form" method="post">
+      {% csrf_token %}
+      <div class="field">
+        <label for="gpt-prompt">Richiesta</label>
+        <textarea
+          id="gpt-prompt"
+          name="gpt_prompt"
+          rows="5"
+          placeholder="Es: Crea una dashboard con KPI di spese mensili, grafico per categoria e lista scadenze."
+          required
+        >{{ gpt_prompt|default:"" }}</textarea>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Invia a GPT</button>
+        <button class="btn" type="reset">Reset</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="card-title">Debug risposta GPT</div>
+    <p class="muted">
+      Qui comparira la risposta grezza da analizzare prima di salvarla e
+      trasformarla in widget.
+    </p>
+    {% if gpt_error %}
+      <div class="warning-box">{{ gpt_error }}</div>
+    {% endif %}
+    {% if gpt_response %}
+      <pre class="code-block">{{ gpt_response }}</pre>
+    {% else %}
+      <div class="note">Nessuna risposta disponibile. Invia un prompt.</div>
+    {% endif %}
+  </section>
+{% endblock %}

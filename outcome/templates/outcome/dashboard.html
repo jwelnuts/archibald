@@ -1,0 +1,65 @@
+{% extends "outcome/base.html" %}
+
+{% block title %}MIO - Outcome Dashboard{% endblock %}
+
+{% block content %}
+  <section class="hero" id="app-head">
+    <div class="hero-copy" id="app-header">
+      <h1>Uscite sotto controllo</h1>
+      <p>
+        Qui gestisci spese, abbonamenti e pagamenti. La dashboard e pronta
+        per collegare conti, categorie e progetti.
+      </p>
+      <div class="hero-actions" id="app-actions" data-module="outcome">
+        <a class="btn primary" href="/outcome/api/add" data-action="add">Nuova uscita</a>
+        <a class="btn" href="/outcome/api/update" data-action="update">Aggiorna</a>
+      </div>
+    </div>
+    <div class="hero-card" id="outcome-upcoming-panel">
+      <div class="card-title" id="upcoming-title">Uscite recenti</div>
+      <ul class="list" id="outcome-upcoming-list">
+        {% if recent %}
+          {% for tx in recent %}
+            <li>
+              <span class="dot dot-red"></span>
+              <span>{{ tx.payee|default:"Uscita" }}</span>
+              <span class="muted">{{ tx.amount }} {{ tx.currency.code }}</span>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessuna uscita registrata.</li>
+        {% endif %}
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid" id="outcome-info-grid">
+    <article class="panel" id="outcome-info-panel">
+      <h2 id="outcome-stats-title">Budget mese</h2>
+      <div class="stat-row" id="outcome-info">
+        <div class="stat">
+          <div class="stat-label">Totale spese</div>
+          <div class="stat-value">{{ totals.total_amount|default:0 }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Con progetto</div>
+          <div class="stat-value">{{ counts.with_project }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Con categoria</div>
+          <div class="stat-value">{{ counts.with_category }}</div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel" id="outcome-notes-panel">
+      <h2 id="outcome-notes-title">Note rapide</h2>
+      <div class="note">
+        Usa Category per capire le aree di spesa principali.
+      </div>
+      <div class="note">
+        Collega Transaction alle subscription per i pagamenti ricorrenti.
+      </div>
+    </article>
+  </section>
+{% endblock %}

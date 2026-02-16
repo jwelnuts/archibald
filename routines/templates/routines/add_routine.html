@@ -1,0 +1,40 @@
+{% extends "routines/base.html" %}
+
+{% block title %}MIO - Add Routine{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Nuova routine</h1>
+    <p class="muted">Definisci una routine settimanale.</p>
+    {% if form and form.errors %}
+      <div class="warning-box">
+        Controlla i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <form class="form" method="post" action="">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_name">Nome</label>
+        {{ form.name }}
+      </div>
+      <div class="field">
+        <label for="id_description">Descrizione</label>
+        {{ form.description }}
+      </div>
+      <div class="field">
+        <label for="id_is_active">Attiva</label>
+        {{ form.is_active }}
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Salva</button>
+        <a class="btn" href="/routines/">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "projects/base.html" %}
+
+{% block title %}MIO - Projects Dashboard{% endblock %}
+
+{% block content %}
+  <section class="hero" id="app-head">
+    <div class="hero-copy" id="app-header">
+      <h1>Progetti e componenti</h1>
+      <p>
+        Organizza le spese e le entrate per progetto. Ogni componente si
+        riflette sulle altre app del sistema.
+      </p>
+      <div class="hero-actions" id="app-actions" data-module="projects">
+        <a class="btn primary" href="/projects/api/add" data-action="add">Nuovo progetto</a>
+        <a class="btn" href="/projects/api/update" data-action="update">Aggiorna</a>
+      </div>
+    </div>
+    <div class="hero-card" id="projects-upcoming-panel">
+      <div class="card-title" id="upcoming-title">Progetti attivi</div>
+      <ul class="list" id="projects-upcoming-list">
+        {% if active_projects %}
+          {% for project in active_projects %}
+            <li>
+              <span class="dot dot-blue"></span>
+              <a href="/projects/view?id={{ project.id }}">{{ project.name }}</a>
+              <span class="muted">Attivo</span>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessun progetto attivo.</li>
+        {% endif %}
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid" id="projects-info-grid">
+    <article class="panel" id="projects-info-panel">
+      <h2 id="projects-stats-title">Componenti</h2>
+      <div class="stat-row" id="projects-info">
+        <div class="stat">
+          <div class="stat-label">Attivi</div>
+          <div class="stat-value">{{ counts.active }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Archiviati</div>
+          <div class="stat-value">{{ counts.archived }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Categorie</div>
+          <div class="stat-value">{{ counts.categories }}</div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel" id="projects-notes-panel">
+      <h2 id="projects-notes-title">Note rapide</h2>
+      <div class="note">
+        Usa Category come tassonomia comune per income, outcome e subscription.
+      </div>
+      <div class="note">
+        I progetti sono il collegamento tra componenti e analytics.
+      </div>
+    </article>
+  </section>
+{% endblock %}

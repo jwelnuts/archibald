@@ -1,0 +1,64 @@
+{% extends "core/profile.html" %}
+
+{% block title %}MIO - Update Account{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Aggiorna account</h1>
+    <p class="muted">Seleziona un account da aggiornare.</p>
+    {% if form and form.errors %}
+      <div class="warning-box">
+        Controlla i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if account %}
+      <form class="form" method="post" action="">
+        {% csrf_token %}
+        <div class="field">
+          <label for="id_name">Nome</label>
+          {{ form.name }}
+        </div>
+        <div class="field">
+          <label for="id_kind">Tipo</label>
+          {{ form.kind }}
+        </div>
+        <div class="field">
+          <label for="id_currency">Valuta</label>
+          {{ form.currency }}
+        </div>
+        <div class="field">
+          <label for="id_opening_balance">Saldo iniziale</label>
+          {{ form.opening_balance }}
+        </div>
+        <div class="field">
+          <label for="id_is_active">Attivo</label>
+          {{ form.is_active }}
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Aggiorna</button>
+          <a class="btn" href="/core/accounts/">Annulla</a>
+        </div>
+      </form>
+    {% else %}
+      {% if accounts %}
+        <ul class="list">
+          {% for item in accounts %}
+            <li>
+              <span>{{ item.name }} ({{ item.currency.code }})</span>
+              <a class="btn" href="/core/accounts/update?id={{ item.id }}">Modifica</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun account disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

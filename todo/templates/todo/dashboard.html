@@ -1,0 +1,65 @@
+{% extends "todo/base.html" %}
+
+{% block title %}MIO - Todo Dashboard{% endblock %}
+
+{% block content %}
+  <section class="hero" id="app-head">
+    <div class="hero-copy" id="app-header">
+      <h1>Task e reminder</h1>
+      <p>
+        Gestisci task operativi collegati alle altre componenti. Questa base
+        e pronta per integrare scadenze e operazioni.
+      </p>
+      <div class="hero-actions" id="app-actions" data-module="todo">
+        <a class="btn primary" href="/todo/api/add" data-action="add">Nuovo task</a>
+        <a class="btn" href="/todo/api/update" data-action="update">Aggiorna</a>
+      </div>
+    </div>
+    <div class="hero-card" id="todo-upcoming-panel">
+      <div class="card-title" id="upcoming-title">Task aperti</div>
+      <ul class="list" id="todo-upcoming-list">
+        {% if open_tasks %}
+          {% for task in open_tasks %}
+            <li>
+              <span class="dot dot-amber"></span>
+              <span>{{ task.title }}</span>
+              <span class="muted">{{ task.due_date|default:"-" }}</span>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessun task disponibile.</li>
+        {% endif %}
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid" id="todo-info-grid">
+    <article class="panel" id="todo-info-panel">
+      <h2 id="todo-stats-title">Stato task</h2>
+      <div class="stat-row" id="todo-info">
+        <div class="stat">
+          <div class="stat-label">Aperti</div>
+          <div class="stat-value">{{ counts.open }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">In corso</div>
+          <div class="stat-value">{{ counts.in_progress }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Completati</div>
+          <div class="stat-value">{{ counts.done }}</div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel" id="todo-notes-panel">
+      <h2 id="todo-notes-title">Note rapide</h2>
+      <div class="note">
+        Usa i task per attivare workflow e revisioni periodiche.
+      </div>
+      <div class="note">
+        Collega i task ai progetti per responsabilita.
+      </div>
+    </article>
+  </section>
+{% endblock %}

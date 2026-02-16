@@ -1,0 +1,99 @@
+{% extends "income/base.html" %}
+
+{% block title %}MIO - Update Income{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Aggiorna entrata</h1>
+    <p class="muted">Layout base per aggiornare importo o stato.</p>
+    {% if form and form.errors %}
+      <div class="warning-box">
+        Controlla i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    {% if tx %}
+      <form class="form" method="post" action="">
+        {% csrf_token %}
+        <div class="field">
+          <label for="id_date">Data</label>
+          {{ form.date }}
+        </div>
+        <div class="field">
+          <label for="id_amount">Importo</label>
+          {{ form.amount }}
+        </div>
+        <div class="field">
+          <label for="id_currency">Valuta</label>
+          {{ form.currency }}
+        </div>
+        <div class="field">
+          <label for="id_account">Account</label>
+          {{ form.account }}
+        </div>
+        <div class="field">
+          <label for="id_project">Progetto</label>
+          {{ form.project }}
+        </div>
+        <div class="field">
+          <label for="id_category">Categoria</label>
+          {{ form.category }}
+        </div>
+        <div class="field">
+          <label for="id_source_choice">Fonte del denaro</label>
+          {{ form.source_choice }}
+          <input id="id_source_name" name="source_name" type="text" placeholder="Nome nuova fonte" value="{{ form.source_name.value|default:'' }}" style="display:none;">
+        </div>
+        <div class="field">
+          <label for="id_tags">Tag</label>
+          {{ form.tags }}
+        </div>
+        <div class="field">
+          <label for="id_note">Note</label>
+          {{ form.note }}
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Aggiorna</button>
+          <a class="btn" href="/income/">Annulla</a>
+        </div>
+      </form>
+    {% else %}
+      {% if txs %}
+        <ul class="list">
+          {% for item in txs %}
+            <li>
+              <span>{{ item.income_source|default:"Entrata" }} - {{ item.amount }} {{ item.currency.code }}</span>
+              <a class="btn" href="/income/api/update?id={{ item.id }}">Modifica</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna entrata disponibile.</div>
+      {% endif %}
+    {% endif %}
+    <script>
+      (function () {
+        function bindSelect(selectId, inputId) {
+          var select = document.getElementById(selectId);
+          var input = document.getElementById(inputId);
+          if (!select || !input) return;
+          function toggle() {
+            var isNew = select.value === "__new__";
+            input.style.display = isNew ? "block" : "none";
+            if (!isNew) {
+              input.value = "";
+            }
+          }
+          select.addEventListener("change", toggle);
+          toggle();
+        }
+        bindSelect("id_source_choice", "id_source_name");
+      })();
+    </script>
+  </section>
+{% endblock %}

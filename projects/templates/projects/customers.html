@@ -1,0 +1,30 @@
+{% extends "projects/base.html" %}
+
+{% block title %}MIO - Customers{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h1>Clienti</h1>
+    <p class="muted">Lista dei clienti collegati al tuo profilo.</p>
+    <div class="actions">
+      <a class="btn primary" href="/projects/customers/add">Nuovo cliente</a>
+    </div>
+
+    {% if customers %}
+      <ul class="list">
+        {% for customer in customers %}
+          <li>
+            <span>{{ customer.name }}</span>
+            <span class="muted">{{ customer.email|default:"-" }}</span>
+            <span>
+              <a class="btn" href="/projects/customers/update?id={{ customer.id }}">Modifica</a>
+              <a class="btn" href="/projects/customers/remove?id={{ customer.id }}">Rimuovi</a>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="note">Nessun cliente disponibile.</div>
+    {% endif %}
+  </section>
+{% endblock %}

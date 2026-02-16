@@ -1,0 +1,64 @@
+{% extends "outcome/base.html" %}
+
+{% block title %}MIO - Add Outcome{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Nuova uscita</h1>
+    <p class="muted">Layout base per inserire una nuova uscita.</p>
+    {% if form and form.errors %}
+      <div class="warning-box">
+        Controlla i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <form class="form" method="post" action="">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_date">Data</label>
+        {{ form.date }}
+      </div>
+      <div class="field">
+        <label for="id_amount">Importo</label>
+        {{ form.amount }}
+      </div>
+      <div class="field">
+        <label for="id_currency">Valuta</label>
+        {{ form.currency }}
+      </div>
+      <div class="field">
+        <label for="id_account">Account</label>
+        {{ form.account }}
+      </div>
+      <div class="field">
+        <label for="id_project">Progetto</label>
+        {{ form.project }}
+      </div>
+      <div class="field">
+        <label for="id_category">Categoria</label>
+        {{ form.category }}
+      </div>
+      <div class="field">
+        <label for="id_payee_name">Beneficiario</label>
+        {{ form.payee_name }}
+      </div>
+      <div class="field">
+        <label for="id_tags">Tag</label>
+        {{ form.tags }}
+      </div>
+      <div class="field">
+        <label for="id_note">Note</label>
+        {{ form.note }}
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Salva</button>
+        <a class="btn" href="/outcome/">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

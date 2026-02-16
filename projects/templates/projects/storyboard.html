@@ -1,0 +1,166 @@
+{% extends "projects/base.html" %}
+
+{% block title %}MIO - Storyboard{% endblock %}
+
+{% block content %}
+  <section class="hero" id="project-storyboard-head">
+    <div class="hero-copy">
+      <h1>Storyboard · {{ project.name }}</h1>
+      <p>Appunti e azioni collegate al progetto.</p>
+      <div class="hero-actions" data-module="projects_storyboard">
+        {% if "back" in allowed_actions %}
+          <a class="btn" href="/projects/view?id={{ project.id }}" data-action="back">Torna al progetto</a>
+        {% endif %}
+        {% if "edit" in allowed_actions %}
+          <a class="btn primary" href="/projects/api/update?id={{ project.id }}" data-action="edit">Modifica progetto</a>
+        {% endif %}
+      </div>
+      {% if hidden_actions %}
+        <details class="ghost-menu">
+          <summary class="btn">Azioni nascoste ({{ hidden_actions|length }})</summary>
+          <div class="ghost-menu-list">
+            {% for action in hidden_actions %}
+              {% if action.key == "back" %}
+                <a class="btn" href="/projects/view?id={{ project.id }}" data-action="{{ action.key }}">{{ action.label }}</a>
+              {% elif action.key == "edit" %}
+                <a class="btn" href="/projects/api/update?id={{ project.id }}" data-action="{{ action.key }}">{{ action.label }}</a>
+              {% endif %}
+            {% endfor %}
+          </div>
+        </details>
+      {% endif %}
+    </div>
+    <div class="hero-card">
+      <div class="card-title">Dettagli</div>
+      <ul class="list">
+        <li>
+          <span class="muted">Cliente</span>
+          <span>{% if project.customer %}{{ project.customer.name }}{% else %}-{% endif %}</span>
+        </li>
+        <li>
+          <span class="muted">Categoria</span>
+          <span>{% if project.category %}{{ project.category.name }}{% else %}-{% endif %}</span>
+        </li>
+        <li>
+          <span class="muted">Stato</span>
+          <span>{% if project.is_archived %}Archiviato{% else %}Attivo{% endif %}</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid" id="project-storyboard-grid">
+    <article class="panel">
+      <h2>Appunti</h2>
+      <form class="form" method="post" action="" enctype="multipart/form-data" novalidate>
+        {% csrf_token %}
+        <div class="field">
+          <label>Editor</label>
+          <div id="note-editor-toolbar">
+            <span class="ql-formats">
+              <button class="ql-bold"></button>
+              <button class="ql-italic"></button>
+              <button class="ql-underline"></button>
+            </span>
+            <span class="ql-formats">
+              <button class="ql-list" value="ordered"></button>
+              <button class="ql-list" value="bullet"></button>
+            </span>
+            <span class="ql-formats">
+              <button class="ql-link"></button>
+            </span>
+          </div>
+          <div id="note-editor" class="rich-editor"></div>
+        </div>
+        <div class="field" style="display:none;">
+          <label for="id_content">Nuovo appunto</label>
+          {{ note_form.content }}
+        </div>
+        <div class="field">
+          <label for="id_attachment">Allega file</label>
+          {{ note_form.attachment }}
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Aggiungi</button>
+        </div>
+      </form>
+
+      {% if notes %}
+        <ul class="list">
+          {% for note in notes %}
+            <li>
+              <span>{{ note.content|safe }}</span>
+              <span class="muted">{{ note.created_at|date:"d/m/Y H:i" }}</span>
+              {% if note.attachment %}
+                <span>
+                  <a class="btn" href="{{ note.attachment.url }}" target="_blank" rel="noopener">Apri allegato</a>
+                </span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun appunto disponibile.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Azioni sul progetto</h2>
+      {% if actions %}
+        <ul class="list">
+          {% for action in actions %}
+            <li>
+              <span>{{ action.date|date:"d/m/Y" }} · {{ action.title }}</span>
+              <span class="muted">{{ action.label }}</span>
+              {% if action.note %}
+                <span class="muted">{{ action.note }}</span>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna azione collegata.</div>
+      {% endif %}
+    </article>
+  </section>
+
+  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+  <script>
+    (function () {
+      var editorEl = document.getElementById("note-editor");
+      var textarea = document.getElementById("id_content");
+      if (!editorEl || !textarea || !window.Quill) return;
+      textarea.required = false;
+
+      var quill = new Quill("#note-editor", {
+        theme: "snow",
+        modules: {
+          toolbar: "#note-editor-toolbar"
+        }
+      });
+
+      if (textarea.value) {
+        quill.clipboard.dangerouslyPasteHTML(textarea.value);
+      }
+
+      var form = textarea.closest("form");
+      if (form) {
+        form.addEventListener("submit", function (event) {
+          var html = quill.root.innerHTML.trim();
+          var text = quill.getText().trim();
+          if (!text) {
+            event.preventDefault();
+            editorEl.focus();
+            alert("Inserisci un appunto prima di salvare.");
+            return;
+          }
+          textarea.value = html;
+        });
+      }
+    })();
+  </script>
+{% if hero_actions_override %}
+  {{ hero_actions_override|json_script:"hero-actions-override" }}
+{% endif %}
+{% endblock %}

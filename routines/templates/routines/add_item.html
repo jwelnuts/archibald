@@ -1,0 +1,236 @@
+{% extends "routines/base.html" %}
+
+{% block title %}MIO - Add Routine Item{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Nuova attivita</h1>
+    <p class="muted">Aggiungi un'attivita alla routine settimanale.</p>
+    {% if form and form.errors %}
+      <div class="warning-box">
+        Controlla i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <form class="form" method="post" action="">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_routine_choice">Routine</label>
+        {{ form.routine_choice }}
+        <input id="id_routine_name" name="routine_name" type="text" placeholder="Nome nuova routine" style="display:none;">
+      </div>
+      <div class="field">
+        <label for="id_project">Progetto</label>
+        {{ form.project }}
+      </div>
+      <div class="field">
+        <label for="id_title">Titolo</label>
+        {{ form.title }}
+      </div>
+      <div class="field">
+        <label for="id_weekday">Giorno della settimana</label>
+        {{ form.weekday }}
+      </div>
+      <div class="field">
+        <label for="id_time_start">Da che ora</label>
+        {{ form.time_start }}
+      </div>
+      <div class="field">
+        <label for="id_time_end">A che ora</label>
+        {{ form.time_end }}
+      </div>
+      <div class="field">
+        <label for="id_note">Note</label>
+        {{ form.note }}
+      </div>
+      <details class="schema-json-toggle">
+        <summary>Mostra JSON avanzato</summary>
+        <div class="field">
+          <label for="id_schema">Schema personalizzato (JSON)</label>
+          {{ form.schema }}
+          {% if form.schema.help_text %}
+            <div class="helper-text">{{ form.schema.help_text }}</div>
+          {% endif %}
+        </div>
+      </details>
+      <div class="schema-builder" data-schema-builder>
+        <div class="schema-builder-head">
+          <div>
+            <div class="schema-builder-title">Costruttore scheda routine</div>
+            <div class="helper-text">Aggiungi i campi senza scrivere JSON. Il testo viene generato automaticamente.</div>
+          </div>
+          <button class="btn" type="button" data-add-field>Aggiungi campo</button>
+        </div>
+        <div class="schema-builder-rows" data-schema-rows></div>
+        <div class="helper-text">Modificare il JSON sovrascrive i campi del costruttore al prossimo refresh.</div>
+      </div>
+      <div class="field">
+        <label for="id_is_active">Attiva</label>
+        {{ form.is_active }}
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Salva</button>
+        <a class="btn" href="/routines/">Annulla</a>
+      </div>
+    </form>
+    <script>
+      (function () {
+        var select = document.getElementById("id_routine_choice");
+        var input = document.getElementById("id_routine_name");
+        if (!select || !input) return;
+        function toggle() {
+          var isNew = select.value === "__new__";
+          input.style.display = isNew ? "block" : "none";
+          if (!isNew) {
+            input.value = "";
+          }
+        }
+        select.addEventListener("change", toggle);
+        toggle();
+      })();
+    </script>
+    <script>
+      (function () {
+        var builder = document.querySelector("[data-schema-builder]");
+        var rowsEl = document.querySelector("[data-schema-rows]");
+        var addBtn = document.querySelector("[data-add-field]");
+        var textarea = document.getElementById("id_schema");
+        if (!builder || !rowsEl || !addBtn || !textarea) return;
+
+        function slugify(value) {
+          return (value || "")
+            .toString()
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "_")
+            .replace(/^_+|_+$/g, "");
+        }
+
+        function createRow(data) {
+          var row = document.createElement("div");
+          row.className = "schema-row";
+          row.innerHTML = '\
+            <input type="text" class="schema-input" placeholder="Etichetta" data-field="label">\
+            <input type="text" class="schema-input" placeholder="Nome (auto)" data-field="name">\
+            <select class="schema-input" data-field="type">\
+              <option value="text">Testo</option>\
+              <option value="textarea">Testo lungo</option>\
+              <option value="number">Numero</option>\
+              <option value="time">Ora</option>\
+              <option value="date">Data</option>\
+              <option value="select">Selezione</option>\
+              <option value="checkbox">Checkbox</option>\
+            </select>\
+            <input type="text" class="schema-input" placeholder="Placeholder" data-field="placeholder">\
+            <input type="text" class="schema-input" placeholder="Opzioni (a,b,c)" data-field="options">\
+            <select class="schema-input" data-field="source">\
+              <option value="">Opzioni manuali</option>\
+              <option value="projects">Progetti</option>\
+            </select>\
+            <label class="schema-check"><input type="checkbox" data-field="required"> Obbligatorio</label>\
+            <button type="button" class="schema-remove" aria-label="Rimuovi">✕</button>';
+
+          var labelInput = row.querySelector('[data-field="label"]');
+          var nameInput = row.querySelector('[data-field="name"]');
+          var typeInput = row.querySelector('[data-field="type"]');
+          var optionsInput = row.querySelector('[data-field="options"]');
+          var sourceInput = row.querySelector('[data-field="source"]');
+
+          labelInput.addEventListener("input", function () {
+            if (!nameInput.value) {
+              nameInput.value = slugify(labelInput.value);
+            }
+            syncJSON();
+          });
+          nameInput.addEventListener("input", syncJSON);
+          typeInput.addEventListener("change", syncJSON);
+          optionsInput.addEventListener("input", syncJSON);
+          sourceInput.addEventListener("change", function () {
+            optionsInput.disabled = !!sourceInput.value;
+            syncJSON();
+          });
+          row.querySelector('[data-field="placeholder"]').addEventListener("input", syncJSON);
+          row.querySelector('[data-field="required"]').addEventListener("change", syncJSON);
+          row.querySelector(".schema-remove").addEventListener("click", function () {
+            row.remove();
+            syncJSON();
+          });
+
+          if (data) {
+            labelInput.value = data.label || "";
+            nameInput.value = data.name || "";
+            typeInput.value = data.type || "text";
+            row.querySelector('[data-field="placeholder"]').value = data.placeholder || "";
+            if (Array.isArray(data.options)) {
+              optionsInput.value = data.options.join(", ");
+            }
+            sourceInput.value = data.source || "";
+            optionsInput.disabled = !!sourceInput.value;
+            row.querySelector('[data-field="required"]').checked = !!data.required;
+          }
+
+          return row;
+        }
+
+        function parseJSON() {
+          try {
+            var parsed = JSON.parse(textarea.value || "{}");
+            if (parsed && Array.isArray(parsed.fields)) {
+              parsed.fields.forEach(function (field) {
+                rowsEl.appendChild(createRow(field));
+              });
+            }
+          } catch (err) {
+            // ignore invalid JSON
+          }
+        }
+
+        function syncJSON() {
+          var fields = [];
+          rowsEl.querySelectorAll(".schema-row").forEach(function (row) {
+            var label = row.querySelector('[data-field="label"]').value.trim();
+            var name = row.querySelector('[data-field="name"]').value.trim();
+            var type = row.querySelector('[data-field="type"]').value;
+            var placeholder = row.querySelector('[data-field="placeholder"]').value.trim();
+            var optionsRaw = row.querySelector('[data-field="options"]').value.trim();
+            var source = row.querySelector('[data-field="source"]').value;
+            var required = row.querySelector('[data-field="required"]').checked;
+            if (!label && !name) return;
+            var field = {
+              name: name || slugify(label),
+              label: label || name,
+              type: type,
+            };
+            if (placeholder) field.placeholder = placeholder;
+            if (required) field.required = true;
+            if (source) {
+              field.source = source;
+            } else if (optionsRaw) {
+              field.options = optionsRaw.split(",").map(function (opt) {
+                return opt.trim();
+              }).filter(Boolean);
+            }
+            fields.push(field);
+          });
+          textarea.value = JSON.stringify({ fields: fields }, null, 2);
+        }
+
+        addBtn.addEventListener("click", function () {
+          rowsEl.appendChild(createRow());
+          syncJSON();
+        });
+
+        parseJSON();
+        if (!rowsEl.children.length) {
+          rowsEl.appendChild(createRow());
+        }
+        syncJSON();
+      })();
+    </script>
+  </section>
+{% endblock %}

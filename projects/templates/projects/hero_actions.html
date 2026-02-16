@@ -1,0 +1,34 @@
+{% extends "projects/base.html" %}
+{% load core_extras %}
+
+{% block title %}MIO - Hero Actions{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h1>Hero actions · {{ project.name }}</h1>
+    <p class="muted">Seleziona i tasti visibili per questo progetto.</p>
+
+    <form class="form" method="post" action="">
+      {% csrf_token %}
+      {% for module, actions_list in actions.items %}
+        <div class="form-section">
+          <div class="stat-label">{{ module|title }}</div>
+          <div class="form-row">
+            {% for action in actions_list %}
+              {% with enabled_list=selected|dict_get:module %}
+                <label class="toggle">
+                  <input type="checkbox" name="{{ module }}:{{ action.key }}" {% if enabled_list %}{% if action.key in enabled_list %}checked{% endif %}{% else %}{% if action.default %}checked{% endif %}{% endif %}>
+                  <span>{{ action.label }}</span>
+                </label>
+              {% endwith %}
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+      <div class="actions">
+        <button class="btn primary" type="submit">Salva</button>
+        <a class="btn" href="/projects/view?id={{ project.id }}">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

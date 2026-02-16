@@ -1,0 +1,35 @@
+{% extends "core/profile.html" %}
+
+{% block title %}MIO - Remove Account{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi account</h1>
+    <p class="muted">Seleziona un account da eliminare.</p>
+
+    {% if account %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ account.name }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/core/accounts/">Annulla</a>
+      </form>
+    {% else %}
+      {% if accounts %}
+        <ul class="list">
+          {% for item in accounts %}
+            <li>
+              <span>{{ item.name }} ({{ item.currency.code }})</span>
+              <a class="btn" href="/core/accounts/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun account disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

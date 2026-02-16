@@ -1,0 +1,30 @@
+{% extends "core/profile.html" %}
+
+{% block title %}MIO - Accounts{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h1>Accounts</h1>
+    <p class="muted">Lista degli account collegati al tuo profilo.</p>
+    <div class="actions">
+      <a class="btn primary" href="/core/accounts/add">Nuovo account</a>
+    </div>
+
+    {% if accounts %}
+      <ul class="list">
+        {% for account in accounts %}
+          <li>
+            <span>{{ account.name }} ({{ account.currency.code }})</span>
+            <span class="muted">{{ account.get_kind_display }}</span>
+            <span>
+              <a class="btn" href="/core/accounts/update?id={{ account.id }}">Modifica</a>
+              <a class="btn" href="/core/accounts/remove?id={{ account.id }}">Rimuovi</a>
+            </span>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="note">Nessun account disponibile.</div>
+    {% endif %}
+  </section>
+{% endblock %}

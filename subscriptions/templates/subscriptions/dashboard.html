@@ -1,0 +1,107 @@
+{% extends "subscriptions/base.html" %}
+
+{% block title %}MIO - Subscriptions Dashboard{% endblock %}
+
+{% block content %}
+  <section class="hero" id="app-head">
+    <div class="hero-copy" id="app-header">
+      <h1>Subscriptions control center</h1>
+      <p>
+        Qui puoi gestire abbonamenti, scadenze e pagamenti ricorrenti.
+        Questa pagina e un layout base, pronta per collegare i dati reali.
+      </p>
+      <div class="app-actions">
+        <a class="btn primary" href="/subs/api/add">Aggiungi abbonamento</a>
+        <a class="btn" href="/subs/api/update">Aggiorna scadenza</a>
+      </div>
+    </div>
+
+    <div class="hero-card" id="subs-due-summary">
+      <div class="card-title">Totale da pagare</div>
+      {% if total_due %}
+        <div class="stat-value">{{ total_due }}</div>
+        <div class="muted">Prossima rata: {{ next_due_date }}</div>
+      {% else %}
+        <div class="muted">Nessuna scadenza in arrivo.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <div>
+    <div class="hero-card" id="subs-upcoming-panel">
+      <div class="card-title" id="upcoming-title">Prossime scadenze</div>
+      <ul class="list" id="subs-upcoming-list">
+        {% if upcoming %}
+          {% for occ in upcoming %}
+            <li>
+              <span class="dot dot-green"></span>
+              <span class="muted">{{ occ.due_date|default:occ.next_due_date }}</span>
+              <span>{{ occ.subscription.name|default:occ.name }}</span>
+              <span>{{ occ.subscription.amount|default:occ.amount }}</span>
+              
+              {% if occ.subscription %}
+                <a class="btn" href="/subs/api/update?id={{ occ.subscription.id }}">Modifica</a>
+              {% else %}
+                <a class="btn" href="/subs/api/update?id={{ occ.id }}">Modifica</a>
+              {% endif %}
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessuna scadenza disponibile.</li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+
+  <section class="panel" id="subs-overdue-panel">
+    <h2 id="subs-overdue-title">Abbonamenti scaduti</h2>
+    {% if overdue %}
+      <ul class="list" id="subs-overdue-list">
+        {% for occ in overdue %}
+          <li>
+            <span class="dot dot-red"></span>
+            <span class="muted">{{ occ.due_date|default:occ.next_due_date }}</span>
+            <span>{{ occ.subscription.name|default:occ.name }}</span>
+            {% if occ.subscription %}
+              <a class="btn" href="/subs/api/update?id={{ occ.subscription.id }}">Modifica</a>
+            {% else %}
+              <a class="btn" href="/subs/api/update?id={{ occ.id }}">Modifica</a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="note">Nessun abbonamento scaduto.</div>
+    {% endif %}
+  </section>
+
+  <section class="grid" id="subs-info-grid">
+    <article class="panel" id="subs-info-panel">
+      <h2 id="subs-stats-title">Stato abbonamenti</h2>
+      <div class="stat-row" id="subs-info">
+        <div class="stat">
+          <div class="stat-label">Attivi</div>
+          <div class="stat-value">{{ counts.active }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">In pausa</div>
+          <div class="stat-value">{{ counts.paused }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Cancellati</div>
+          <div class="stat-value">{{ counts.canceled }}</div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel" id="subs-notes-panel">
+      <h2 id="subs-notes-title">Note rapide</h2>
+      <div class="note">
+        Collega questa sezione a Category, Account e Project per filtrare per componente.
+      </div>
+      <div class="note">
+        Suggerimento: usa Transaction per collegare pagamenti reali alle scadenze.
+      </div>
+    </article>
+  </section>
+{% endblock %}

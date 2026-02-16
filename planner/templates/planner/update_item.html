@@ -1,0 +1,76 @@
+{% extends "planner/base.html" %}
+
+{% block title %}MIO - Update Planner Item{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Aggiorna voce</h1>
+    <p class="muted">Seleziona una voce da aggiornare.</p>
+    {% if form and form.errors %}
+      <div class="warning-box">
+        Controlla i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if item %}
+      <form class="form" method="post" action="">
+        {% csrf_token %}
+        <div class="field">
+          <label for="id_title">Titolo</label>
+          {{ form.title }}
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="id_due_date">Data</label>
+            {{ form.due_date }}
+          </div>
+          <div class="field">
+            <label for="id_amount">Importo (opz.)</label>
+            {{ form.amount }}
+          </div>
+          <div class="field">
+            <label for="id_status">Status</label>
+            {{ form.status }}
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label for="id_category">Categoria</label>
+            {{ form.category }}
+          </div>
+          <div class="field">
+            <label for="id_project">Progetto</label>
+            {{ form.project }}
+          </div>
+        </div>
+        <div class="field">
+          <label for="id_note">Note</label>
+          {{ form.note }}
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Aggiorna</button>
+          <a class="btn" href="/planner/">Annulla</a>
+        </div>
+      </form>
+    {% else %}
+      {% if items %}
+        <ul class="list">
+          {% for item in items %}
+            <li>
+              <span>{{ item.title }}</span>
+              <a class="btn" href="/planner/update?id={{ item.id }}">Modifica</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna voce disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

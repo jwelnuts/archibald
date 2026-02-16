@@ -1,0 +1,79 @@
+{% extends "projects/base.html" %}
+
+{% block title %}MIO - Add Project{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Nuovo progetto</h1>
+    <p class="muted">Layout base per creare un progetto.</p>
+    {% if form and form.errors %}
+      <div class="warning-box">
+        Controlla i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <form class="form" method="post" action="">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_name">Nome</label>
+        {{ form.name }}
+      </div>
+      <div class="field">
+        <label for="id_customer_choice">Cliente</label>
+        {{ form.customer_choice }}
+        <input id="id_customer_name" name="customer_name" type="text" placeholder="Nome nuovo cliente" style="display:none;">
+      </div>
+      <div class="field">
+        <label for="id_category_choice">Categoria</label>
+        {{ form.category_choice }}
+        <input id="id_category_name" name="category_name" type="text" placeholder="Nome nuova categoria" style="display:none;">
+      </div>
+      <div class="field">
+        <label for="id_description">Descrizione</label>
+        {{ form.description }}
+      </div>
+      <div class="field">
+        <label for="id_is_archived">Archiviato</label>
+        {{ form.is_archived }}
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Salva</button>
+        <a class="btn" href="/projects/">Annulla</a>
+      </div>
+    </form>
+    <script>
+      (function () {
+        var select = document.getElementById("id_category_choice");
+        var input = document.getElementById("id_category_name");
+        if (!select || !input) return;
+        function toggle() {
+          var isNew = select.value === "__new__";
+          input.style.display = isNew ? "block" : "none";
+          if (!isNew) {
+            input.value = "";
+          }
+        }
+        select.addEventListener("change", toggle);
+        toggle();
+
+        var customerSelect = document.getElementById("id_customer_choice");
+        var customerInput = document.getElementById("id_customer_name");
+        if (!customerSelect || !customerInput) return;
+        function toggleCustomer() {
+          var isNewCustomer = customerSelect.value === "__new__";
+          customerInput.style.display = isNewCustomer ? "block" : "none";
+          if (!isNewCustomer) {
+            customerInput.value = "";
+          }
+        }
+        customerSelect.addEventListener("change", toggleCustomer);
+        toggleCustomer();
+      })();
+    </script>
+  </section>
+{% endblock %}

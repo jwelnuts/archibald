@@ -1,0 +1,34 @@
+{% extends "workbench/base.html" %}
+
+{% block title %}MIO - Remove Workbench Item{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi voce</h1>
+    <p class="muted">Layout base per confermare una rimozione.</p>
+    {% if item %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ item.title }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/workbench/">Annulla</a>
+      </form>
+    {% else %}
+      {% if items %}
+        <ul class="list">
+          {% for item in items %}
+            <li>
+              <span>{{ item.title }}</span>
+              <a class="btn" href="/workbench/api/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna voce disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

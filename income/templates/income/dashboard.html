@@ -1,0 +1,65 @@
+{% extends "income/base.html" %}
+
+{% block title %}MIO - Income Dashboard{% endblock %}
+
+{% block content %}
+  <section class="hero" id="app-head">
+    <div class="hero-copy" id="app-header">
+      <h1>Entrate sotto controllo</h1>
+      <p>
+        Questo modulo gestisce entrate, fonti e frequenze. Usa la dashboard
+        per collegare account, progetti e categorie.
+      </p>
+      <div class="hero-actions" id="app-actions" data-module="income">
+        <a class="btn primary" href="/income/api/add" data-action="add">Nuova entrata</a>
+        <a class="btn" href="/income/api/update" data-action="update">Aggiorna</a>
+      </div>
+    </div>
+    <div class="hero-card" id="income-upcoming-panel">
+      <div class="card-title" id="upcoming-title">Ultime entrate</div>
+      <ul class="list" id="income-upcoming-list">
+        {% if recent %}
+          {% for tx in recent %}
+            <li>
+              <span class="dot dot-green"></span>
+              <span>{{ tx.income_source|default:"Entrata" }}</span>
+              <span class="muted">{{ tx.amount }} {{ tx.currency.code }}</span>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessuna entrata registrata.</li>
+        {% endif %}
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid" id="income-info-grid">
+    <article class="panel" id="income-info-panel">
+      <h2 id="income-stats-title">Andamento mese</h2>
+      <div class="stat-row" id="income-info">
+        <div class="stat">
+          <div class="stat-label">Totale</div>
+          <div class="stat-value">{{ totals.total_amount|default:0 }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Con progetto</div>
+          <div class="stat-value">{{ counts.with_project }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Con categoria</div>
+          <div class="stat-value">{{ counts.with_category }}</div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel" id="income-notes-panel">
+      <h2 id="income-notes-title">Note rapide</h2>
+      <div class="note">
+        Collega le entrate alle categorie e ai progetti per report dettagliati.
+      </div>
+      <div class="note">
+        Integra con Account per la contabilita per valuta.
+      </div>
+    </article>
+  </section>
+{% endblock %}

@@ -1,0 +1,13 @@
+{% if cards %}
+  {% for card in cards %}
+    <div class="stat">
+      <div class="stat-label">{{ card.label }}</div>
+      <div class="stat-value">{{ card.value }}</div>
+      {% if card.sub %}
+        <div class="helper-text">{{ card.sub }}</div>
+      {% endif %}
+    </div>
+  {% endfor %}
+{% else %}
+  <div class="helper-text">Nessun dato disponibile.</div>
+{% endif %}

@@ -1,0 +1,35 @@
+{% extends "planner/base.html" %}
+
+{% block title %}MIO - Remove Planner Item{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi voce</h1>
+    <p class="muted">Seleziona una voce da eliminare.</p>
+
+    {% if item %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ item.title }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/planner/">Annulla</a>
+      </form>
+    {% else %}
+      {% if items %}
+        <ul class="list">
+          {% for item in items %}
+            <li>
+              <span>{{ item.title }}</span>
+              <a class="btn" href="/planner/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna voce disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

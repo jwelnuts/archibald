@@ -1,0 +1,35 @@
+{% extends "projects/base.html" %}
+
+{% block title %}MIO - Remove Customer{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi cliente</h1>
+    <p class="muted">Seleziona un cliente da eliminare.</p>
+
+    {% if customer %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ customer.name }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/projects/customers/">Annulla</a>
+      </form>
+    {% else %}
+      {% if customers %}
+        <ul class="list">
+          {% for item in customers %}
+            <li>
+              <span>{{ item.name }}</span>
+              <a class="btn" href="/projects/customers/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun cliente disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

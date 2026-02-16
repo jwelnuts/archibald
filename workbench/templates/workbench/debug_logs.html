@@ -1,0 +1,35 @@
+{% extends "workbench/base.html" %}
+
+{% block title %}MIO - Debug Logs{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h1>Debug logs</h1>
+    <p class="muted">Ultimi 200 eventi registrati dal middleware debug.</p>
+
+    {% if logs %}
+      <div class="log-table">
+        <div class="log-row log-head">
+          <span>Data</span>
+          <span>Utente</span>
+          <span>Azione</span>
+          <span>Modello</span>
+          <span>Oggetto</span>
+          <span>Note</span>
+        </div>
+        {% for log in logs %}
+          <div class="log-row">
+            <span>{{ log.created_at }}</span>
+            <span>{{ log.user|default:"-" }}</span>
+            <span>{{ log.action }}</span>
+            <span>{{ log.app_label }}.{{ log.model_name }}</span>
+            <span>{{ log.object_id|default:"-" }}</span>
+            <span class="muted">{{ log.note|default:"-" }}</span>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="note">Nessun log disponibile.</div>
+    {% endif %}
+  </section>
+{% endblock %}

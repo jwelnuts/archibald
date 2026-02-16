@@ -1,0 +1,241 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MIO - Dashboard</title>
+    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    <link rel="stylesheet" href="{% static 'core/vendor/toastui-date-picker/dist/tui-date-picker.css' %}">
+    <link rel="stylesheet" href="{% static 'core/vendor/toastui-time-picker/dist/tui-time-picker.css' %}">
+    <link rel="stylesheet" href="{% static 'core/vendor/toastui/dist/toastui-calendar.min.css' %}">
+    <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
+ 
+  </head>
+  <body>
+    <div class="shell">
+      <header class="shell-header">
+        <div class="brand">
+          <div class="brand-mark">MIO</div>
+          <div class="brand-text">
+            <div class="brand-title">Money Organizer</div>
+            <div class="brand-sub">Modular dashboard</div>
+          </div>
+        </div>
+        <nav class="shell-nav">
+          <a href="/income/">Income</a>
+          <a href="/outcome/">Outcome</a>
+          <a href="/transactions/">Transactions</a>
+          <a href="/planner/">Planner</a>
+          <a href="/projects/">Projects</a>
+          <a href="/subs/">Subscriptions</a>
+          <a href="/todo/">Todo</a>
+          <a href="/routines/">Routines</a>
+          <a href="/archibald/">Archibald</a>
+          <a href="/workbench/">Workbench</a>
+          <a href="/ui-generator/">UI Generator</a>
+          <a href="/profile/">Profilo</a>
+          <a href="/accounts/logout/">Logout</a>
+        </nav>
+      </header>
+
+      <section class="shell-hero dashboard-hero">
+        <div class="hero-copy">
+          <div class="hero-tag">Command Center</div>
+          <h1>Dashboard operativa</h1>
+          <p>
+            Una plancia viva: dialoghi con Archibald, esegui azioni rapide,
+            monitora le scadenze e trascina i moduli che ti servono davvero.
+          </p>
+          <div class="hero-metrics">
+            <div class="hero-metric">
+              <span class="hero-metric-label">Focus</span>
+              <strong>Oggi</strong>
+            </div>
+            <div class="hero-metric">
+              <span class="hero-metric-label">Modalità</span>
+              <strong>Operativa</strong>
+            </div>
+            <div class="hero-metric">
+              <span class="hero-metric-label">Stato</span>
+              <strong>Attiva</strong>
+            </div>
+          </div>
+        </div>
+        <div class="hero-card hero-card-accent">
+          <div class="hero-title">Suggerimento</div>
+          <div class="hero-copy">
+            Sposta i moduli chiave in alto per avere priorità visiva. Le azioni
+            rapide sono nella colonna laterale.
+          </div>
+          <div class="hero-actions-row">
+            <a class="btn" href="/archibald/">Apri Archibald</a>
+            <a class="btn" href="/profile/">Preferenze</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-layout">
+        <div class="dashboard-main">
+          <section class="panel" id="dashboard-archibald">
+            <div class="card-title">Archibald · nuova conversazione</div>
+            <p class="muted">Qui inizi un nuovo argomento. In Archibald trovi la chat “di giornata”.</p>
+            <div class="chat" id="dashboard-archibald-chat"></div>
+            <form class="form dashboard-archibald-form" id="dashboard-archibald-form" method="post" action="">
+              {% csrf_token %}
+              <input type="hidden" name="thread_id" id="dashboard-archibald-thread" value="">
+              <div class="field">
+                <label for="dashboard-archibald-prompt">Messaggio</label>
+                <textarea
+                  id="dashboard-archibald-prompt"
+                  name="prompt"
+                  rows="3"
+                  placeholder="Scrivi qui per iniziare un nuovo tema con Archibald."
+                  required
+                ></textarea>
+              </div>
+              <div class="actions">
+                <button class="btn primary" type="submit">Invia</button>
+                <button class="btn" type="button" id="dashboard-archibald-reset">Nuova chat</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="panel calendar-panel">
+            <div class="calendar-head">
+              <div>
+                <div class="card-title">Calendario operativo</div>
+                <p class="muted">Eventi rilevanti dalle app: task, planner, abbonamenti, transazioni e routine.</p>
+              </div>
+              <div class="calendar-nav">
+                <button class="calendar-nav-btn" type="button" id="calendar-prev" aria-label="Mese precedente">‹</button>
+                <div class="calendar-month" id="calendar-month-label">Mese</div>
+                <button class="calendar-nav-btn" type="button" id="calendar-next" aria-label="Mese successivo">›</button>
+              </div>
+            </div>
+            <div class="calendar-layout">
+              <div id="dashboard-calendar" class="calendar-widget">
+                <div class="calendar-empty">Caricamento calendario...</div>
+              </div>
+              <div class="calendar-detail">
+                <div class="calendar-detail-title">Eventi del giorno</div>
+                <div class="calendar-detail-date" id="calendar-detail-date">Seleziona una data</div>
+                <div class="calendar-detail-list" id="calendar-detail-list"></div>
+                <div class="calendar-detail-title calendar-month-title">Eventi del mese</div>
+                <div class="calendar-detail-list" id="calendar-month-list"></div>
+              </div>
+            </div>
+            <div class="calendar-legend">
+              <span class="legend-item"><i class="legend-dot event-task"></i> Task</span>
+              <span class="legend-item"><i class="legend-dot event-planner"></i> Planner</span>
+              <span class="legend-item"><i class="legend-dot event-subscription"></i> Abbonamenti</span>
+              <span class="legend-item"><i class="legend-dot event-transaction"></i> Transazioni</span>
+              <span class="legend-item"><i class="legend-dot event-routine"></i> Routine</span>
+            </div>
+          </section>
+        </div>
+
+        <aside class="dashboard-rail">
+          <section class="panel quick-actions">
+            <div class="card-title">Azioni rapide</div>
+            <div class="quick-grid">
+              <a class="quick-card" href="/income/api/add">Nuova entrata</a>
+              <a class="quick-card" href="/outcome/api/add">Nuova uscita</a>
+              <a class="quick-card" href="/todo/api/add">Nuovo task</a>
+              <a class="quick-card" href="/planner/add">Nuovo planner</a>
+              <a class="quick-card" href="/routines/api/add">Nuova routine</a>
+              <a class="quick-card" href="/subs/api/add">Nuovo abbonamento</a>
+              <a class="quick-card" href="/projects/api/add">Nuovo progetto</a>
+            </div>
+          </section>
+
+          <section class="panel focus-panel">
+            <div class="card-title">Filtro rapido</div>
+            <p class="muted">Riduci il rumore e guarda solo i moduli utili ora.</p>
+            <div class="filter-row" data-portal-filter>
+              <button class="filter-chip active" type="button" data-filter="all">Tutti</button>
+              <button class="filter-chip" type="button" data-filter="money">Finanza</button>
+              <button class="filter-chip" type="button" data-filter="planning">Pianificazione</button>
+              <button class="filter-chip" type="button" data-filter="ops">Operativo</button>
+            </div>
+          </section>
+
+          <section class="panel pulse-panel">
+            <div class="card-title">Pulse rapido</div>
+            <ul class="pulse-list">
+              <li><span class="pulse-dot pulse-dot-green"></span> Agenda sincronizzata</li>
+              <li><span class="pulse-dot pulse-dot-amber"></span> Routine pronte per oggi</li>
+              <li><span class="pulse-dot pulse-dot-blue"></span> Archibald in ascolto</li>
+            </ul>
+          </section>
+        </aside>
+      </section>
+
+      <section class="portal-block">
+        <div class="portal-head">
+          <div>
+            <h2>Moduli operativi</h2>
+            <p class="muted">Trascina per riordinare. Usa i filtri per ridurre la vista.</p>
+          </div>
+          <div class="portal-hint">Drag & drop attivo</div>
+        </div>
+        <div id="portal" class="portal">
+          <div class="portlet" data-module="income" data-group="money">
+          <div class="portlet-title">Income</div>
+          <p>Entrate del mese, fonti principali e ricorrenze.</p>
+          <a class="portlet-link" href="/income/">Vai al modulo</a>
+        </div>
+        <div class="portlet" data-module="outcome" data-group="money">
+          <div class="portlet-title">Outcome</div>
+          <p>Uscite, budget e prossimi pagamenti.</p>
+          <a class="portlet-link" href="/outcome/">Vai al modulo</a>
+        </div>
+        <div class="portlet" data-module="subscriptions" data-group="money">
+          <div class="portlet-title">Subscriptions</div>
+          <p>Abbonamenti attivi e scadenze chiave.</p>
+          <a class="portlet-link" href="/subs/">Vai al modulo</a>
+        </div>
+        <div class="portlet" data-module="projects" data-group="ops">
+          <div class="portlet-title">Projects</div>
+          <p>Componenti e categorie condivise.</p>
+          <a class="portlet-link" href="/projects/">Vai al modulo</a>
+        </div>
+        <div class="portlet" data-module="todo" data-group="planning">
+          <div class="portlet-title">Todo</div>
+          <p>Task operativi e reminder.</p>
+          <a class="portlet-link" href="/todo/">Vai al modulo</a>
+        </div>
+        <div class="portlet" data-module="workbench" data-group="ops">
+          <div class="portlet-title">Workbench</div>
+          <p>Strumenti di supporto e import.</p>
+          <a class="portlet-link" href="/workbench/">Vai al modulo</a>
+        </div>
+        <div class="portlet" data-module="planner" data-group="planning">
+          <div class="portlet-title">Planner</div>
+          <p>Pianifica obiettivi e budget della settimana.</p>
+          <a class="portlet-link" href="/planner/">Vai al modulo</a>
+        </div>
+        <div class="portlet" data-module="routines" data-group="planning">
+          <div class="portlet-title">Routines</div>
+          <p>Ritmi operativi, check e discipline.</p>
+          <a class="portlet-link" href="/routines/">Vai al modulo</a>
+        </div>
+        <div class="portlet" data-module="transactions" data-group="money">
+          <div class="portlet-title">Transactions</div>
+          <p>Movimenti completi e dettagliati.</p>
+          <a class="portlet-link" href="/transactions/">Vai al modulo</a>
+        </div>
+        </div>
+      </section>
+    </div>
+
+    <script>window.tui = window.tui || {};</script>
+    <script src="{% static 'core/vendor/toastui-code-snippet/dist/tui-code-snippet.min.js' %}"></script>
+    <script src="{% static 'core/vendor/toastui-dom/dist/tui-dom.min.js' %}"></script>
+    <script src="{% static 'core/vendor/toastui-time-picker/dist/tui-time-picker.min.js' %}"></script>
+    <script src="{% static 'core/vendor/toastui-date-picker/dist/tui-date-picker.min.js' %}"></script>
+    <script src="{% static 'core/vendor/toastui/dist/toastui-calendar.min.js' %}"></script>
+    <script src="{% static 'core/calendar.js' %}"></script>
+    <script type="module" src="{% static 'core/app.js' %}"></script>
+  </body>
+</html>

@@ -1,0 +1,304 @@
+{% extends "projects/base.html" %}
+
+{% block title %}MIO - {{ project.name }}{% endblock %}
+
+{% block content %}
+  <section class="hero" id="project-head">
+    
+    <div class="hero-copy project-topbar" id="project-head-topbar">
+      <div class="project-topbar-main">
+        <div class="project-title-row">
+          <div class="project-title-group">
+            <div class="project-breadcrumb">Projects · {{ project.name }}</div>
+            <h1>{{ project.name }}</h1>
+          </div>
+          <div class="project-meta">
+            <span class="badge {% if project.is_archived %}warn{% else %}ok{% endif %}">
+              {% if project.is_archived %}Archiviato{% else %}Attivo{% endif %}
+            </span>
+            <span class="meta-pill">
+              Cliente: {% if project.customer %}{{ project.customer.name }}{% else %}-{% endif %}
+            </span>
+            <span class="meta-pill">Aggiornato: {{ project.updated_at|date:"d/m/Y" }}</span>
+          </div>
+        </div>
+        <p class="project-desc">
+          {% if project.description %}
+            {{ project.description }}
+          {% else %}
+            <span class="muted">Nessuna descrizione per questo progetto.</span>
+          {% endif %}
+        </p>
+      </div>
+      <div class="project-actions">
+        <div class="hero-actions" data-module="projects_detail">
+        {% if "back" in allowed_actions %}
+          <a class="btn" href="/projects/" data-action="back">Torna ai progetti</a>
+        {% endif %}
+        {% if "edit" in allowed_actions %}
+          <a class="btn primary" href="/projects/api/update?id={{ project.id }}" data-action="edit">Modifica</a>
+        {% endif %}
+        {% if "expense" in allowed_actions %}
+          <a class="btn" href="/outcome/api/add?project={{ project.id }}" data-action="expense">Inserisci spesa</a>
+        {% endif %}
+        {% if "income" in allowed_actions %}
+          <a class="btn" href="/income/api/add?project={{ project.id }}" data-action="income">Inserisci guadagno</a>
+        {% endif %}
+        {% if "planner" in allowed_actions %}
+          <a class="btn" href="/planner/add?project={{ project.id }}" data-action="planner">Aggiungi promemoria</a>
+        {% endif %}
+        {% if "routine_item" in allowed_actions %}
+          <a class="btn" href="/routines/items/add?project={{ project.id }}" data-action="routine_item">Aggiungi routine</a>
+        {% endif %}
+        {% if "storyboard" in allowed_actions %}
+          <a class="btn" href="/projects/storyboard?id={{ project.id }}" data-action="storyboard">Storyboard</a>
+        {% endif %}
+        {% if "config" in allowed_actions %}
+          <a class="btn" href="/projects/hero-actions?id={{ project.id }}" data-action="config">Configura tasti</a>
+        {% endif %}
+        </div>
+        {% if hidden_actions %}
+          <div class="floating-menu-wrap">
+            <button id="hidden-actions-trigger" class="btn" type="button" aria-haspopup="menu" aria-expanded="false">
+              Azioni nascoste ({{ hidden_actions|length }})
+            </button>
+            <div id="hidden-actions-menu" class="floating-menu" role="menu" hidden>
+              {% for action in hidden_actions %}
+                {% if action.key == "back" %}
+                  <a class="btn" href="/projects/" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                {% elif action.key == "edit" %}
+                  <a class="btn" href="/projects/api/update?id={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                {% elif action.key == "expense" %}
+                  <a class="btn" href="/outcome/api/add?project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                {% elif action.key == "income" %}
+                  <a class="btn" href="/income/api/add?project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                {% elif action.key == "planner" %}
+                  <a class="btn" href="/planner/add?project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                {% elif action.key == "routine_item" %}
+                  <a class="btn" href="/routines/items/add?project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                {% elif action.key == "storyboard" %}
+                  <a class="btn" href="/projects/storyboard?id={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                {% elif action.key == "config" %}
+                  <a class="btn" href="/projects/hero-actions?id={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                {% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    
+    <div class="hero-card">
+      <div class="card-title">Dettagli progetto</div>
+      <ul class="list">
+        <li>
+          <span class="muted">Categoria</span>
+          <span>{% if project.category %}{{ project.category.name }}{% else %}-{% endif %}</span>
+        </li>
+        <li>
+          <span class="muted">Cliente</span>
+          <span>{% if project.customer %}{{ project.customer.name }}{% else %}-{% endif %}</span>
+        </li>
+        <li>
+          <span class="muted">Stato</span>
+          <span>{% if project.is_archived %}Archiviato{% else %}Attivo{% endif %}</span>
+        </li>
+        <li>
+          <span class="muted">Creato</span>
+          <span>{{ project.created_at|date:"d/m/Y H:i" }}</span>
+        </li>
+        <li>
+          <span class="muted">Aggiornato</span>
+          <span>{{ project.updated_at|date:"d/m/Y H:i" }}</span>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="grid" id="project-stats-grid">
+    <article class="panel">
+      <h2>Riepilogo</h2>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Transazioni</div>
+          <div class="stat-value">{{ counts.transactions }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Abbonamenti</div>
+          <div class="stat-value">{{ counts.subscriptions }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Planner</div>
+          <div class="stat-value">{{ counts.planner_items }}</div>
+        </div>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Transazioni per tipo</h2>
+      <ul class="list">
+        {% for item in tx_type_counts %}
+          <li>
+            <span>{{ item.label }}</span>
+            <span class="muted">{{ item.total }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+
+    <article class="panel">
+      <h2>Abbonamenti per stato</h2>
+      <ul class="list">
+        {% for item in sub_status_counts %}
+          <li>
+            <span>{{ item.label }}</span>
+            <span class="muted">{{ item.total }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+
+    <article class="panel">
+      <h2>Planner per stato</h2>
+      <ul class="list">
+        {% for item in planner_status_counts %}
+          <li>
+            <span>{{ item.label }}</span>
+            <span class="muted">{{ item.total }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+  </section>
+
+  <section class="grid" id="project-related-grid">
+    <article class="panel">
+      <h2>Ultime transazioni</h2>
+      {% if transactions %}
+        <ul class="list">
+          {% for tx in transactions %}
+            <li>
+              <span>{{ tx.date|date:"d/m/Y" }} · {{ tx.get_tx_type_display }}</span>
+              <span class="muted">{{ tx.amount }} {{ tx.currency.code }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna transazione collegata.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Abbonamenti collegati</h2>
+      {% if subscriptions %}
+        <ul class="list">
+          {% for sub in subscriptions %}
+            <li>
+              <span>{{ sub.name }} · {{ sub.get_status_display }}</span>
+              <span class="muted">{{ sub.amount }} {{ sub.currency.code }} · {{ sub.next_due_date|date:"d/m/Y" }}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun abbonamento collegato.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Planner items</h2>
+      {% if planner_items %}
+        <ul class="list">
+          {% for item in planner_items %}
+            <li>
+              <span>{{ item.title }}</span>
+              <span class="muted">
+                {% if item.due_date %}{{ item.due_date|date:"d/m/Y" }} · {% endif %}
+                {{ item.get_status_display }}
+              </span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun item in planner collegato.</div>
+      {% endif %}
+    </article>
+
+    <article class="panel">
+      <h2>Routine collegate</h2>
+      {% if routine_items %}
+        <ul class="list">
+          {% for item in routine_items %}
+            <li>
+              <span>{{ item.title }}</span>
+              <span class="muted">{{ item.routine.name }} · {{ item.get_weekday_display }}{% if item.time_start %} · {{ item.time_start|time:"H:i" }}{% endif %}{% if item.time_end %}-{{ item.time_end|time:"H:i" }}{% endif %}</span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna routine collegata.</div>
+      {% endif %}
+    </article>
+  </section>
+{% if hidden_actions %}
+  <script type="module">
+    import {computePosition, autoUpdate, offset, flip, shift} from "https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.7.4/+esm";
+
+    const trigger = document.getElementById("hidden-actions-trigger");
+    const menu = document.getElementById("hidden-actions-menu");
+    if (trigger && menu) {
+      let cleanup = null;
+
+      function update() {
+        return computePosition(trigger, menu, {
+          placement: "bottom-start",
+          middleware: [offset(8), flip(), shift({padding: 8})],
+        }).then(({x, y}) => {
+          Object.assign(menu.style, {
+            left: `${x}px`,
+            top: `${y}px`,
+          });
+        });
+      }
+
+      function openMenu() {
+        menu.hidden = false;
+        menu.style.display = "grid";
+        trigger.setAttribute("aria-expanded", "true");
+        menu.style.width = "max-content";
+        cleanup = autoUpdate(trigger, menu, update);
+      }
+
+      function closeMenu() {
+        menu.hidden = true;
+        menu.style.display = "none";
+        trigger.setAttribute("aria-expanded", "false");
+        if (cleanup) {
+          cleanup();
+          cleanup = null;
+        }
+      }
+
+      trigger.addEventListener("click", () => {
+        if (menu.hidden) {
+          openMenu();
+        } else {
+          closeMenu();
+        }
+      });
+
+      menu.addEventListener("click", () => {
+        closeMenu();
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!menu.hidden && !menu.contains(event.target) && !trigger.contains(event.target)) {
+          closeMenu();
+        }
+      });
+    }
+  </script>
+{% endif %}
+  {% if hero_actions_override %}
+    {{ hero_actions_override|json_script:"hero-actions-override" }}
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,34 @@
+{% extends "income/base.html" %}
+
+{% block title %}MIO - Remove Income{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi entrata</h1>
+    <p class="muted">Layout base per confermare una rimozione.</p>
+    {% if tx %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ tx.income_source|default:"Entrata" }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/income/">Annulla</a>
+      </form>
+    {% else %}
+      {% if txs %}
+        <ul class="list">
+          {% for item in txs %}
+            <li>
+              <span>{{ item.income_source|default:"Entrata" }} - {{ item.amount }} {{ item.currency.code }}</span>
+              <a class="btn" href="/income/api/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessuna entrata disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}
