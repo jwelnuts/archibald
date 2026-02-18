@@ -5,131 +5,220 @@
 {% block content %}
   <section class="hero" id="app-head">
     <div class="hero-copy" id="app-header">
-      <h1>Workbench operativo</h1>
+      <div class="hero-tag">AI Build Pipeline</div>
+      <h1>Workbench orchestratore</h1>
       <p>
-        Area trasversale per test, import e strumenti. Usala come laboratorio
-        per collegare i componenti senza toccare la produzione.
+        Flusso unico per creare nuove app: definisci il brief con Archibald,
+        valida l'output UI in JSON e genera lo scaffold Django dal prompt.
       </p>
       <div class="hero-actions" id="app-actions" data-module="workbench">
-        <a class="btn primary" href="/workbench/api/add" data-action="add">Nuova voce</a>
-        <a class="btn" href="/workbench/api/update" data-action="update">Aggiorna</a>
-        <a class="btn" href="/workbench/debug/logs" data-action="logs">Vedi log</a>
+        <a class="btn primary" href="/workbench/ai/ui-generator" data-action="ui-generator">UI Generator</a>
+        <a class="btn" href="/workbench/ai/app-generator" data-action="ai-generator">AI App Generator</a>
+        <a class="btn" href="/archibald/" data-action="archibald">Apri Archibald</a>
         <a class="btn" href="/workbench/debug/schema" data-action="schema">Schema DB</a>
+        <a class="btn" href="/workbench/debug/logs" data-action="logs">Log debug</a>
       </div>
     </div>
-    <div class="hero-card" id="workbench-upcoming-panel">
-      <div class="card-title" id="upcoming-title">Log recenti</div>
-      <ul class="list" id="workbench-upcoming-list">
-        {% if logs %}
-          {% for log in logs %}
-            <li>
-              <span class="dot dot-teal"></span>
-              <span>{{ log.action }} {{ log.app_label }}.{{ log.model_name }}</span>
-              <span class="muted">{{ log.created_at }}</span>
-            </li>
-          {% endfor %}
-        {% else %}
-          <li class="muted">Nessun log disponibile.</li>
-        {% endif %}
-      </ul>
-    </div>
-  </section>
 
-  <section class="grid" id="workbench-info-grid">
-    <article class="panel" id="workbench-info-panel">
-      <h2 id="workbench-stats-title">Strumenti</h2>
+    <div class="hero-card" id="workbench-upcoming-panel">
+      <div class="card-title">Stato pipeline</div>
       <div class="stat-row" id="workbench-info">
         <div class="stat">
           <div class="stat-label">Log totali</div>
           <div class="stat-value">{{ counts.total_logs }}</div>
         </div>
         <div class="stat">
-          <div class="stat-label">Debug</div>
-          <div class="stat-value">{{ counts.total_logs }}</div>
+          <div class="stat-label">App generate</div>
+          <div class="stat-value">{{ counts.app_builds }}</div>
         </div>
         <div class="stat">
-          <div class="stat-label">Eventi</div>
-          <div class="stat-value">{{ counts.total_logs }}</div>
+          <div class="stat-label">GPT</div>
+          <div class="stat-value">{% if counts.gpt_enabled %}ON{% else %}OFF{% endif %}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Allarmi</div>
+          <div class="stat-value">{{ counts.generated_error|add:counts.generated_warn }}</div>
         </div>
       </div>
-    </article>
-
-    <article class="panel" id="workbench-notes-panel">
-      <h2 id="workbench-notes-title">Note rapide</h2>
       <div class="note">
-        Mantieni qui gli strumenti di supporto per tutto l ecosistema.
+        Flusso consigliato: 1) brief con Archibald 2) test in UI Generator 3) generazione app 4) migration e verifica.
       </div>
-      <div class="note">
-        Ogni modifica dovrebbe influire sui moduli separati in modo controllato.
-      </div>
-    </article>
+    </div>
   </section>
 
-  <section class="debug-grid">
-    <article class="panel console">
-      <div class="panel-title">
-        <h2>Debug console</h2>
-        <span class="badge">LIVE</span>
-      </div>
-      <div class="console-window">
-        {% if logs %}
-          {% for log in logs %}
-            <div class="console-line">
-              <span class="tag ok">{{ log.action }}</span>
-              {{ log.app_label }}.{{ log.model_name }} -> {{ log.object_id|default:"-" }}
-            </div>
+  <section class="dashboard-layout">
+    <div class="dashboard-main">
+      <article class="panel" id="dashboard-archibald">
+        <div class="card-title">1. Archibald assistant per il brief</div>
+        <p class="muted">
+          Scrivi l'obiettivo della nuova app e fatti restituire una specifica pronta
+          da incollare nei generatori del Workbench.
+        </p>
+
+        <div class="filter-row">
+          {% for suggestion in archibald_prompt_suggestions %}
+            <button
+              class="filter-chip"
+              type="button"
+              data-archibald-prompt="{{ suggestion }}"
+            >Suggerimento {{ forloop.counter }}</button>
           {% endfor %}
-        {% else %}
-          <div class="console-line"><span class="tag warn">INFO</span> Nessun log disponibile.</div>
-        {% endif %}
-      </div>
-      <div class="console-actions">
-        <button class="btn" type="button">Clear</button>
-        <button class="btn primary" type="button">Run diagnostics</button>
-      </div>
-    </article>
+        </div>
 
-    <article class="panel">
-      <h2>Feature toggles</h2>
-      <div class="toggle-list">
-        <label class="toggle">
-          <input type="checkbox" checked>
-          <span>Enable experimental budgets</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox">
-          <span>Sandboxed imports</span>
-        </label>
-        <label class="toggle">
-          <input type="checkbox" checked>
-          <span>Extended audit logs</span>
-        </label>
-      </div>
-      <div class="note">
-        I toggle sono solo UI per ora: collega qui le feature flag reali.
-      </div>
-    </article>
+        <div class="chat" id="dashboard-archibald-chat"></div>
 
-    <article class="panel">
-      <h2>Test scenario</h2>
-      <form class="form">
-        <div class="field">
-          <label for="scenario">Scenario</label>
-          <select id="scenario" name="scenario">
-            <option>Import batch Q1</option>
-            <option>Stress cashflow</option>
-            <option>Subscription churn</option>
-          </select>
+        <form class="form dashboard-archibald-form" id="dashboard-archibald-form" method="post" action="">
+          {% csrf_token %}
+          <input type="hidden" name="thread_id" id="dashboard-archibald-thread" value="">
+          <div class="field">
+            <label for="dashboard-archibald-prompt">Messaggio</label>
+            <textarea
+              id="dashboard-archibald-prompt"
+              name="prompt"
+              rows="4"
+              placeholder="Es: voglio un'app per gestire ticket interni con priorita, scadenza e owner."
+              required
+            ></textarea>
+          </div>
+          <div class="actions">
+            <button class="btn primary" type="submit">Invia ad Archibald</button>
+            <button class="btn" type="button" id="dashboard-archibald-reset">Nuova chat</button>
+          </div>
+        </form>
+      </article>
+
+      <article class="panel quick-actions">
+        <div class="card-title">2. Esecuzione guidata</div>
+        <div class="quick-grid">
+          <a class="quick-card" href="/workbench/ai/ui-generator">
+            Step A: genera JSON UI
+          </a>
+          <a class="quick-card" href="/workbench/ai/app-generator">
+            Step B: genera app Django
+          </a>
+          <a class="quick-card" href="/workbench/debug/schema">
+            Step C: controlla schema DB
+          </a>
+          <a class="quick-card" href="/workbench/debug/logs">
+            Step D: verifica log tecnici
+          </a>
         </div>
-        <div class="field">
-          <label for="payload">Payload</label>
-          <input id="payload" name="payload" type="text" placeholder="example: run=fast; mode=safe">
+        <div class="note">
+          Dopo la generazione esegui in shell: <code>python manage.py makemigrations</code>,
+          <code>python manage.py migrate</code>, <code>python manage.py check</code>.
         </div>
-        <div class="actions">
-          <button class="btn primary" type="button">Run</button>
-          <button class="btn" type="button">Dry run</button>
+      </article>
+
+      <article class="panel">
+        <div class="card-title">Campanelli d'allarme</div>
+        <ul class="list">
+          {% if pipeline_alerts %}
+            {% for alert in pipeline_alerts %}
+              <li>
+                <span>
+                  <span class="dot {{ alert.dot_class }}"></span>
+                  {{ alert.message }}
+                </span>
+              </li>
+            {% endfor %}
+          {% else %}
+            <li>
+              <span>
+                <span class="dot dot-green"></span>
+                Nessun allarme operativo attivo.
+              </span>
+            </li>
+          {% endif %}
+        </ul>
+      </article>
+
+      <article class="panel">
+        <div class="card-title">App generate dal Workbench</div>
+        <div class="app-health-list">
+          {% if generated_apps %}
+            {% for app in generated_apps %}
+              <article class="app-health-item">
+                <div class="app-health-head">
+                  <span>
+                    <span class="dot {{ app.dot_class }}"></span>
+                    <a href="{{ app.url }}">{{ app.app_label }}</a>
+                    <span class="muted">({{ app.model_name }})</span>
+                  </span>
+                  <span class="{{ app.pill_class }}">{{ app.health_label }}</span>
+                </div>
+                <div class="app-health-meta">
+                  {% for check in app.checks %}
+                    <span class="health-chip">{{ check.label }}: {{ check.value }}</span>
+                  {% endfor %}
+                </div>
+                <div class="app-health-actions">
+                  <code>{{ app.url }}</code>
+                  <span class="muted">{{ app.action_hint }}</span>
+                </div>
+                {% if app.alarms %}
+                  <ul class="app-health-issues">
+                    {% for alarm in app.alarms %}
+                      <li>{{ alarm.message }}</li>
+                    {% endfor %}
+                  </ul>
+                {% endif %}
+              </article>
+            {% endfor %}
+          {% else %}
+            <div class="muted">Nessuna app generata rilevata.</div>
+          {% endif %}
         </div>
-      </form>
-    </article>
+      </article>
+
+      <article class="panel">
+        <div class="card-title">Eventi recenti generazione app</div>
+        <ul class="list">
+          {% if app_build_logs %}
+            {% for log in app_build_logs %}
+              <li>
+                <span>
+                  <span class="dot dot-teal"></span>
+                  {{ log.model_name }} ({{ log.app_label }})
+                </span>
+                <span class="muted">{{ log.created_at }}</span>
+              </li>
+            {% endfor %}
+          {% else %}
+            <li class="muted">Nessuna generazione app registrata.</li>
+          {% endif %}
+        </ul>
+      </article>
+    </div>
+
+    <aside class="dashboard-rail">
+      <section class="panel quick-actions">
+        <div class="card-title">Toolbox Workbench</div>
+        <div class="quick-grid">
+          <a class="quick-card" href="/workbench/api/add">Nuova voce workbench</a>
+          <a class="quick-card" href="/workbench/api/update">Aggiorna voce</a>
+          <a class="quick-card" href="/workbench/api/remove">Rimuovi voce</a>
+          <a class="quick-card" href="/archibald/insights?kind=overview">Insight rapidi</a>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="card-title">Log recenti globali</div>
+        <ul class="list" id="workbench-upcoming-list">
+          {% if logs %}
+            {% for log in logs %}
+              <li>
+                <span>
+                  <span class="dot dot-blue"></span>
+                  {{ log.action }} {{ log.app_label }}.{{ log.model_name }}
+                </span>
+                <span class="muted">{{ log.created_at }}</span>
+              </li>
+            {% endfor %}
+          {% else %}
+            <li class="muted">Nessun log disponibile.</li>
+          {% endif %}
+        </ul>
+      </section>
+    </aside>
   </section>
 {% endblock %}

@@ -18,6 +18,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -32,8 +33,16 @@ urlpatterns = [
     path('transactions/', include('transactions.urls')),
     path('planner/', include('planner.urls')),
     path('routines/', include('routines.urls')),
-     path('archibald/', include('archibald.urls')),
-    path('ui-generator/', include('ui_generator.urls')),
+    path('archibald/', include('archibald.urls')),
+    path('ai-lab/', include('ai_lab.urls')),
+    path(
+        'ui-generator/',
+        RedirectView.as_view(
+            url='/workbench/ai/ui-generator',
+            permanent=False,
+        ),
+    ),
+    path('link_storage/', include('link_storage.urls')),
 ]
 
 if settings.DEBUG:

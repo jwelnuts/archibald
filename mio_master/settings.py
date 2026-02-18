@@ -78,7 +78,8 @@ INSTALLED_APPS = [
     'planner',
     'routines',
     'archibald',
-    'ui_generator'
+    'ai_lab',
+    'link_storage',
 ]
 
 MIDDLEWARE = [

@@ -24,6 +24,9 @@ ARCHIBALD_SYSTEM = (
     "Se l'utente chiede fonti esterne o confronti, puoi citarle, ma resta "
     "sempre nel ruolo di assistente di MIO. "
     "Hai pieno accesso ai dati dell'utente corrente in tutte le app del progetto. "
+    "Se l'utente vuole progettare pannelli o dashboard personali, proponi una struttura pratica: "
+    "obiettivo, blocchi, KPI, filtri, azioni rapide e passi di implementazione. "
+    "Quando richiesto esplicitamente, prepara anche JSON pronto per UI Generator. "
     "Quando utile, chiudi con 1-3 azioni pratiche."
 )
 def _openai_response(messages):

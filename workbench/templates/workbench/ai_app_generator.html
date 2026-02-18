@@ -1,0 +1,97 @@
+{% extends "workbench/base.html" %}
+
+{% block title %}MIO - AI App Generator{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>AI App Generator</h1>
+    <p class="muted">
+      Inserisci il nome tecnico della nuova app e descrivi cosa deve gestire.
+      Il sistema genera struttura Django, template CRUD e collegamento automatico a routing/settings.
+    </p>
+
+    {% if error %}
+      <div class="warning-box">{{ error }}</div>
+    {% endif %}
+
+    {% if form.errors %}
+      <div class="warning-box">
+        Correggi i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    <form class="form" method="post" action="">
+      {% csrf_token %}
+      <div class="field">
+        <label for="id_app_name">{{ form.app_name.label }}</label>
+        {{ form.app_name }}
+        <div class="muted">{{ form.app_name.help_text }}</div>
+      </div>
+      <div class="field">
+        <label for="id_prompt">{{ form.prompt.label }}</label>
+        {{ form.prompt }}
+        <div class="muted">{{ form.prompt.help_text }}</div>
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Genera app</button>
+        <a class="btn" href="/workbench/">Annulla</a>
+      </div>
+    </form>
+  </section>
+
+  {% if result %}
+    <section class="panel">
+      <h2>Generazione completata</h2>
+      <div class="note">
+        <strong>App:</strong> {{ result.app_name }}<br>
+        <strong>Model:</strong> {{ result.model_name }}<br>
+        <strong>Spec:</strong> {{ result.summary }}<br>
+        <strong>Origine spec:</strong>
+        {% if result.used_gpt %}
+          GPT
+        {% else %}
+          fallback locale
+        {% endif %}
+      </div>
+
+      {% if result.warnings %}
+        <div class="warning-box">
+          {% for warning in result.warnings %}
+            <div>{{ warning }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <h3>File creati</h3>
+      <ul class="list">
+        {% for path in result.created_files %}
+          <li>{{ path }}</li>
+        {% endfor %}
+      </ul>
+
+      <div class="note">
+        {% if result.settings_updated %}
+          settings.py aggiornato.
+        {% else %}
+          settings.py gia aggiornato.
+        {% endif %}
+        {% if result.urls_updated %}
+          urls.py aggiornato.
+        {% else %}
+          urls.py gia aggiornato.
+        {% endif %}
+      </div>
+
+      <div class="actions">
+        <a class="btn primary" href="/{{ result.app_name }}/">Apri nuova app</a>
+        <a class="btn" href="/workbench/debug/logs">Vedi log workbench</a>
+      </div>
+    </section>
+  {% endif %}
+{% endblock %}

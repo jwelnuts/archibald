@@ -1,0 +1,15 @@
+{% extends 'link_storage/base.html' %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Rimuovi elemento</h2>
+    <p>Confermi l'eliminazione di: <strong>{{ item }}</strong>?</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="actions">
+        <button class="btn primary" type="submit">Conferma</button>
+        <a class="btn" href="../">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

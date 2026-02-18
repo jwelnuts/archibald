@@ -195,4 +195,12 @@ if (dashForm && dashChat && dashPrompt && dashThread) {
       dashPrompt.focus();
     });
   }
+
+  document.querySelectorAll("[data-archibald-prompt]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const text = btn.getAttribute("data-archibald-prompt") || "";
+      dashPrompt.value = text;
+      dashPrompt.focus();
+    });
+  });
 }

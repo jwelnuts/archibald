@@ -1,0 +1,15 @@
+{% extends 'link_storage/base.html' %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Nuovo elemento</h2>
+    <form method="post" class="form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="actions">
+        <button class="btn primary" type="submit">Salva</button>
+        <a class="btn" href="../">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

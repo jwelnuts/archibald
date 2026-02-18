@@ -1,0 +1,77 @@
+{% extends 'ai_lab/base.html' %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Zona apprendimento AI/ML</h2>
+    <p>
+      Area isolata per studiare concetti, salvare prompt di test e annotare risultati senza toccare i flussi core.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <h3>Roadmap breve</h3>
+        <ol>
+          <li>Embeddings e similarita.</li>
+          <li>Chunking e retrieval top-k.</li>
+          <li>RAG con filtri per owner.</li>
+          <li>Metriche: precision/recall e latenza.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Stato studio</h3>
+        <ul>
+          {% for card in status_cards %}
+            <li>{{ card.label }}: {{ card.count }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <form class="inline-form" method="get">
+      <label for="status">Filtro stato</label>
+      <select id="status" name="status">
+        <option value="">Tutti</option>
+        {% for code, label in status_choices %}
+          <option value="{{ code }}" {% if status_filter == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">Filtra</button>
+      <a class="btn" href="/ai-lab/">Reset</a>
+    </form>
+  </section>
+
+  <section class="panel">
+    {% if entries %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Titolo</th>
+            <th>Area</th>
+            <th>Stato</th>
+            <th>Prompt</th>
+            <th>Risultato</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in entries %}
+            <tr>
+              <td>{{ item.title }}</td>
+              <td>{{ item.get_area_display }}</td>
+              <td>{{ item.get_status_display }}</td>
+              <td>{{ item.prompt|truncatechars:110 }}</td>
+              <td>{{ item.result|truncatechars:110 }}</td>
+              <td>
+                <a class="btn" href="/ai-lab/api/update?id={{ item.id }}">Modifica</a>
+                <a class="btn danger" href="/ai-lab/api/remove?id={{ item.id }}">Rimuovi</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="warn">Nessun test salvato. Inizia con "Nuovo Test".</div>
+    {% endif %}
+  </section>
+{% endblock %}

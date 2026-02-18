@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
+from django.conf import settings
 from django.db.models import Sum
 
 from core.models import Payee
@@ -28,6 +29,17 @@ PROJECT_STRUCTURE = (
 
 INTENT_KEYWORDS = {
     "overview": {"panoramica", "overview", "riepilogo", "sommario", "dashboard", "stato generale", "status"},
+    "panel_design": {
+        "pannello",
+        "pannelli",
+        "widget",
+        "layout",
+        "kanban",
+        "vista",
+        "ui",
+        "interfaccia",
+        "organizzazione personale",
+    },
     "routines": {"routine", "routines", "rituale", "rituali"},
     "tasks": {"todo", "task", "compito", "compiti", "attivita", "attività", "promemoria"},
     "planner": {"planner", "pianifica", "pianificato", "piano", "calendario", "scadenza", "scadenze"},
@@ -65,9 +77,18 @@ def _current_week_start() -> date:
 
 
 def _base_capabilities_message() -> str:
+    app_labels = []
+    for app_path in settings.INSTALLED_APPS:
+        if app_path.startswith("django."):
+            continue
+        label = app_path.split(".")[-1]
+        if label not in app_labels:
+            app_labels.append(label)
+    app_list = ", ".join(app_labels)
     return (
-        "App disponibili: Income, Outcome, Transactions, Subscriptions, Planner, Projects, Todo, Routines, Workbench. "
-        "Puoi chiedere sintesi, dettagli e azioni su questi dati."
+        f"App disponibili: {app_list}. "
+        "Puoi chiedere sintesi, dettagli e azioni su questi dati. "
+        "Puoi anche progettare pannelli personali: struttura, KPI, filtri, blocchi e flusso operativo."
     )
 
 
@@ -323,15 +344,35 @@ def _projects_context(user) -> str:
     return "\n".join(lines)
 
 
+def _panel_design_context(user) -> str:
+    open_tasks = Task.objects.filter(owner=user, status=Task.Status.OPEN).count()
+    due_soon = PlannerItem.objects.filter(owner=user, due_date__range=(date.today(), date.today() + timedelta(days=7))).count()
+    active_accounts = Account.objects.filter(owner=user, is_active=True).count()
+    return (
+        "Quando l'utente chiede progettazione pannelli personali, rispondi con questo schema: "
+        "1) Obiettivo del pannello, "
+        "2) Blocchi/widget, "
+        "3) KPI principali, "
+        "4) Filtri e azioni rapide, "
+        "5) Dati sorgente MIO, "
+        "6) JSON UI pronto per Workbench UI Generator (se richiesto). "
+        f"Dati rapidi utente: task aperti {open_tasks}, planner in scadenza 7gg {due_soon}, conti attivi {active_accounts}."
+    )
+
+
 def build_context_messages(user, prompt: str) -> list[dict]:
     intents = detect_intents(prompt)
     if not intents:
         intents = {"overview"}
+    if "panel_design" in intents:
+        intents.add("overview")
 
     messages = [{"role": "system", "content": _base_capabilities_message()}]
 
     if "overview" in intents:
         messages.append({"role": "system", "content": _project_context(user)})
+    if "panel_design" in intents:
+        messages.append({"role": "system", "content": _panel_design_context(user)})
     if "routines" in intents:
         messages.append({"role": "system", "content": _routine_context(user)})
     if "transactions" in intents:

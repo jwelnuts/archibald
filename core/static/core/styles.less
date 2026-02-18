@@ -829,6 +829,84 @@ body {
   font-size: 14px;
 }
 
+.health-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.health-pill.ok {
+  background: rgba(47, 158, 68, 0.14);
+  color: #2b7a38;
+}
+
+.health-pill.warn {
+  background: rgba(240, 140, 0, 0.14);
+  color: #a26000;
+}
+
+.health-pill.error {
+  background: rgba(201, 42, 42, 0.14);
+  color: #9a2424;
+}
+
+.app-health-list {
+  display: grid;
+  gap: 12px;
+}
+
+.app-health-item {
+  border: 1px solid rgba(165, 156, 138, 0.6);
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.app-health-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.app-health-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.health-chip {
+  border: 1px solid rgba(165, 156, 138, 0.6);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.app-health-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.app-health-issues {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  color: #9a2424;
+}
+
 .dot {
   width: 10px;
   height: 10px;
@@ -1778,6 +1856,9 @@ body {
   font-size: 12px;
   cursor: pointer;
   color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
 }
 
 .ghost-chip:hover {

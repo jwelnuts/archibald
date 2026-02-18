@@ -1,0 +1,15 @@
+{% extends 'ai_lab/base.html' %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Nuovo test AI/ML</h2>
+    <form class="form" method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="actions">
+        <button class="btn primary" type="submit">Salva</button>
+        <a class="btn" href="/ai-lab/">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'link_storage/base.html' %}
+
+{% block content %}
+  <section class="panel">
+    <p>Modulo: link_storage</p>
+    <p>Gestione: Links</p>
+    <div class="actions">
+      <a class="btn primary" href="./api/add">Nuovo</a>
+    </div>
+  </section>
+
+  <section class="panel">
+    {% if rows %}
+      <table class="table">
+        <thead>
+          <tr>
+            {% for field in display_fields %}
+              <th>{{ field }}</th>
+            {% endfor %}
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              {% for value in row.values %}
+                <td>{{ value }}</td>
+              {% endfor %}
+              <td>
+                <a class="btn" href="./api/update?id={{ row.id }}">Modifica</a>
+                <a class="btn" href="./api/remove?id={{ row.id }}">Rimuovi</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="warn">Nessun elemento disponibile.</div>
+    {% endif %}
+  </section>
+{% endblock %}

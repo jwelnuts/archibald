@@ -1,10 +1,11 @@
 from datetime import date, timedelta
 
-from django.contrib.auth import login
+from django.contrib.auth import login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_http_methods
 
 from .forms import AccountForm, SignUpForm
 from .hero_actions import HERO_ACTIONS
@@ -111,6 +112,12 @@ def signup(request):
     else:
         form = SignUpForm()
     return render(request, "registration/signup.html", {"form": form})
+
+
+@require_http_methods(["GET", "POST"])
+def logout_view(request):
+    auth_logout(request)
+    return redirect("/")
 
 
 @login_required

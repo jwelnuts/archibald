@@ -1,12 +1,14 @@
-{% extends "ui_generator/base.html" %}
+{% extends "workbench/base.html" %}
+
+{% block title %}MIO - Workbench UI Generator{% endblock %}
 
 {% block content %}
   <section class="hero">
     <div class="hero-copy">
-      <h1>UI Generator</h1>
+      <h1>UI Generator (Workbench)</h1>
       <p>
-        Descrivi i widget desiderati. La richiesta verra trasformata in un JSON
-        configurabile per costruire la dashboard dinamica.
+        Descrivi i widget desiderati. La richiesta viene trasformata in JSON
+        configurabile per costruire dashboard dinamiche.
       </p>
     </div>
     <div class="hero-card">
@@ -41,7 +43,7 @@
   <section class="panel">
     <div class="card-title">Debug risposta GPT</div>
     <p class="muted">
-      Qui comparira la risposta grezza da analizzare prima di salvarla e
+      Qui compare la risposta grezza da analizzare prima di salvarla e
       trasformarla in widget.
     </p>
     {% if gpt_error %}

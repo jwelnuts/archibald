@@ -1,0 +1,19 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>link_storage</title>
+    <link rel="stylesheet" href="{% static 'link_storage/styles.css' %}">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="top">
+        <h1>link_storage</h1>
+        <a class="btn" href="/">Dashboard</a>
+      </header>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
