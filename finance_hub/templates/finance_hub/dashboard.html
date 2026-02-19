@@ -1,0 +1,172 @@
+{% extends "finance_hub/base.html" %}
+
+{% block title %}MIO - Finance Hub{% endblock %}
+
+{% block content %}
+  <section class="hero" id="app-head">
+    <div class="hero-copy" id="app-header">
+      <h1>Hub Finanza</h1>
+      <p>
+        Centro operativo dedicato a denaro, preventivi, fatture e ordini lavoro.
+        Collega operativita commerciale e flussi economici in un'unica vista.
+      </p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/finance/quotes/add">Nuovo preventivo</a>
+        <a class="btn primary" href="/finance/invoices/add">Nuova fattura</a>
+        <a class="btn" href="/finance/work-orders/add">Nuovo ordine lavoro</a>
+      </div>
+    </div>
+    <div class="hero-card">
+      <div class="card-title">Pipeline economica</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Preventivi pipeline</div>
+          <div class="stat-value">{{ quote_pipeline_total }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Fatture aperte</div>
+          <div class="stat-value">{{ invoice_open_total }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Fatture pagate</div>
+          <div class="stat-value">{{ invoice_paid_total }}</div>
+        </div>
+      </div>
+      <div class="muted">Valori aggregati in valuta di registrazione (attualmente EUR nel setup base).</div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Preventivi</h2>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Bozze</div>
+          <div class="stat-value">{{ counts.quotes_draft }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Inviati</div>
+          <div class="stat-value">{{ counts.quotes_sent }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Approvati</div>
+          <div class="stat-value">{{ counts.quotes_approved }}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/finance/quotes/">Gestisci preventivi</a>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Fatture</h2>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Emesse</div>
+          <div class="stat-value">{{ counts.invoices_issued }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Scadute</div>
+          <div class="stat-value">{{ counts.invoices_overdue }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Pagate</div>
+          <div class="stat-value">{{ counts.invoices_paid }}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/finance/invoices/">Gestisci fatture</a>
+      </div>
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Ordini lavoro</h2>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Aperti</div>
+          <div class="stat-value">{{ counts.orders_open }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">In corso</div>
+          <div class="stat-value">{{ counts.orders_in_progress }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Completati</div>
+          <div class="stat-value">{{ counts.orders_done }}</div>
+        </div>
+      </div>
+      <div class="note">
+        Valore ordini in pipeline: stimato {{ work_order_pipeline_est }} / finale {{ work_order_pipeline_final }}.
+      </div>
+      <div class="actions">
+        <a class="btn" href="/finance/work-orders/">Gestisci ordini lavoro</a>
+      </div>
+    </article>
+
+    <article class="panel">
+      <h2>Strumenti finanza esistenti</h2>
+      <div class="actions">
+        <a class="btn" href="/income/">Entrate</a>
+        <a class="btn" href="/outcome/">Uscite</a>
+        <a class="btn" href="/transactions/">Transazioni</a>
+        <a class="btn" href="/subs/">Abbonamenti</a>
+      </div>
+      <div class="note">Questa dashboard e il livello di coordinamento sopra i moduli finance gia presenti.</div>
+    </article>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>Preventivi in scadenza (7 giorni)</h2>
+      <ul class="list">
+        {% if expiring_quotes %}
+          {% for item in expiring_quotes %}
+            <li>
+              <span>{{ item.code|default:item.title }}</span>
+              <span class="muted">{{ item.valid_until|default:"-" }}</span>
+              <a class="btn" href="/finance/quotes/update?id={{ item.id }}">Apri</a>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessuna scadenza rilevata fino al {{ next_week }}.</li>
+        {% endif %}
+      </ul>
+    </article>
+
+    <article class="panel">
+      <h2>Fatture scadute</h2>
+      <ul class="list">
+        {% if overdue_invoices %}
+          {% for item in overdue_invoices %}
+            <li>
+              <span>{{ item.code|default:item.title }}</span>
+              <span class="muted">{{ item.due_date|default:"-" }}</span>
+              <a class="btn" href="/finance/invoices/update?id={{ item.id }}">Apri</a>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessuna fattura scaduta al {{ today }}.</li>
+        {% endif %}
+      </ul>
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Ordini lavoro operativi</h2>
+    <ul class="list">
+      {% if open_work_orders %}
+        {% for item in open_work_orders %}
+          <li>
+            <span>{{ item.code|default:item.title }}</span>
+            <span class="muted">{{ item.get_status_display }}</span>
+            <a class="btn" href="/finance/work-orders/update?id={{ item.id }}">Apri</a>
+          </li>
+        {% endfor %}
+      {% else %}
+        <li class="muted">Nessun ordine lavoro aperto o in corso.</li>
+      {% endif %}
+    </ul>
+  </section>
+{% endblock %}

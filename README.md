@@ -8,7 +8,7 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 
 - Backend: Django `6.0.1` con app multi-modulo e ownership per utente (`OwnedModel`).
 - DB: SQLite in locale (`db.sqlite3`) + PostgreSQL in produzione via `DATABASE_URL`.
-- Deploy: Render (`render.yaml`, `build.sh`) con Gunicorn + Whitenoise.
+- Deploy: VPS con Docker Compose (Django + Postgres + Caddy).
 - AI: integrazione OpenAI Responses API per Archibald e generatori Workbench.
 - Sicurezza: login richiesto su quasi tutte le viste, Vault con TOTP + cifratura contenuti.
 
@@ -39,6 +39,14 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 - Configurazione hero actions globali utente.
 
 ### Finanza
+- `finance_hub` (`/finance/`):
+  - dashboard dedicata al coordinamento finanziario
+  - gestione `preventivi` (`Quote`)
+  - righe articolo su preventivi (`QuoteLine`): codice, descrizione, importo netto, importo lordo, quantita, sconto, codice IVA
+  - gestione `fatture` (`Invoice`)
+  - gestione `ordini lavoro` (`WorkOrder`)
+  - snapshot KPI: pipeline preventivi, fatture aperte/pagate, alert scadenze
+  - collegamento operativo rapido con `income`, `outcome`, `transactions`, `subscriptions`
 - `subscriptions` (`/subs/`):
   - Subscription + SubscriptionOccurrence
   - status active/paused/canceled
@@ -114,6 +122,7 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
   - `common.OwnedModel` (record scoped per user)
 - Hub finanza:
   - `transactions.Transaction` collega `Account`, `Currency`, `Project`, `Category`, `Payee`, `IncomeSource`, `Tag`, `Subscription`
+  - `finance_hub.Quote`, `finance_hub.Invoice`, `finance_hub.WorkOrder` per ciclo commerciale/operativo
 - Scheduler:
   - `subscriptions.Subscription` -> `SubscriptionOccurrence`
   - `routines.Routine` -> `RoutineItem` -> `RoutineCheck`
@@ -159,26 +168,66 @@ Note:
 - Se `OPENAI_API_KEY` manca, le feature AI mostrano errore controllato o fallback.
 - Se `VAULT_ENCRYPTION_KEY` manca, in locale viene derivata da `SECRET_KEY` (fallback deterministico).
 
-## Deploy Render
+## Deploy VPS (Docker)
 
-`render.yaml` configura:
+Stack container:
 
-- service web `archibald`
-- build: `./build.sh`
-- start: `gunicorn mio_master.wsgi:application`
-- DB managed `archibald-db`
+- `web`: Django + Gunicorn
+- `db`: PostgreSQL 16
+- `caddy`: reverse proxy + static/media + HTTPS automatico
 
-`build.sh` esegue:
+File principali:
 
-1. `pip install -r requirements.txt`
-2. `python manage.py collectstatic --no-input`
-3. `python manage.py migrate`
+- `Dockerfile`
+- `docker-compose.yml`
+- `docker/entrypoint.sh`
+- `docker/caddy/Caddyfile`
+- `.env.docker.example`
+
+Setup rapido su VPS:
+
+1. Copia progetto su VPS.
+2. Crea `.env` partendo da `.env.docker.example`.
+  - Per HTTPS reale imposta:
+    - `CADDY_SITE_HOST=tuo-dominio.it`
+    - `DJANGO_ALLOWED_HOSTS=tuo-dominio.it,www.tuo-dominio.it`
+    - `DJANGO_CSRF_TRUSTED_ORIGINS=https://tuo-dominio.it,https://www.tuo-dominio.it`
+3. Avvia stack:
+
+```bash
+docker compose up -d --build
+```
+
+Controlli:
+
+```bash
+docker compose ps
+docker compose logs -f web
+docker compose logs -f caddy
+```
+
+Update deploy:
+
+```bash
+git pull
+docker compose up -d --build
+```
+
+Note:
+
+- Il container `web` esegue automaticamente:
+  - `python manage.py migrate --noinput`
+  - `python manage.py collectstatic --noinput`
+  - avvio `gunicorn`
+- In `docker-compose.yml` `DATABASE_URL` e costruita automaticamente verso il servizio `db`.
+- Caddy emette e rinnova certificati TLS automaticamente quando `CADDY_SITE_HOST` e un dominio pubblico risolvibile.
 
 ## Test
 
 Sono presenti test Django in diversi moduli, tra cui:
 
 - `ai_lab`
+- `finance_hub`
 - `planner`
 - `projects`
 - `todo`
@@ -191,7 +240,7 @@ Esecuzione:
 python manage.py test
 ```
 
-Ultima esecuzione locale: `17` test, esito `OK`.
+Ultima esecuzione locale: `20` test, esito `OK`.
 
 ## Struttura repository (essenziale)
 
@@ -201,6 +250,7 @@ mio_master/
   common/            # modelli base astratti
   core/              # auth, dashboard, calendario, account
   subscriptions/     # abbonamenti, account, currency, tag
+  finance_hub/       # dashboard finanza + preventivi/fatture/ordini lavoro
   income/ outcome/   # entrate/uscite su Transaction
   transactions/      # ledger unificato
   projects/          # progetti, clienti, categorie, storyboard
@@ -212,6 +262,7 @@ mio_master/
   link_storage/      # archivio link rapido
   workbench/         # debug + generatori AI + schema explorer
   requirements.txt
-  render.yaml
-  build.sh
+  Dockerfile
+  docker-compose.yml
+  docker/
 ```

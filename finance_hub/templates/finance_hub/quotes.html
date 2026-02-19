@@ -1,0 +1,36 @@
+{% extends "finance_hub/base.html" %}
+
+{% block title %}MIO - Preventivi{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>Preventivi</h1>
+      <p>Gestione preventivi con collegamento a cliente, progetto e importi.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/finance/quotes/add">Nuovo preventivo</a>
+        <a class="btn" href="/finance/">Torna a Hub Finanza</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <ul class="list">
+      {% if rows %}
+        {% for row in rows %}
+          <li>
+            <span>{{ row.code|default:"-" }} · {{ row.title }}</span>
+            <span class="muted">
+              {{ row.get_status_display }} · {{ row.total_amount }} {{ row.currency.code }} ·
+              righe articolo: {{ row.lines.count }}
+            </span>
+            <a class="btn" href="/finance/quotes/update?id={{ row.id }}">Modifica</a>
+            <a class="btn" href="/finance/quotes/remove?id={{ row.id }}">Rimuovi</a>
+          </li>
+        {% endfor %}
+      {% else %}
+        <li class="muted">Nessun preventivo registrato.</li>
+      {% endif %}
+    </ul>
+  </section>
+{% endblock %}

@@ -52,7 +52,7 @@ DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() in {"1", "true", "yes", "on"}
 _allowed_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
 if not ALLOWED_HOSTS:
-    ALLOWED_HOSTS = [".onrender.com", "localhost", "127.0.0.1"]
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
 _csrf_trusted_origins = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_trusted_origins.split(",") if o.strip()]
@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     'ai_lab',
     'vault',
     'link_storage',
+    'finance_hub',
 ]
 
 MIDDLEWARE = [
@@ -127,8 +128,9 @@ DATABASES = {
 }
 
 database_url = os.getenv("DATABASE_URL")
+db_ssl_require = os.getenv("DJANGO_DB_SSL_REQUIRE", "false").lower() in {"1", "true", "yes", "on"}
 if database_url:
-    DATABASES["default"] = dj_database_url.parse(database_url, conn_max_age=600, ssl_require=True)
+    DATABASES["default"] = dj_database_url.parse(database_url, conn_max_age=600, ssl_require=db_ssl_require)
 
 
 # Password validation

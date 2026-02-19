@@ -1,0 +1,33 @@
+{% extends "finance_hub/base.html" %}
+
+{% block title %}MIO - Ordini Lavoro{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>Ordini lavoro</h1>
+      <p>Gestione ordini operativi con stato, importi stimati/finali e progetto.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/finance/work-orders/add">Nuovo ordine lavoro</a>
+        <a class="btn" href="/finance/">Torna a Hub Finanza</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <ul class="list">
+      {% if rows %}
+        {% for row in rows %}
+          <li>
+            <span>{{ row.code|default:"-" }} · {{ row.title }}</span>
+            <span class="muted">{{ row.get_status_display }} · stimato {{ row.estimated_amount }} {{ row.currency.code }}</span>
+            <a class="btn" href="/finance/work-orders/update?id={{ row.id }}">Modifica</a>
+            <a class="btn" href="/finance/work-orders/remove?id={{ row.id }}">Rimuovi</a>
+          </li>
+        {% endfor %}
+      {% else %}
+        <li class="muted">Nessun ordine lavoro registrato.</li>
+      {% endif %}
+    </ul>
+  </section>
+{% endblock %}

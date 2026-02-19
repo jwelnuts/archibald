@@ -1,0 +1,57 @@
+{% extends "finance_hub/base.html" %}
+
+{% block title %}MIO - Fattura{% endblock %}
+
+{% block content %}
+  {% if mode == "select" %}
+    <section class="panel">
+      <h1>Seleziona fattura da aggiornare</h1>
+      <ul class="list">
+        {% for row in rows %}
+          <li>
+            <span>{{ row.code|default:"-" }} · {{ row.title }}</span>
+            <a class="btn" href="/finance/invoices/update?id={{ row.id }}">Apri</a>
+          </li>
+        {% empty %}
+          <li class="muted">Nessuna fattura disponibile.</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% else %}
+    <section class="panel narrow">
+      <h1>{% if mode == "add" %}Nuova fattura{% else %}Aggiorna fattura{% endif %}</h1>
+      {% if form and form.errors %}
+        <div class="warning-box">
+          Controlla i campi evidenziati.
+          <div class="form-errors">
+            {{ form.non_field_errors }}
+            {% for field in form %}
+              {{ field.errors }}
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      <form class="form" method="post" action="">
+        {% csrf_token %}
+        <div class="field"><label for="id_code">Codice</label>{{ form.code }}</div>
+        <div class="field"><label for="id_title">Titolo</label>{{ form.title }}</div>
+        <div class="field"><label for="id_quote">Preventivo</label>{{ form.quote }}</div>
+        <div class="field"><label for="id_customer">Cliente</label>{{ form.customer }}</div>
+        <div class="field"><label for="id_project">Progetto</label>{{ form.project }}</div>
+        <div class="field"><label for="id_account">Conto</label>{{ form.account }}</div>
+        <div class="field"><label for="id_issue_date">Data emissione</label>{{ form.issue_date }}</div>
+        <div class="field"><label for="id_due_date">Data scadenza</label>{{ form.due_date }}</div>
+        <div class="field"><label for="id_paid_date">Data pagamento</label>{{ form.paid_date }}</div>
+        <div class="field"><label for="id_currency">Valuta</label>{{ form.currency }}</div>
+        <div class="field"><label for="id_amount_net">Imponibile</label>{{ form.amount_net }}</div>
+        <div class="field"><label for="id_tax_amount">Imposte</label>{{ form.tax_amount }}</div>
+        <div class="field"><label for="id_status">Stato</label>{{ form.status }}</div>
+        <div class="field"><label for="id_note">Note</label>{{ form.note }}</div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Salva</button>
+          <a class="btn" href="/finance/invoices/">Annulla</a>
+        </div>
+      </form>
+    </section>
+  {% endif %}
+{% endblock %}

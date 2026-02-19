@@ -1,0 +1,31 @@
+{% extends "finance_hub/base.html" %}
+
+{% block title %}MIO - Rimuovi Ordine Lavoro{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi ordine lavoro</h1>
+    {% if item %}
+      <p>Confermi la rimozione di <strong>{{ item.code|default:item.title }}</strong>?</p>
+      <form class="form" method="post" action="">
+        {% csrf_token %}
+        <div class="actions">
+          <button class="btn primary" type="submit">Conferma rimozione</button>
+          <a class="btn" href="/finance/work-orders/">Annulla</a>
+        </div>
+      </form>
+    {% else %}
+      <p class="muted">Seleziona un ordine lavoro:</p>
+      <ul class="list">
+        {% for row in rows %}
+          <li>
+            <span>{{ row.code|default:"-" }} · {{ row.title }}</span>
+            <a class="btn" href="/finance/work-orders/remove?id={{ row.id }}">Rimuovi</a>
+          </li>
+        {% empty %}
+          <li class="muted">Nessun ordine lavoro disponibile.</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </section>
+{% endblock %}

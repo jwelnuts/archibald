@@ -1,0 +1,33 @@
+{% extends "finance_hub/base.html" %}
+
+{% block title %}MIO - Fatture{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>Fatture</h1>
+      <p>Gestione fatture con tracking scadenze e stato pagamento.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/finance/invoices/add">Nuova fattura</a>
+        <a class="btn" href="/finance/">Torna a Hub Finanza</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <ul class="list">
+      {% if rows %}
+        {% for row in rows %}
+          <li>
+            <span>{{ row.code|default:"-" }} · {{ row.title }}</span>
+            <span class="muted">{{ row.get_status_display }} · {{ row.total_amount }} {{ row.currency.code }}</span>
+            <a class="btn" href="/finance/invoices/update?id={{ row.id }}">Modifica</a>
+            <a class="btn" href="/finance/invoices/remove?id={{ row.id }}">Rimuovi</a>
+          </li>
+        {% endfor %}
+      {% else %}
+        <li class="muted">Nessuna fattura registrata.</li>
+      {% endif %}
+    </ul>
+  </section>
+{% endblock %}

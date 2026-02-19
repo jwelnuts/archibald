@@ -1,0 +1,17 @@
+{$CADDY_SITE_HOST} {
+    encode zstd gzip
+
+    @static path /static/*
+    handle @static {
+        root * /srv/static
+        file_server
+    }
+
+    @media path /media/*
+    handle @media {
+        root * /srv/media
+        file_server
+    }
+
+    reverse_proxy web:8000
+}

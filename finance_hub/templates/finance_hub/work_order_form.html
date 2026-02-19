@@ -1,0 +1,56 @@
+{% extends "finance_hub/base.html" %}
+
+{% block title %}MIO - Ordine Lavoro{% endblock %}
+
+{% block content %}
+  {% if mode == "select" %}
+    <section class="panel">
+      <h1>Seleziona ordine lavoro da aggiornare</h1>
+      <ul class="list">
+        {% for row in rows %}
+          <li>
+            <span>{{ row.code|default:"-" }} · {{ row.title }}</span>
+            <a class="btn" href="/finance/work-orders/update?id={{ row.id }}">Apri</a>
+          </li>
+        {% empty %}
+          <li class="muted">Nessun ordine lavoro disponibile.</li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% else %}
+    <section class="panel narrow">
+      <h1>{% if mode == "add" %}Nuovo ordine lavoro{% else %}Aggiorna ordine lavoro{% endif %}</h1>
+      {% if form and form.errors %}
+        <div class="warning-box">
+          Controlla i campi evidenziati.
+          <div class="form-errors">
+            {{ form.non_field_errors }}
+            {% for field in form %}
+              {{ field.errors }}
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      <form class="form" method="post" action="">
+        {% csrf_token %}
+        <div class="field"><label for="id_code">Codice</label>{{ form.code }}</div>
+        <div class="field"><label for="id_title">Titolo</label>{{ form.title }}</div>
+        <div class="field"><label for="id_customer">Cliente</label>{{ form.customer }}</div>
+        <div class="field"><label for="id_project">Progetto</label>{{ form.project }}</div>
+        <div class="field"><label for="id_account">Conto</label>{{ form.account }}</div>
+        <div class="field"><label for="id_start_date">Data avvio</label>{{ form.start_date }}</div>
+        <div class="field"><label for="id_end_date">Data chiusura</label>{{ form.end_date }}</div>
+        <div class="field"><label for="id_currency">Valuta</label>{{ form.currency }}</div>
+        <div class="field"><label for="id_estimated_amount">Importo stimato</label>{{ form.estimated_amount }}</div>
+        <div class="field"><label for="id_final_amount">Importo finale</label>{{ form.final_amount }}</div>
+        <div class="field"><label for="id_is_billable">Fatturabile</label>{{ form.is_billable }}</div>
+        <div class="field"><label for="id_status">Stato</label>{{ form.status }}</div>
+        <div class="field"><label for="id_note">Note</label>{{ form.note }}</div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Salva</button>
+          <a class="btn" href="/finance/work-orders/">Annulla</a>
+        </div>
+      </form>
+    </section>
+  {% endif %}
+{% endblock %}
