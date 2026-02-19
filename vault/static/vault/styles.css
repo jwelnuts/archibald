@@ -1,0 +1,141 @@
+body {
+  margin: 0;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+.shell {
+  max-width: 1180px;
+  margin: 20px auto;
+  padding: 0 12px 28px;
+}
+
+.top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.top h1 {
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+.top-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.panel {
+  background: linear-gradient(145deg, #111827, #1f2937);
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.narrow {
+  max-width: 700px;
+}
+
+.btn {
+  display: inline-block;
+  border: 1px solid #64748b;
+  border-radius: 8px;
+  padding: 7px 10px;
+  color: #e2e8f0;
+  text-decoration: none;
+  background: #1e293b;
+}
+
+.btn.primary {
+  border-color: #0ea5e9;
+  background: #0284c7;
+  color: #fff;
+}
+
+.btn.danger {
+  border-color: #ef4444;
+  background: #b91c1c;
+  color: #fff;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.form p {
+  margin: 0 0 12px;
+}
+
+.form input,
+.form select,
+.form textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  background: #0b1220;
+  color: #e2e8f0;
+  font: inherit;
+}
+
+.inline-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  padding: 8px 6px;
+  border-bottom: 1px solid #334155;
+  vertical-align: top;
+  text-align: left;
+}
+
+.table th {
+  color: #93c5fd;
+}
+
+.warning {
+  border: 1px solid #f59e0b;
+  background: #422006;
+  color: #fde68a;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.info {
+  border: 1px solid #38bdf8;
+  background: #082f49;
+  color: #bae6fd;
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+code {
+  word-break: break-all;
+}
+
+.qr-wrap {
+  margin: 12px 0;
+  display: inline-block;
+  padding: 8px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #ffffff;
+}

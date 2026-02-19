@@ -256,11 +256,38 @@ body {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
   font-size: 15px;
+}
+
+.accordion-group {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.accordion-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f6f9ff;
+  padding: 10px 12px;
+}
+
+.accordion-item summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.accordion-item[open] {
+  background: #ffffff;
+}
+
+.accordion-item .form {
+  margin-top: 12px;
 }
 
 .actions {

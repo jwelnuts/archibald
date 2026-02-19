@@ -1,0 +1,21 @@
+{% extends 'vault/base.html' %}
+
+{% block title %}MIO - Vault Unlock{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h2>Sblocca Vault</h2>
+    <p>Inserisci il codice TOTP a 6 cifre del tuo Authenticator.</p>
+    {% if lock_seconds > 0 %}
+      <div class="warning">Troppi tentativi. Attendi circa {{ lock_seconds }} secondi.</div>
+    {% endif %}
+    <form method="post" class="form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="actions">
+        <button class="btn primary" type="submit">Sblocca</button>
+        <a class="btn" href="/vault/setup">Setup TOTP</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

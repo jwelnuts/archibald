@@ -7,6 +7,7 @@ from .customer_forms import CustomerForm
 from .note_forms import ProjectNoteForm
 from .forms import ProjectForm
 from .models import Category, Customer, Project, ProjectNote, ProjectHeroActionsConfig
+from .storyboard_forms import StoryboardPlannerForm, StoryboardTaskForm
 from core.hero_actions import HERO_ACTIONS
 from core.models import UserHeroActionsConfig
 
@@ -159,18 +160,48 @@ def project_storyboard(request):
 
     project = get_object_or_404(Project, id=project_id, owner=request.user)
 
+    active_form = "note"
     if request.method == "POST":
-        note_form = ProjectNoteForm(request.POST, request.FILES)
-        if note_form.is_valid():
-            note = note_form.save(commit=False)
-            note.owner = request.user
-            note.project = project
-            note.save()
-            return redirect(f"/projects/storyboard?id={project.id}")
+        form_kind = (request.POST.get("form_kind") or "note").strip().lower()
+        active_form = form_kind if form_kind in {"note", "task", "planner"} else "note"
+
+        if active_form == "task":
+            note_form = ProjectNoteForm()
+            planner_form = StoryboardPlannerForm(prefix="planner")
+            task_form = StoryboardTaskForm(request.POST, prefix="task")
+            if task_form.is_valid():
+                task = task_form.save(commit=False)
+                task.owner = request.user
+                task.project = project
+                task.save()
+                return redirect(f"/projects/storyboard?id={project.id}")
+        elif active_form == "planner":
+            note_form = ProjectNoteForm()
+            task_form = StoryboardTaskForm(prefix="task")
+            planner_form = StoryboardPlannerForm(request.POST, prefix="planner")
+            if planner_form.is_valid():
+                planner_item = planner_form.save(commit=False)
+                planner_item.owner = request.user
+                planner_item.project = project
+                planner_item.save()
+                return redirect(f"/projects/storyboard?id={project.id}")
+        else:
+            task_form = StoryboardTaskForm(prefix="task")
+            planner_form = StoryboardPlannerForm(prefix="planner")
+            note_form = ProjectNoteForm(request.POST, request.FILES)
+            if note_form.is_valid():
+                note = note_form.save(commit=False)
+                note.owner = request.user
+                note.project = project
+                note.save()
+                return redirect(f"/projects/storyboard?id={project.id}")
     else:
         note_form = ProjectNoteForm()
+        task_form = StoryboardTaskForm(prefix="task")
+        planner_form = StoryboardPlannerForm(prefix="planner")
 
     from planner.models import PlannerItem
+    from todo.models import Task
     from transactions.models import Transaction
 
     transactions = (
@@ -180,6 +211,10 @@ def project_storyboard(request):
     )
     planner_items = (
         PlannerItem.objects.filter(owner=request.user, project=project)
+        .order_by("-due_date", "-created_at", "-id")[:50]
+    )
+    tasks = (
+        Task.objects.filter(owner=request.user, project=project)
         .order_by("-due_date", "-created_at", "-id")[:50]
     )
 
@@ -206,6 +241,15 @@ def project_storyboard(request):
             "note": item.note,
         })
 
+    for task in tasks:
+        date = task.due_date or task.created_at.date()
+        actions.append({
+            "date": date,
+            "title": "Task",
+            "label": f"{task.title} · {task.get_status_display()}",
+            "note": task.note,
+        })
+
     actions.sort(key=lambda row: row["date"], reverse=True)
 
     notes = (
@@ -225,6 +269,9 @@ def project_storyboard(request):
     context = {
         "project": project,
         "note_form": note_form,
+        "task_form": task_form,
+        "planner_form": planner_form,
+        "active_form": active_form,
         "notes": notes,
         "actions": actions,
         "hero_actions_override": override_config,

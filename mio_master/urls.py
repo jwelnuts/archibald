@@ -35,6 +35,7 @@ urlpatterns = [
     path('routines/', include('routines.urls')),
     path('archibald/', include('archibald.urls')),
     path('ai-lab/', include('ai_lab.urls')),
+    path('vault/', include('vault.urls')),
     path(
         'ui-generator/',
         RedirectView.as_view(

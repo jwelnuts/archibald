@@ -53,13 +53,35 @@
     </article>
 
     <article class="panel" id="todo-notes-panel">
-      <h2 id="todo-notes-title">Note rapide</h2>
-      <div class="note">
-        Usa i task per attivare workflow e revisioni periodiche.
+      <h2 id="todo-notes-title">Snapshot Planner</h2>
+      <div class="note">Todo cattura cose veloci. Planner resta la vista di pianificazione economica/futura.</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Planner pianificati</div>
+          <div class="stat-value">{{ planner_counts.planned }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">In scadenza 7gg</div>
+          <div class="stat-value">{{ planner_counts.due_soon }}</div>
+        </div>
       </div>
-      <div class="note">
-        Collega i task ai progetti per responsabilita.
+      <div class="actions">
+        <a class="btn" href="/planner/">Apri Planner</a>
+        <a class="btn" href="/planner/add">Nuova Voce Planner</a>
       </div>
+      <ul class="list">
+        {% if planner_upcoming %}
+          {% for item in planner_upcoming %}
+            <li>
+              <span>{{ item.title }}</span>
+              <span class="muted">{{ item.due_date|default:"-" }}</span>
+              <a class="btn" href="/planner/update?id={{ item.id }}">Apri</a>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessuna voce planner pianificata.</li>
+        {% endif %}
+      </ul>
     </article>
   </section>
 {% endblock %}

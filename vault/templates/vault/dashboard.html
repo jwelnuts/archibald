@@ -1,0 +1,71 @@
+{% extends 'vault/base.html' %}
+
+{% block title %}MIO - Vault Dashboard{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Archivio privato</h2>
+    <p>Salva password e note private cifrate nel database.</p>
+    <div class="actions">
+      <a class="btn primary" href="/vault/api/add">Nuovo record</a>
+    </div>
+  </section>
+
+  <section class="panel">
+    <form class="inline-form" method="get">
+      <label for="kind">Filtro</label>
+      <select id="kind" name="kind">
+        <option value="">Tutti</option>
+        {% for code, label in kind_choices %}
+          <option value="{{ code }}" {% if kind_filter == code %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <button class="btn" type="submit">Filtra</button>
+      <a class="btn" href="/vault/">Reset</a>
+    </form>
+  </section>
+
+  <section class="panel">
+    {% if rows %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Titolo</th>
+            <th>Tipo</th>
+            <th>Login</th>
+            <th>Sito</th>
+            <th>Segreto</th>
+            <th>Note</th>
+            <th>Aggiornato</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>{{ row.title }}</td>
+              <td>{{ row.kind_label }}</td>
+              <td>{{ row.login }}</td>
+              <td>
+                {% if row.website_url %}
+                  <a href="{{ row.website_url }}" target="_blank" rel="noopener noreferrer">Apri</a>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td><code>{{ row.masked_secret }}</code></td>
+              <td>{{ row.notes_preview }}</td>
+              <td>{{ row.updated_at|date:"Y-m-d H:i" }}</td>
+              <td>
+                <a class="btn" href="/vault/api/update?id={{ row.id }}">Modifica</a>
+                <a class="btn danger" href="/vault/api/remove?id={{ row.id }}">Rimuovi</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="info">Nessun elemento nel Vault.</div>
+    {% endif %}
+  </section>
+{% endblock %}

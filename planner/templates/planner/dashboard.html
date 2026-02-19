@@ -50,8 +50,35 @@
     </article>
 
     <article class="panel" id="planner-notes-panel">
-      <h2 id="planner-notes-title">Note rapide</h2>
-      <div class="note">Usa il planner per budget futuri e promemoria personali.</div>
+      <h2 id="planner-notes-title">Snapshot Todo</h2>
+      <div class="note">Planner pianifica. Todo esegue. Qui vedi i task operativi senza uscire dal planner.</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Todo aperti</div>
+          <div class="stat-value">{{ todo_counts.open }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Todo in corso</div>
+          <div class="stat-value">{{ todo_counts.in_progress }}</div>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/todo/">Apri Todo</a>
+        <a class="btn" href="/todo/api/add">Nuovo Task</a>
+      </div>
+      <ul class="list">
+        {% if todo_open %}
+          {% for task in todo_open %}
+            <li>
+              <span>{{ task.title }}</span>
+              <span class="muted">{{ task.due_date|default:"-" }}</span>
+              <a class="btn" href="/todo/api/update?id={{ task.id }}">Apri</a>
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="muted">Nessun task aperto.</li>
+        {% endif %}
+      </ul>
     </article>
   </section>
 {% endblock %}

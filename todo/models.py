@@ -15,6 +15,9 @@ class Task(OwnedModel, TimeStampedModel):
         HIGH = "HIGH", "High"
 
     title = models.CharField(max_length=160)
+    project = models.ForeignKey(
+        "projects.Project", null=True, blank=True, on_delete=models.SET_NULL, related_name="todo_tasks"
+    )
     due_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.OPEN)
     priority = models.CharField(max_length=8, choices=Priority.choices, default=Priority.MEDIUM)

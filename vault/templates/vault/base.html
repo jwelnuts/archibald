@@ -1,0 +1,24 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}MIO - Vault{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'vault/styles.css' %}">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="top">
+        <h1>Vault</h1>
+        <nav class="top-nav">
+          <a class="btn" href="/">Dashboard</a>
+          <a class="btn" href="/vault/">Vault</a>
+          <a class="btn" href="/vault/unlock">Unlock</a>
+          <a class="btn danger" href="/vault/lock">Lock</a>
+        </nav>
+      </header>
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>

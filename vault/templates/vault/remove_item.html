@@ -1,0 +1,17 @@
+{% extends 'vault/base.html' %}
+
+{% block title %}MIO - Vault Remove{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h2>Rimuovi record</h2>
+    <p>Confermi la rimozione di <strong>{{ item.title }}</strong>?</p>
+    <form method="post">
+      {% csrf_token %}
+      <div class="actions">
+        <button class="btn danger" type="submit">Conferma</button>
+        <a class="btn" href="/vault/">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

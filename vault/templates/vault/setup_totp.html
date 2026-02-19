@@ -1,0 +1,40 @@
+{% extends 'vault/base.html' %}
+
+{% block title %}MIO - Vault Setup TOTP{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h2>Setup Authenticator (TOTP)</h2>
+    <p>
+      Collega l'app Authenticator al Vault. Da ora in poi il modulo richiedera il codice a 6 cifre.
+    </p>
+    {% if already_enabled %}
+      <div class="info">TOTP gia configurato. Puoi comunque verificare il codice per riattivare la sessione Vault.</div>
+    {% endif %}
+    <ol>
+      <li>Apri l'app Authenticator (Google/Microsoft/Authy).</li>
+      <li>Scansiona il QR code qui sotto.</li>
+      <li>Aggiungi account manuale e inserisci questa chiave: <code>{{ manual_key }}</code></li>
+      <li>Tipo codice: TOTP (30 secondi, 6 cifre).</li>
+    </ol>
+    <div class="qr-wrap">
+      <img src="{{ qr_data_uri }}" alt="QR code TOTP Vault" width="220" height="220">
+    </div>
+    <details>
+      <summary>URI otpauth (avanzato)</summary>
+      <code>{{ otpauth_uri }}</code>
+    </details>
+  </section>
+
+  <section class="panel narrow">
+    <h3>Verifica codice</h3>
+    <form method="post" class="form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="actions">
+        <button class="btn primary" type="submit">Conferma e attiva</button>
+        <a class="btn" href="/vault/unlock">Vai a Unlock</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

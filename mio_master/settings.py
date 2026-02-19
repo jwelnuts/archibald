@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     'routines',
     'archibald',
     'ai_lab',
+    'vault',
     'link_storage',
 ]
 

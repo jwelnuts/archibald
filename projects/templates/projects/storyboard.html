@@ -51,39 +51,132 @@
 
   <section class="grid" id="project-storyboard-grid">
     <article class="panel">
-      <h2>Appunti</h2>
-      <form class="form" method="post" action="" enctype="multipart/form-data" novalidate>
-        {% csrf_token %}
-        <div class="field">
-          <label>Editor</label>
-          <div id="note-editor-toolbar">
-            <span class="ql-formats">
-              <button class="ql-bold"></button>
-              <button class="ql-italic"></button>
-              <button class="ql-underline"></button>
-            </span>
-            <span class="ql-formats">
-              <button class="ql-list" value="ordered"></button>
-              <button class="ql-list" value="bullet"></button>
-            </span>
-            <span class="ql-formats">
-              <button class="ql-link"></button>
-            </span>
-          </div>
-          <div id="note-editor" class="rich-editor"></div>
-        </div>
-        <div class="field" style="display:none;">
-          <label for="id_content">Nuovo appunto</label>
-          {{ note_form.content }}
-        </div>
-        <div class="field">
-          <label for="id_attachment">Allega file</label>
-          {{ note_form.attachment }}
-        </div>
-        <div class="actions">
-          <button class="btn primary" type="submit">Aggiungi</button>
-        </div>
-      </form>
+      <h2>Inserimenti rapidi</h2>
+      <div class="accordion-group">
+        <details class="accordion-item" {% if active_form == "note" %}open{% endif %}>
+          <summary>Nuovo appunto progetto</summary>
+          <form class="form" method="post" action="" enctype="multipart/form-data" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="form_kind" value="note">
+            {% if note_form.errors %}
+              <div class="warning-box">
+                Correggi i campi del form appunto.
+                {{ note_form.non_field_errors }}
+                {{ note_form.content.errors }}
+                {{ note_form.attachment.errors }}
+              </div>
+            {% endif %}
+            <div class="field">
+              <label>Editor</label>
+              <div id="note-editor-toolbar">
+                <span class="ql-formats">
+                  <button class="ql-bold"></button>
+                  <button class="ql-italic"></button>
+                  <button class="ql-underline"></button>
+                </span>
+                <span class="ql-formats">
+                  <button class="ql-list" value="ordered"></button>
+                  <button class="ql-list" value="bullet"></button>
+                </span>
+                <span class="ql-formats">
+                  <button class="ql-link"></button>
+                </span>
+              </div>
+              <div id="note-editor" class="rich-editor"></div>
+            </div>
+            <div class="field" style="display:none;">
+              <label for="id_content">Nuovo appunto</label>
+              {{ note_form.content }}
+            </div>
+            <div class="field">
+              <label for="id_attachment">Allega file</label>
+              {{ note_form.attachment }}
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit">Aggiungi appunto</button>
+            </div>
+          </form>
+        </details>
+
+        <details class="accordion-item" {% if active_form == "task" %}open{% endif %}>
+          <summary>Nuovo task collegato al progetto</summary>
+          <form class="form" method="post" action="" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="form_kind" value="task">
+            {% if task_form.errors %}
+              <div class="warning-box">
+                Correggi i campi del form task.
+                {{ task_form.non_field_errors }}
+                {{ task_form.title.errors }}
+                {{ task_form.due_date.errors }}
+                {{ task_form.status.errors }}
+                {{ task_form.priority.errors }}
+                {{ task_form.note.errors }}
+              </div>
+            {% endif %}
+            <div class="field">
+              <label for="{{ task_form.title.id_for_label }}">Titolo</label>
+              {{ task_form.title }}
+            </div>
+            <div class="field">
+              <label for="{{ task_form.due_date.id_for_label }}">Scadenza</label>
+              {{ task_form.due_date }}
+            </div>
+            <div class="field">
+              <label for="{{ task_form.status.id_for_label }}">Status</label>
+              {{ task_form.status }}
+            </div>
+            <div class="field">
+              <label for="{{ task_form.priority.id_for_label }}">Priorita</label>
+              {{ task_form.priority }}
+            </div>
+            <div class="field">
+              <label for="{{ task_form.note.id_for_label }}">Note</label>
+              {{ task_form.note }}
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit">Aggiungi task</button>
+            </div>
+          </form>
+        </details>
+
+        <details class="accordion-item" {% if active_form == "planner" %}open{% endif %}>
+          <summary>Nuovo appunto planner collegato al progetto</summary>
+          <form class="form" method="post" action="" novalidate>
+            {% csrf_token %}
+            <input type="hidden" name="form_kind" value="planner">
+            {% if planner_form.errors %}
+              <div class="warning-box">
+                Correggi i campi del form planner.
+                {{ planner_form.non_field_errors }}
+                {{ planner_form.title.errors }}
+                {{ planner_form.due_date.errors }}
+                {{ planner_form.status.errors }}
+                {{ planner_form.note.errors }}
+              </div>
+            {% endif %}
+            <div class="field">
+              <label for="{{ planner_form.title.id_for_label }}">Titolo</label>
+              {{ planner_form.title }}
+            </div>
+            <div class="field">
+              <label for="{{ planner_form.due_date.id_for_label }}">Scadenza</label>
+              {{ planner_form.due_date }}
+            </div>
+            <div class="field">
+              <label for="{{ planner_form.status.id_for_label }}">Status</label>
+              {{ planner_form.status }}
+            </div>
+            <div class="field">
+              <label for="{{ planner_form.note.id_for_label }}">Note</label>
+              {{ planner_form.note }}
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit">Aggiungi planner</button>
+            </div>
+          </form>
+        </details>
+      </div>
 
       {% if notes %}
         <ul class="list">

@@ -1,0 +1,18 @@
+{% extends 'vault/base.html' %}
+
+{% block title %}MIO - Vault Update{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h2>Modifica record</h2>
+    <p><strong>{{ item.title }}</strong></p>
+    <form method="post" class="form">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="actions">
+        <button class="btn primary" type="submit">Aggiorna</button>
+        <a class="btn" href="/vault/">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

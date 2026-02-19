@@ -1,6 +1,8 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
+from todo.models import Task
+
 from .forms import PlannerItemForm
 from .models import PlannerItem
 from projects.models import Project, ProjectNote
@@ -18,7 +20,24 @@ def dashboard(request):
         "done": PlannerItem.objects.filter(owner=user, status=PlannerItem.Status.DONE).count(),
         "skipped": PlannerItem.objects.filter(owner=user, status=PlannerItem.Status.SKIPPED).count(),
     }
-    return render(request, "planner/dashboard.html", {"upcoming": upcoming, "counts": counts})
+    todo_open = (
+        Task.objects.filter(owner=user, status=Task.Status.OPEN)
+        .order_by("due_date", "created_at")[:5]
+    )
+    todo_counts = {
+        "open": Task.objects.filter(owner=user, status=Task.Status.OPEN).count(),
+        "in_progress": Task.objects.filter(owner=user, status=Task.Status.IN_PROGRESS).count(),
+    }
+    return render(
+        request,
+        "planner/dashboard.html",
+        {
+            "upcoming": upcoming,
+            "counts": counts,
+            "todo_open": todo_open,
+            "todo_counts": todo_counts,
+        },
+    )
 
 
 @login_required
