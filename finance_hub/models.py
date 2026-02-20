@@ -7,6 +7,26 @@ from django.utils import timezone
 from common.models import OwnedModel, TimeStampedModel
 
 
+class VatCode(OwnedModel, TimeStampedModel):
+    code = models.CharField(max_length=20)
+    description = models.CharField(max_length=120, blank=True)
+    rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("22.00"))
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = [("owner", "code")]
+        indexes = [
+            models.Index(fields=["owner", "is_active"]),
+            models.Index(fields=["owner", "rate"]),
+        ]
+        ordering = ["rate", "code"]
+
+    def __str__(self):
+        if self.description:
+            return f"{self.code} - {self.description} ({self.rate}%)"
+        return f"{self.code} ({self.rate}%)"
+
+
 class Quote(OwnedModel, TimeStampedModel):
     class Status(models.TextChoices):
         DRAFT = "DRAFT", "Bozza"
@@ -34,6 +54,13 @@ class Quote(OwnedModel, TimeStampedModel):
     issue_date = models.DateField(default=timezone.now)
     valid_until = models.DateField(null=True, blank=True)
     currency = models.ForeignKey("subscriptions.Currency", on_delete=models.PROTECT)
+    vat_code = models.ForeignKey(
+        "finance_hub.VatCode",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="quotes",
+    )
     amount_net = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
@@ -54,7 +81,10 @@ class Quote(OwnedModel, TimeStampedModel):
         ]
 
     def save(self, *args, **kwargs):
-        self.total_amount = (self.amount_net or Decimal("0.00")) + (self.tax_amount or Decimal("0.00"))
+        net_amount = self.amount_net or Decimal("0.00")
+        vat_rate = self.vat_code.rate if self.vat_code_id else Decimal("0.00")
+        self.tax_amount = (net_amount * vat_rate / Decimal("100.00")).quantize(Decimal("0.01"))
+        self.total_amount = (net_amount + self.tax_amount).quantize(Decimal("0.01"))
         super().save(*args, **kwargs)
 
     def refresh_totals_from_lines(self, *, save=True):
@@ -63,14 +93,10 @@ class Quote(OwnedModel, TimeStampedModel):
             return
 
         total_net = Decimal("0.00")
-        total_gross = Decimal("0.00")
         for line in lines:
             total_net += line.net_total
-            total_gross += line.gross_total
 
         self.amount_net = total_net
-        self.total_amount = total_gross
-        self.tax_amount = total_gross - total_net
         if save:
             self.save(update_fields=["amount_net", "tax_amount", "total_amount", "updated_at"])
 

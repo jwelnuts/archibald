@@ -1,0 +1,34 @@
+{% extends "contacts/base.html" %}
+
+{% block title %}MIO - Remove Contact{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi contatto</h1>
+    <p class="muted">Conferma rimozione dalla rubrica multidimensionale.</p>
+    {% if item %}
+      <div class="warning-box">
+        Stai per rimuovere: <strong>{{ item.display_name }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/contacts/">Annulla</a>
+      </form>
+    {% else %}
+      {% if rows %}
+        <ul class="list">
+          {% for row in rows %}
+            <li>
+              <span>{{ row.display_name }}</span>
+              <a class="btn" href="/contacts/remove?id={{ row.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun contatto disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

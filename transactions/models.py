@@ -28,6 +28,7 @@ class Transaction(OwnedModel, TimeStampedModel):
     )
 
     note = models.TextField(blank=True)
+    attachment = models.FileField(upload_to="transactions/attachments/%Y/%m/", blank=True, null=True)
     tags = models.ManyToManyField("subscriptions.Tag", blank=True, related_name="transactions")
 
     source_subscription = models.ForeignKey(

@@ -37,13 +37,26 @@
               <span class="dot dot-green"></span>
               <span class="muted">{{ occ.due_date|default:occ.next_due_date }}</span>
               <span>{{ occ.subscription.name|default:occ.name }}</span>
-              <span>{{ occ.subscription.amount|default:occ.amount }}</span>
-              
-              {% if occ.subscription %}
-                <a class="btn" href="/subs/api/update?id={{ occ.subscription.id }}">Modifica</a>
-              {% else %}
-                <a class="btn" href="/subs/api/update?id={{ occ.id }}">Modifica</a>
-              {% endif %}
+              <span>{{ occ.amount }}</span>
+              <span class="actions">
+                <button
+                  type="button"
+                  class="btn primary js-open-pay-modal"
+                  data-occurrence-id="{% if occ.subscription %}{{ occ.id }}{% endif %}"
+                  data-subscription-id="{% if not occ.subscription %}{{ occ.id }}{% endif %}"
+                  data-due-date="{{ occ.due_date|default:occ.next_due_date|date:'Y-m-d' }}"
+                  data-subscription-name="{{ occ.subscription.name|default:occ.name }}"
+                  data-amount="{{ occ.amount }} {{ occ.currency.code }}"
+                  {% if not accounts %}disabled{% endif %}
+                >
+                  Pagato
+                </button>
+                {% if occ.subscription %}
+                  <a class="btn" href="/subs/api/update?id={{ occ.subscription.id }}">Modifica</a>
+                {% else %}
+                  <a class="btn" href="/subs/api/update?id={{ occ.id }}">Modifica</a>
+                {% endif %}
+              </span>
             </li>
           {% endfor %}
         {% else %}
@@ -62,11 +75,26 @@
             <span class="dot dot-red"></span>
             <span class="muted">{{ occ.due_date|default:occ.next_due_date }}</span>
             <span>{{ occ.subscription.name|default:occ.name }}</span>
-            {% if occ.subscription %}
-              <a class="btn" href="/subs/api/update?id={{ occ.subscription.id }}">Modifica</a>
-            {% else %}
-              <a class="btn" href="/subs/api/update?id={{ occ.id }}">Modifica</a>
-            {% endif %}
+            <span>{{ occ.amount }}</span>
+            <span class="actions">
+              <button
+                type="button"
+                class="btn primary js-open-pay-modal"
+                data-occurrence-id="{% if occ.subscription %}{{ occ.id }}{% endif %}"
+                data-subscription-id="{% if not occ.subscription %}{{ occ.id }}{% endif %}"
+                data-due-date="{{ occ.due_date|default:occ.next_due_date|date:'Y-m-d' }}"
+                data-subscription-name="{{ occ.subscription.name|default:occ.name }}"
+                data-amount="{{ occ.amount }} {{ occ.currency.code }}"
+                {% if not accounts %}disabled{% endif %}
+              >
+                Pagato
+              </button>
+              {% if occ.subscription %}
+                <a class="btn" href="/subs/api/update?id={{ occ.subscription.id }}">Modifica</a>
+              {% else %}
+                <a class="btn" href="/subs/api/update?id={{ occ.id }}">Modifica</a>
+              {% endif %}
+            </span>
           </li>
         {% endfor %}
       </ul>
@@ -104,4 +132,95 @@
       </div>
     </article>
   </section>
+
+  <section class="modal" id="subs-pay-modal" hidden>
+    <div class="modal-backdrop" data-modal-close></div>
+    <div class="modal-card">
+      <div class="modal-head">
+        <h3>Registra pagamento abbonamento</h3>
+        <button type="button" class="modal-close" data-modal-close aria-label="Chiudi">x</button>
+      </div>
+      <form method="post" action="/subs/api/pay" class="form form-compact">
+        {% csrf_token %}
+        <input type="hidden" name="occurrence_id" id="pay-occurrence-id">
+        <input type="hidden" name="subscription_id" id="pay-subscription-id">
+        <input type="hidden" name="due_date" id="pay-due-date">
+
+        <div class="field">
+          <label for="pay-subscription-name">Abbonamento</label>
+          <input type="text" id="pay-subscription-name" readonly>
+        </div>
+
+        <div class="field">
+          <label for="pay-amount">Importo</label>
+          <input type="text" id="pay-amount" readonly>
+        </div>
+
+        <div class="field">
+          <label for="pay-account-id">Conto di addebito</label>
+          <select id="pay-account-id" name="account_id" required>
+            <option value="">Seleziona conto...</option>
+            {% for account in accounts %}
+              <option value="{{ account.id }}">{{ account.name }} ({{ account.currency.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="actions">
+          <button type="submit" class="btn primary">Conferma pagamento</button>
+          <button type="button" class="btn ghost" data-modal-close>Annulla</button>
+        </div>
+      </form>
+      {% if not accounts %}
+        <div class="note">
+          Nessun conto attivo disponibile. Crea o riattiva un conto prima di registrare il pagamento.
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <script>
+    (function () {
+      const modal = document.getElementById("subs-pay-modal");
+      if (!modal) {
+        return;
+      }
+
+      const occurrenceInput = document.getElementById("pay-occurrence-id");
+      const subscriptionInput = document.getElementById("pay-subscription-id");
+      const dueDateInput = document.getElementById("pay-due-date");
+      const nameInput = document.getElementById("pay-subscription-name");
+      const amountInput = document.getElementById("pay-amount");
+      const openButtons = document.querySelectorAll(".js-open-pay-modal");
+
+      const closeModal = () => {
+        modal.setAttribute("hidden", "");
+        document.body.classList.remove("modal-open");
+      };
+
+      const openModal = (button) => {
+        occurrenceInput.value = button.dataset.occurrenceId || "";
+        subscriptionInput.value = button.dataset.subscriptionId || "";
+        dueDateInput.value = button.dataset.dueDate || "";
+        nameInput.value = button.dataset.subscriptionName || "";
+        amountInput.value = button.dataset.amount || "";
+        modal.removeAttribute("hidden");
+        document.body.classList.add("modal-open");
+      };
+
+      openButtons.forEach((button) => {
+        button.addEventListener("click", () => openModal(button));
+      });
+
+      modal.querySelectorAll("[data-modal-close]").forEach((btn) => {
+        btn.addEventListener("click", closeModal);
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && !modal.hasAttribute("hidden")) {
+          closeModal();
+        }
+      });
+    })();
+  </script>
 {% endblock %}

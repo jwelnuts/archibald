@@ -6,7 +6,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}MIO - Finance Hub{% endblock %}</title>
     <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    {% include "core/partials/uikit_head.html" %}
     <link rel="stylesheet" href="{% static 'core/vendor/flatpickr/flatpickr.min.css' %}">
+    {% block extra_head %}{% endblock %}
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
   <body>
@@ -26,6 +28,8 @@
             <select id="app-switch" onchange="if (this.value) window.location.href = this.value;">
               <option value="">Seleziona...</option>
               <option value="/finance/">Finance Hub</option>
+              <option value="/contacts/">Contacts</option>
+              <option value="/finance/vat-codes/">Codici IVA</option>
               <option value="/subs/">Subscriptions</option>
               <option value="/transactions/">Transactions</option>
               <option value="/income/">Income</option>
@@ -61,6 +65,8 @@
       });
     </script>
     {{ hero_actions_config|json_script:"hero-actions-config" }}
+        {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/app.js' %}"></script>
+    {% block extra_scripts %}{% endblock %}
   </body>
 </html>

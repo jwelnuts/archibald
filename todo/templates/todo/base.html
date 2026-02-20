@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}MIO - Todo{% endblock %}</title>
     <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    {% include "core/partials/uikit_head.html" %}
     <link rel="stylesheet" href="{% static 'core/vendor/flatpickr/flatpickr.min.css' %}">
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
@@ -61,6 +62,7 @@
       });
     </script>
     {{ hero_actions_config|json_script:"hero-actions-config" }}
+        {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/app.js' %}"></script>
   </body>
 </html>

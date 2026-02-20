@@ -17,7 +17,7 @@
         </div>
       </div>
     {% endif %}
-    <form class="form" method="post" action="">
+    <form class="form" method="post" action="" enctype="multipart/form-data">
       {% csrf_token %}
       <div class="field">
         <label for="id_date">Data</label>
@@ -54,6 +54,11 @@
       <div class="field">
         <label for="id_note">Note</label>
         {{ form.note }}
+      </div>
+      <div class="field">
+        <label for="id_attachment">Allegato (foto o PDF)</label>
+        {{ form.attachment }}
+        <small class="muted">Formati supportati: immagini e PDF (max 10 MB).</small>
       </div>
       <div class="actions">
         <button class="btn primary" type="submit">Salva</button>

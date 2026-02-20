@@ -1,0 +1,58 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}MIO - Contacts{% endblock %}</title>
+    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    {% include "core/partials/uikit_head.html" %}
+    <link rel="stylesheet" href="https://uicdn.toast.com/grid/latest/tui-grid.min.css">
+    <link rel="stylesheet" href="{% static 'contacts/grid.css' %}">
+    <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
+  </head>
+  <body>
+    <div class="page">
+      <header class="site-header">
+        <div class="brand">
+          <div class="brand-mark">MIO</div>
+          <div class="brand-text">
+            <div class="brand-title">Money Organizer</div>
+            <div class="brand-sub">Contacts module</div>
+          </div>
+        </div>
+        <nav class="site-nav">
+          <a href="/" class="nav-link">Dashboard</a>
+          <div class="nav-select">
+            <label for="app-switch" class="nav-label">App</label>
+            <select id="app-switch" onchange="if (this.value) window.location.href = this.value;">
+              <option value="">Seleziona...</option>
+              <option value="/contacts/">Contacts</option>
+              <option value="/finance/">Finance Hub</option>
+              <option value="/projects/">Projects</option>
+              <option value="/income/">Income</option>
+              <option value="/outcome/">Outcome</option>
+              <option value="/transactions/">Transactions</option>
+              <option value="/subs/">Subscriptions</option>
+              <option value="/profile/">Profilo</option>
+            </select>
+          </div>
+          <a href="/accounts/logout/" class="nav-link">Logout</a>
+        </nav>
+      </header>
+
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+
+      <footer class="site-footer">
+        <span>Module: contacts</span>
+        <span>Version: alpha</span>
+      </footer>
+    </div>
+    <script src="https://uicdn.toast.com/grid/latest/tui-grid.min.js"></script>
+    {{ hero_actions_config|json_script:"hero-actions-config" }}
+    {% include "core/partials/uikit_body.html" %}
+    <script type="module" src="{% static 'core/app.js' %}"></script>
+  </body>
+</html>

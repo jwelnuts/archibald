@@ -1,0 +1,42 @@
+{% extends "contacts/base.html" %}
+
+{% block title %}MIO - Add Contact{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Nuovo contatto</h1>
+    <p class="muted">Unica anagrafica per persona/attivita con ruoli multipli.</p>
+    {% if form and form.errors %}
+      <div class="warning-box">
+        Controlla i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+    <form class="form" method="post" action="">
+      {% csrf_token %}
+      <div class="field"><label for="id_display_name">Nome visualizzato</label>{{ form.display_name }}</div>
+      <div class="field"><label for="id_entity_type">Tipo</label>{{ form.entity_type }}</div>
+      <div class="field"><label for="id_person_name">Nome persona</label>{{ form.person_name }}</div>
+      <div class="field"><label for="id_business_name">Nome attivita/azienda</label>{{ form.business_name }}</div>
+      <div class="field"><label for="id_email">Email</label>{{ form.email }}</div>
+      <div class="field"><label for="id_phone">Telefono</label>{{ form.phone }}</div>
+      <div class="field"><label for="id_website">Sito</label>{{ form.website }}</div>
+      <div class="field"><label for="id_city">Citta</label>{{ form.city }}</div>
+      <div class="field"><label for="id_role_customer">Ruolo Cliente</label>{{ form.role_customer }}</div>
+      <div class="field"><label for="id_role_supplier">Ruolo Fornitore</label>{{ form.role_supplier }}</div>
+      <div class="field"><label for="id_role_payee">Ruolo Beneficiario</label>{{ form.role_payee }}</div>
+      <div class="field"><label for="id_role_income_source">Ruolo Fonte entrata</label>{{ form.role_income_source }}</div>
+      <div class="field"><label for="id_notes">Note</label>{{ form.notes }}</div>
+      <div class="field"><label for="id_is_active">Attivo</label>{{ form.is_active }}</div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Salva</button>
+        <a class="btn" href="/contacts/">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

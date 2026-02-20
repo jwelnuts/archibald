@@ -7,4 +7,5 @@ urlpatterns = [
     path("add", views.add_item, name="planner-add"),
     path("update", views.update_item, name="planner-update"),
     path("remove", views.remove_item, name="planner-remove"),
+    path("to-todo", views.transfer_to_todo, name="planner-to-todo"),
 ]

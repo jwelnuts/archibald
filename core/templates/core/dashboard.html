@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MIO - Dashboard</title>
     <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    {% include "core/partials/uikit_head.html" %}
     <link rel="stylesheet" href="{% static 'core/vendor/toastui-date-picker/dist/tui-date-picker.css' %}">
     <link rel="stylesheet" href="{% static 'core/vendor/toastui-time-picker/dist/tui-time-picker.css' %}">
     <link rel="stylesheet" href="{% static 'core/vendor/toastui/dist/toastui-calendar.min.css' %}">
@@ -27,6 +28,7 @@
           <a href="/outcome/">Outcome</a>
           <a href="/transactions/">Transactions</a>
           <a href="/finance/">Finance Hub</a>
+          <a href="/contacts/">Contacts</a>
           <a href="/planner/">Planner</a>
           <a href="/projects/">Projects</a>
           <a href="/subs/">Subscriptions</a>
@@ -151,6 +153,7 @@
               <a class="quick-card" href="/routines/api/add">Nuova routine</a>
               <a class="quick-card" href="/subs/api/add">Nuovo abbonamento</a>
               <a class="quick-card" href="/projects/api/add">Nuovo progetto</a>
+              <a class="quick-card" href="/contacts/add">Nuovo contatto</a>
               <a class="quick-card" href="/ai-lab/">AI Lab</a>
               <a class="quick-card" href="/vault/">Vault</a>
             </div>
@@ -207,6 +210,11 @@
           <p>Preventivi, fatture e ordini lavoro in un unico punto.</p>
           <a class="portlet-link" href="/finance/">Vai al modulo</a>
         </div>
+        <div class="portlet" data-module="contacts" data-group="ops">
+          <div class="portlet-title">Contacts</div>
+          <p>Rubrica multidimensionale di persone, clienti e fornitori.</p>
+          <a class="portlet-link" href="/contacts/">Vai al modulo</a>
+        </div>
         <div class="portlet" data-module="projects" data-group="ops">
           <div class="portlet-title">Projects</div>
           <p>Componenti e categorie condivise.</p>
@@ -258,6 +266,7 @@
     <script src="{% static 'core/vendor/toastui-date-picker/dist/tui-date-picker.min.js' %}"></script>
     <script src="{% static 'core/vendor/toastui/dist/toastui-calendar.min.js' %}"></script>
     <script src="{% static 'core/calendar.js' %}"></script>
+        {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/app.js' %}"></script>
   </body>
 </html>

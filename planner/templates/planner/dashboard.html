@@ -21,6 +21,11 @@
               <span>{{ item.title }}</span>
               <span class="muted">{{ item.due_date|default:"-" }}</span>
               <a class="btn" href="/planner/update?id={{ item.id }}">Aggiorna</a>
+              <form method="post" action="/planner/to-todo" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="id" value="{{ item.id }}">
+                <button class="btn" type="submit">Sposta in Todo</button>
+              </form>
             </li>
           {% endfor %}
         {% else %}
@@ -73,6 +78,11 @@
               <span>{{ task.title }}</span>
               <span class="muted">{{ task.due_date|default:"-" }}</span>
               <a class="btn" href="/todo/api/update?id={{ task.id }}">Apri</a>
+              <form method="post" action="/todo/to-planner" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="id" value="{{ task.id }}">
+                <button class="btn" type="submit">Sposta in Planner</button>
+              </form>
             </li>
           {% endfor %}
         {% else %}

@@ -82,6 +82,7 @@ INSTALLED_APPS = [
     'vault',
     'link_storage',
     'finance_hub',
+    'contacts',
 ]
 
 MIDDLEWARE = [

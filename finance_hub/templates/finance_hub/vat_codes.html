@@ -1,0 +1,86 @@
+{% extends "finance_hub/base.html" %}
+
+{% block title %}MIO - Codici IVA{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>Codici IVA</h1>
+      <p>Tabella dedicata dei codici IVA disponibili nei preventivi.</p>
+      <div class="hero-actions">
+        <a class="btn" href="/finance/">Torna a Hub Finanza</a>
+        <a class="btn" href="/finance/quotes/add">Nuovo preventivo</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h2>{% if edit_item %}Aggiorna codice IVA{% else %}Nuovo codice IVA{% endif %}</h2>
+      {% if form.errors %}
+        <div class="warning-box">
+          Controlla i campi evidenziati.
+          <div class="form-errors">
+            {{ form.non_field_errors }}
+            {% for field in form %}
+              {{ field.errors }}
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+      <form class="form" method="post" action="">
+        {% csrf_token %}
+        {% if edit_item %}
+          <input type="hidden" name="item_id" value="{{ edit_item.id }}">
+        {% endif %}
+        <div class="field">
+          <label for="id_code">Codice</label>
+          {{ form.code }}
+        </div>
+        <div class="field">
+          <label for="id_description">Descrizione</label>
+          {{ form.description }}
+        </div>
+        <div class="field">
+          <label for="id_rate">Aliquota (%)</label>
+          {{ form.rate }}
+        </div>
+        <div class="field">
+          <label for="id_is_active">Attivo</label>
+          {{ form.is_active }}
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Salva</button>
+          {% if edit_item %}
+            <a class="btn" href="/finance/vat-codes/">Annulla modifica</a>
+          {% endif %}
+        </div>
+      </form>
+    </article>
+
+    <article class="panel">
+      <h2>Tabella codici IVA</h2>
+      <ul class="list">
+        {% for row in rows %}
+          <li>
+            <span>
+              <strong>{{ row.code }}</strong>
+              {% if row.description %} · {{ row.description }}{% endif %}
+            </span>
+            <span class="muted">{{ row.rate }}%</span>
+            <span class="muted">{% if row.is_active %}Attivo{% else %}Disattivato{% endif %}</span>
+            <a class="btn" href="/finance/vat-codes/?id={{ row.id }}">Modifica</a>
+            <form method="post" action="" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="delete">
+              <input type="hidden" name="item_id" value="{{ row.id }}">
+              <button class="btn" type="submit">Elimina</button>
+            </form>
+          </li>
+        {% empty %}
+          <li class="muted">Nessun codice IVA disponibile.</li>
+        {% endfor %}
+      </ul>
+    </article>
+  </section>
+{% endblock %}

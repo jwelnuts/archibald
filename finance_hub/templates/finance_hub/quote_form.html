@@ -1,16 +1,24 @@
 {% extends "finance_hub/base.html" %}
+{% load static %}
 
 {% block title %}MIO - Preventivo{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'finance_hub/quote_form.css' %}">
+{% endblock %}
 
 {% block content %}
   {% if mode == "select" %}
     <section class="panel">
-      <h1>Seleziona preventivo da aggiornare</h1>
-      <ul class="list">
+      <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap uk-gap-small">
+        <h1 class="uk-margin-remove">Seleziona preventivo da aggiornare</h1>
+        <a class="uk-button uk-button-primary" href="/finance/quotes/add">Nuovo preventivo</a>
+      </div>
+      <ul class="uk-list uk-list-divider uk-margin-top">
         {% for row in rows %}
-          <li>
+          <li class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap uk-gap-small">
             <span>{{ row.code|default:"-" }} · {{ row.title }}</span>
-            <a class="btn" href="/finance/quotes/update?id={{ row.id }}">Apri</a>
+            <a class="uk-button uk-button-default uk-button-small" href="/finance/quotes/update?id={{ row.id }}">Apri</a>
           </li>
         {% empty %}
           <li class="muted">Nessun preventivo disponibile.</li>
@@ -18,11 +26,22 @@
       </ul>
     </section>
   {% else %}
-    <section class="panel">
-      <h1>{% if mode == "add" %}Nuovo preventivo{% else %}Aggiorna preventivo{% endif %}</h1>
+    <section class="quote-editor-shell">
+      <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap quote-editor-head">
+        <div>
+          <h1 class="uk-margin-remove">{% if mode == "add" %}Nuovo preventivo{% else %}Aggiorna preventivo{% endif %}</h1>
+          <p class="muted uk-margin-small-top">Compila i dettagli generali e aggiungi le righe articolo con i relativi importi.</p>
+        </div>
+        <div class="uk-flex uk-flex-wrap uk-gap-small uk-visible@l">
+          <a class="uk-button uk-button-default" href="/finance/quotes/">Annulla</a>
+          <button class="uk-button uk-button-primary" type="submit" form="quote-editor-form">Salva preventivo</button>
+        </div>
+      </div>
+
       {% if form and form.errors %}
-        <div class="warning-box">
-          Controlla i campi evidenziati.
+        <div class="uk-alert-danger uk-margin-medium-top" uk-alert>
+          <a class="uk-alert-close" uk-close></a>
+          <p class="uk-margin-small-bottom"><strong>Controlla i campi evidenziati.</strong></p>
           <div class="form-errors">
             {{ form.non_field_errors }}
             {% for field in form %}
@@ -32,137 +51,367 @@
         </div>
       {% endif %}
       {% if line_formset and line_formset.non_form_errors %}
-        <div class="warning-box">
-          <div class="form-errors">
-            {{ line_formset.non_form_errors }}
-          </div>
+        <div class="uk-alert-danger" uk-alert>
+          <a class="uk-alert-close" uk-close></a>
+          <div class="form-errors">{{ line_formset.non_form_errors }}</div>
         </div>
       {% endif %}
-      <form class="form" method="post" action="">
-        {% csrf_token %}
-        <div class="field"><label for="id_code">Codice</label>{{ form.code }}</div>
-        <div class="field"><label for="id_title">Titolo</label>{{ form.title }}</div>
-        <div class="field"><label for="id_customer">Cliente</label>{{ form.customer }}</div>
-        <div class="field"><label for="id_project">Progetto</label>{{ form.project }}</div>
-        <div class="field"><label for="id_issue_date">Data emissione</label>{{ form.issue_date }}</div>
-        <div class="field"><label for="id_valid_until">Valido fino al</label>{{ form.valid_until }}</div>
-        <div class="field"><label for="id_currency">Valuta</label>{{ form.currency }}</div>
-        <div class="field"><label for="id_amount_net">Imponibile totale</label>{{ form.amount_net }}</div>
-        <div class="field"><label for="id_tax_amount">Imposte totali</label>{{ form.tax_amount }}</div>
-        <div class="field"><label for="id_status">Stato</label>{{ form.status }}</div>
-        <div class="field"><label for="id_note">Note</label>{{ form.note }}</div>
 
-        <div class="panel">
-          <h2>Righe articolo</h2>
-          <p class="muted">Campi riga: codice, descrizione, importo netto, importo lordo, quantita, sconto, codice IVA.</p>
-          {{ line_formset.management_form }}
-          <div id="quote-lines">
-            {% for line_form in line_formset %}
-              <div class="panel" data-line-form>
-                {{ line_form.id }}
-                {{ line_form.row_order }}
-                <div class="field"><label>Codice</label>{{ line_form.code }}</div>
-                <div class="field"><label>Descrizione</label>{{ line_form.description }}</div>
-                <div class="field"><label>Importo netto</label>{{ line_form.net_amount }}</div>
-                <div class="field"><label>Importo lordo</label>{{ line_form.gross_amount }}</div>
-                <div class="field"><label>Quantita</label>{{ line_form.quantity }}</div>
-                <div class="field"><label>Sconto (%)</label>{{ line_form.discount }}</div>
-                <div class="field"><label>Codice IVA</label>{{ line_form.vat_code }}</div>
-                {% if line_form.non_field_errors %}
-                  <div class="warning-box">{{ line_form.non_field_errors }}</div>
-                {% endif %}
-                <div class="field" style="display:none;">
-                  {{ line_form.DELETE }}
+      <div class="uk-grid-large" uk-grid>
+        <div class="uk-width-1-1 uk-width-expand@l">
+          <form id="quote-editor-form" class="uk-form-stacked" method="post" action="">
+            {% csrf_token %}
+
+            <section class="uk-card uk-card-default uk-card-small quote-card">
+              <div class="uk-card-header">
+                <h2 class="uk-card-title uk-margin-remove">Dati preventivo</h2>
+              </div>
+              <div class="uk-card-body">
+                <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@m" uk-grid>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_code">Codice</label>
+                    <div class="uk-form-controls">{{ form.code }}</div>
+                  </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_title">Titolo</label>
+                    <div class="uk-form-controls">{{ form.title }}</div>
+                  </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_customer">Cliente</label>
+                    <div class="uk-form-controls">{{ form.customer }}</div>
+                  </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_project">Progetto</label>
+                    <div class="uk-form-controls">{{ form.project }}</div>
+                  </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_issue_date">Data emissione</label>
+                    <div class="uk-form-controls">{{ form.issue_date }}</div>
+                  </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_valid_until">Valido fino al</label>
+                    <div class="uk-form-controls">{{ form.valid_until }}</div>
+                  </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_currency">Valuta</label>
+                    <div class="uk-form-controls">{{ form.currency }}</div>
+                  </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_vat_code">Codice IVA</label>
+                    <div class="uk-form-controls">
+                      {{ form.vat_code }}
+                      <a class="uk-text-small" href="/finance/vat-codes/">Gestisci codici IVA</a>
+                    </div>
+                  </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_status">Stato</label>
+                    <div class="uk-form-controls">{{ form.status }}</div>
+                  </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_amount_net">Imponibile totale</label>
+                    <div class="uk-form-controls">{{ form.amount_net }}</div>
+                  </div>
+                  <div class="quote-field uk-width-1-1">
+                    <label class="uk-form-label" for="id_note">Note</label>
+                    <div class="uk-form-controls">{{ form.note }}</div>
+                  </div>
                 </div>
-                <div class="actions">
-                  <button class="btn" type="button" data-line-remove>Rimuovi riga</button>
+              </div>
+            </section>
+
+            <section class="uk-card uk-card-default uk-card-small quote-card quote-lines-card">
+              <div class="uk-card-header">
+                <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap uk-gap-small">
+                  <div>
+                    <h2 class="uk-card-title uk-margin-remove">Righe articolo</h2>
+                    <p class="muted uk-margin-small-top">Codice, descrizione, importo netto, quantita e sconto per ogni riga.</p>
+                  </div>
+                  <button class="uk-button uk-button-default" type="button" id="add-line">
+                    <span uk-icon="plus-circle"></span>
+                    Aggiungi riga
+                  </button>
                 </div>
               </div>
-            {% endfor %}
-          </div>
-          <div class="actions">
-            <button class="btn" type="button" id="add-line">Aggiungi riga articolo</button>
-          </div>
-          <template id="empty-line-template">
-            <div class="panel" data-line-form>
-              {{ line_formset.empty_form.id }}
-              {{ line_formset.empty_form.row_order }}
-              <div class="field"><label>Codice</label>{{ line_formset.empty_form.code }}</div>
-              <div class="field"><label>Descrizione</label>{{ line_formset.empty_form.description }}</div>
-              <div class="field"><label>Importo netto</label>{{ line_formset.empty_form.net_amount }}</div>
-              <div class="field"><label>Importo lordo</label>{{ line_formset.empty_form.gross_amount }}</div>
-              <div class="field"><label>Quantita</label>{{ line_formset.empty_form.quantity }}</div>
-              <div class="field"><label>Sconto (%)</label>{{ line_formset.empty_form.discount }}</div>
-              <div class="field"><label>Codice IVA</label>{{ line_formset.empty_form.vat_code }}</div>
-              <div class="field" style="display:none;">
-                {{ line_formset.empty_form.DELETE }}
+              <div class="uk-card-body">
+                {{ line_formset.management_form }}
+                <div id="quote-lines" class="quote-lines-stack">
+                  {% for line_form in line_formset %}
+                    <article class="uk-card uk-card-default uk-card-small quote-line-card" data-line-form>
+                      {{ line_form.id }}
+                      {{ line_form.row_order }}
+                      <header class="quote-line-card__head">
+                        <strong data-line-index>Riga {{ forloop.counter }}</strong>
+                        <button class="uk-button uk-button-text" type="button" data-line-remove>
+                          <span uk-icon="trash"></span>
+                          Rimuovi
+                        </button>
+                      </header>
+                      <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@s uk-child-width-1-4@l" uk-grid>
+                        <div class="quote-field">
+                          <label class="uk-form-label">Codice</label>
+                          <div class="uk-form-controls">{{ line_form.code }}</div>
+                        </div>
+                        <div class="quote-field uk-width-1-1@s uk-width-1-2@l">
+                          <label class="uk-form-label">Descrizione</label>
+                          <div class="uk-form-controls">{{ line_form.description }}</div>
+                        </div>
+                        <div class="quote-field">
+                          <label class="uk-form-label">Importo netto</label>
+                          <div class="uk-form-controls">{{ line_form.net_amount }}</div>
+                        </div>
+                        <div class="quote-field">
+                          <label class="uk-form-label">Quantita</label>
+                          <div class="uk-form-controls">{{ line_form.quantity }}</div>
+                        </div>
+                        <div class="quote-field">
+                          <label class="uk-form-label">Sconto (%)</label>
+                          <div class="uk-form-controls">{{ line_form.discount }}</div>
+                        </div>
+                      </div>
+                      {% if line_form.non_field_errors %}
+                        <div class="uk-alert-warning uk-margin-top" uk-alert>{{ line_form.non_field_errors }}</div>
+                      {% endif %}
+                      <div class="uk-hidden">{{ line_form.DELETE }}</div>
+                    </article>
+                  {% endfor %}
+                </div>
               </div>
-              <div class="actions">
-                <button class="btn" type="button" data-line-remove>Rimuovi riga</button>
-              </div>
+            </section>
+
+            <div class="note">
+              Se sono presenti righe articolo, il totale netto viene ricalcolato dal dettaglio righe e l'IVA viene applicata dal codice IVA selezionato sul preventivo.
             </div>
-          </template>
+            <div class="uk-flex uk-flex-wrap uk-gap-small uk-hidden@l quote-mobile-actions">
+              <button class="uk-button uk-button-primary uk-width-1-1" type="submit">Salva preventivo</button>
+              <a class="uk-button uk-button-default uk-width-1-1" href="/finance/quotes/">Annulla</a>
+            </div>
+          </form>
         </div>
 
-        <div class="note">
-          Se sono presenti righe articolo, i totali del preventivo vengono ricalcolati automaticamente dal dettaglio righe.
-        </div>
-        <div class="actions">
-          <button class="btn primary" type="submit">Salva</button>
-          <a class="btn" href="/finance/quotes/">Annulla</a>
-        </div>
-      </form>
-      <script>
-        (function () {
-          var container = document.getElementById("quote-lines");
-          var addBtn = document.getElementById("add-line");
-          var template = document.getElementById("empty-line-template");
-          var totalForms = document.getElementById("id_lines-TOTAL_FORMS");
-          if (!container || !addBtn || !template || !totalForms) return;
+        <aside class="uk-width-1-1 uk-width-1-3@l">
+          <div uk-sticky="offset: 18; media: 960">
+            <section class="uk-card uk-card-secondary uk-card-small quote-summary">
+              <div class="uk-card-header">
+                <h3 class="uk-card-title uk-margin-remove">Riepilogo rapido</h3>
+              </div>
+              <div class="uk-card-body">
+                <dl class="uk-description-list quote-summary-list">
+                  <dt>Righe attive</dt>
+                  <dd id="quote-summary-lines">0</dd>
+                  <dt>Aliquota IVA</dt>
+                  <dd><span id="quote-summary-vat-rate">0.00</span>%</dd>
+                  <dt>Totale netto stimato</dt>
+                  <dd><span id="quote-summary-net">0.00</span> <span id="quote-summary-currency">{{ form.currency.value|default:"EUR" }}</span></dd>
+                  <dt>Totale lordo stimato</dt>
+                  <dd><span id="quote-summary-gross">0.00</span> <span id="quote-summary-currency-2">{{ form.currency.value|default:"EUR" }}</span></dd>
+                </dl>
+                <hr>
+                <p class="uk-text-meta uk-margin-remove">
+                  Controlla i totali prima del salvataggio. Da desktop trovi i comandi principali sempre visibili in alto.
+                </p>
+              </div>
+            </section>
+          </div>
+        </aside>
+      </div>
 
-          function renumberRows() {
-            var rows = container.querySelectorAll("[data-line-form]");
-            rows.forEach(function (row, idx) {
-              var orderInput = row.querySelector('input[name$="-row_order"]');
-              if (orderInput) orderInput.value = String(idx + 1);
-            });
-          }
-
-          function bindRemove(row) {
-            var removeBtn = row.querySelector("[data-line-remove]");
-            var deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
-            if (!removeBtn || !deleteInput) return;
-            removeBtn.addEventListener("click", function () {
-              deleteInput.checked = true;
-              row.style.display = "none";
-              renumberRows();
-            });
-          }
-
-          function addRow() {
-            var index = Number(totalForms.value || "0");
-            var html = template.innerHTML.replace(/__prefix__/g, index);
-            var wrapper = document.createElement("div");
-            wrapper.innerHTML = html;
-            var row = wrapper.firstElementChild;
-            if (!row) return;
-            container.appendChild(row);
-            totalForms.value = String(index + 1);
-
-            var quantity = row.querySelector('input[name$="-quantity"]');
-            if (quantity) quantity.value = "1.00";
-            var discount = row.querySelector('input[name$="-discount"]');
-            if (discount) discount.value = "0.00";
-
-            bindRemove(row);
-            renumberRows();
-          }
-
-          container.querySelectorAll("[data-line-form]").forEach(bindRemove);
-          addBtn.addEventListener("click", addRow);
-          renumberRows();
-        })();
-      </script>
+      <template id="empty-line-template">
+        <article class="uk-card uk-card-default uk-card-small quote-line-card" data-line-form>
+          {{ line_formset.empty_form.id }}
+          {{ line_formset.empty_form.row_order }}
+          <header class="quote-line-card__head">
+            <strong data-line-index>Nuova riga</strong>
+            <button class="uk-button uk-button-text" type="button" data-line-remove>
+              <span uk-icon="trash"></span>
+              Rimuovi
+            </button>
+          </header>
+          <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@s uk-child-width-1-4@l" uk-grid>
+            <div class="quote-field">
+              <label class="uk-form-label">Codice</label>
+              <div class="uk-form-controls">{{ line_formset.empty_form.code }}</div>
+            </div>
+            <div class="quote-field uk-width-1-1@s uk-width-1-2@l">
+              <label class="uk-form-label">Descrizione</label>
+              <div class="uk-form-controls">{{ line_formset.empty_form.description }}</div>
+            </div>
+            <div class="quote-field">
+              <label class="uk-form-label">Importo netto</label>
+              <div class="uk-form-controls">{{ line_formset.empty_form.net_amount }}</div>
+            </div>
+            <div class="quote-field">
+              <label class="uk-form-label">Quantita</label>
+              <div class="uk-form-controls">{{ line_formset.empty_form.quantity }}</div>
+            </div>
+            <div class="quote-field">
+              <label class="uk-form-label">Sconto (%)</label>
+              <div class="uk-form-controls">{{ line_formset.empty_form.discount }}</div>
+            </div>
+          </div>
+          <div class="uk-hidden">{{ line_formset.empty_form.DELETE }}</div>
+        </article>
+      </template>
     </section>
+    {{ vat_rates|json_script:"quote-vat-rates-data" }}
   {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+  <script>
+    (function () {
+      var container = document.getElementById("quote-lines");
+      var addBtn = document.getElementById("add-line");
+      var template = document.getElementById("empty-line-template");
+      var totalForms = document.getElementById("id_lines-TOTAL_FORMS");
+      var summaryLines = document.getElementById("quote-summary-lines");
+      var summaryNet = document.getElementById("quote-summary-net");
+      var summaryGross = document.getElementById("quote-summary-gross");
+      var summaryVatRate = document.getElementById("quote-summary-vat-rate");
+      var summaryCurrency = document.getElementById("quote-summary-currency");
+      var summaryCurrency2 = document.getElementById("quote-summary-currency-2");
+      var vatRatesPayload = document.getElementById("quote-vat-rates-data");
+      var vatSelect = document.getElementById("id_vat_code");
+      var vatRates = {};
+
+      if (!container || !addBtn || !template || !totalForms) return;
+
+      if (vatRatesPayload) {
+        try {
+          JSON.parse(vatRatesPayload.textContent || "[]").forEach(function (row) {
+            vatRates[String(row.id)] = parseDecimal(row.rate);
+          });
+        } catch (err) {
+          vatRates = {};
+        }
+      }
+
+      function parseDecimal(raw) {
+        var value = Number((raw || "0").toString().replace(",", "."));
+        return Number.isFinite(value) ? value : 0;
+      }
+
+      function rowHasContent(row) {
+        var codeInput = row.querySelector('input[name$="-code"]');
+        var descriptionInput = row.querySelector('input[name$="-description"]');
+        var netInput = row.querySelector('input[name$="-net_amount"]');
+        return Boolean(
+          (codeInput && codeInput.value.trim()) ||
+          (descriptionInput && descriptionInput.value.trim()) ||
+          (netInput && netInput.value.trim())
+        );
+      }
+
+      function activeRows() {
+        return Array.from(container.querySelectorAll("[data-line-form]")).filter(function (row) {
+          return row.dataset.deleted !== "1" && rowHasContent(row);
+        });
+      }
+
+      function updateSummary() {
+        var rows = activeRows();
+        var totalNet = 0;
+        var vatRate = 0;
+
+        rows.forEach(function (row) {
+          var net = parseDecimal((row.querySelector('input[name$="-net_amount"]') || {}).value);
+          var quantity = parseDecimal((row.querySelector('input[name$="-quantity"]') || {}).value);
+          var discount = parseDecimal((row.querySelector('input[name$="-discount"]') || {}).value);
+          var factor = Math.max(0, 1 - discount / 100);
+          totalNet += net * quantity * factor;
+        });
+        if (!rows.length) {
+          totalNet = parseDecimal((document.getElementById("id_amount_net") || {}).value);
+        }
+        if (vatSelect && vatSelect.value) {
+          vatRate = vatRates[String(vatSelect.value)] || 0;
+        }
+        var totalGross = totalNet * (1 + vatRate / 100);
+
+        if (summaryLines) summaryLines.textContent = String(rows.length);
+        if (summaryVatRate) summaryVatRate.textContent = vatRate.toFixed(2);
+        if (summaryNet) summaryNet.textContent = totalNet.toFixed(2);
+        if (summaryGross) summaryGross.textContent = totalGross.toFixed(2);
+
+        var currency = document.getElementById("id_currency");
+        var currencyCode = "EUR";
+        if (currency && currency.options && currency.selectedIndex >= 0) {
+          currencyCode = currency.options[currency.selectedIndex].textContent.trim() || currencyCode;
+        }
+        if (summaryCurrency) summaryCurrency.textContent = currencyCode;
+        if (summaryCurrency2) summaryCurrency2.textContent = currencyCode;
+      }
+
+      function renumberRows() {
+        activeRows().forEach(function (row, idx) {
+          var orderInput = row.querySelector('input[name$="-row_order"]');
+          var indexLabel = row.querySelector("[data-line-index]");
+          if (orderInput) orderInput.value = String(idx + 1);
+          if (indexLabel) indexLabel.textContent = "Riga " + String(idx + 1);
+        });
+      }
+
+      function bindRemove(row) {
+        var removeBtn = row.querySelector("[data-line-remove]");
+        var deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if (!removeBtn || !deleteInput) return;
+        removeBtn.addEventListener("click", function () {
+          deleteInput.checked = true;
+          row.dataset.deleted = "1";
+          row.hidden = true;
+          renumberRows();
+          updateSummary();
+        });
+      }
+
+      function addRow() {
+        var index = Number(totalForms.value || "0");
+        var html = template.innerHTML.replace(/__prefix__/g, index);
+        var wrapper = document.createElement("div");
+        wrapper.innerHTML = html;
+        var row = wrapper.firstElementChild;
+        if (!row) return;
+        container.appendChild(row);
+        totalForms.value = String(index + 1);
+
+        var quantity = row.querySelector('input[name$="-quantity"]');
+        if (quantity) quantity.value = "1.00";
+        var discount = row.querySelector('input[name$="-discount"]');
+        if (discount) discount.value = "0.00";
+
+        bindRemove(row);
+        renumberRows();
+        updateSummary();
+      }
+
+      container.querySelectorAll("[data-line-form]").forEach(function (row) {
+        var deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if (deleteInput && deleteInput.checked) {
+          row.dataset.deleted = "1";
+          row.hidden = true;
+        }
+        bindRemove(row);
+      });
+
+      container.addEventListener("input", function (event) {
+        if (event.target && event.target.matches("input")) {
+          updateSummary();
+        }
+      });
+      var amountNetInput = document.getElementById("id_amount_net");
+      if (amountNetInput) {
+        amountNetInput.addEventListener("input", updateSummary);
+      }
+      var currencySelect = document.getElementById("id_currency");
+      if (currencySelect) {
+        currencySelect.addEventListener("change", updateSummary);
+      }
+      if (vatSelect) {
+        vatSelect.addEventListener("change", updateSummary);
+      }
+
+      addBtn.addEventListener("click", addRow);
+      renumberRows();
+      updateSummary();
+    })();
+  </script>
 {% endblock %}

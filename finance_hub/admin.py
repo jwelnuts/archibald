@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Invoice, Quote, QuoteLine, WorkOrder
+from .models import Invoice, Quote, QuoteLine, VatCode, WorkOrder
 
 
 class QuoteLineInline(admin.TabularInline):
@@ -12,10 +12,17 @@ class QuoteLineInline(admin.TabularInline):
 
 @admin.register(Quote)
 class QuoteAdmin(admin.ModelAdmin):
-    list_display = ("id", "owner", "code", "title", "status", "valid_until", "total_amount")
+    list_display = ("id", "owner", "code", "title", "vat_code", "status", "valid_until", "total_amount")
     list_filter = ("status",)
     search_fields = ("code", "title", "customer__name", "project__name")
     inlines = [QuoteLineInline]
+
+
+@admin.register(VatCode)
+class VatCodeAdmin(admin.ModelAdmin):
+    list_display = ("id", "owner", "code", "description", "rate", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("code", "description", "owner__username")
 
 
 @admin.register(Invoice)

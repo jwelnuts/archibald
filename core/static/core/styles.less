@@ -1139,6 +1139,12 @@ body {
   box-shadow: 3px 3px 0 rgba(15, 23, 42, 0.3);
 }
 
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .ghost-menu {
   margin-top: 10px;
 }
@@ -1262,6 +1268,110 @@ body {
   border-radius: 6px;
   margin: 18px 0;
   color: #7b1d16;
+}
+
+.project-scope {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.project-row {
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: #f5efe2;
+  padding: 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.project-row.is-archived {
+  background: #efeae0;
+}
+
+.project-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.project-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-name {
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.project-name:hover {
+  text-decoration: underline;
+}
+
+.project-row-status-pill {
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: var(--panel);
+}
+
+.project-row-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 13px;
+}
+
+.project-row-actions {
+  justify-content: flex-end;
+}
+
+.project-row-actions .btn {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.project-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.metric-chip {
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  background: #fbf7ef;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metric-value {
+  margin-top: 2px;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .form-errors {
@@ -1415,6 +1525,14 @@ body {
 
   .dashboard-layout {
     grid-template-columns: 1fr;
+  }
+
+  .project-head {
+    flex-direction: column;
+  }
+
+  .project-row-actions {
+    justify-content: flex-start;
   }
 }
 

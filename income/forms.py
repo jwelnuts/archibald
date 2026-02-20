@@ -1,5 +1,7 @@
 from django import forms
 
+from contacts.models import Contact
+from contacts.services import ensure_legacy_records_for_contact, upsert_contact
 from subscriptions.models import Currency
 from transactions.models import Transaction
 from .models import IncomeSource
@@ -42,12 +44,29 @@ class IncomeForm(forms.ModelForm):
         source_name = (self.cleaned_data.get("source_name") or "").strip()
         if source_choice and source_choice not in {"__new__"}:
             try:
-                instance.income_source = IncomeSource.objects.get(id=source_choice, owner=self._owner)
+                source_obj = IncomeSource.objects.get(id=source_choice, owner=self._owner)
+                instance.income_source = source_obj
+                contact = upsert_contact(
+                    self._owner,
+                    source_obj.name,
+                    entity_type=Contact.EntityType.HYBRID,
+                    website=source_obj.website,
+                    roles={"role_income_source", "role_customer"},
+                )
+                ensure_legacy_records_for_contact(contact)
             except IncomeSource.DoesNotExist:
                 instance.income_source = None
         elif source_name and self._owner is not None:
             source_obj, _ = IncomeSource.objects.get_or_create(owner=self._owner, name=source_name)
             instance.income_source = source_obj
+            contact = upsert_contact(
+                self._owner,
+                source_name,
+                entity_type=Contact.EntityType.HYBRID,
+                website=source_obj.website,
+                roles={"role_income_source", "role_customer"},
+            )
+            ensure_legacy_records_for_contact(contact)
         elif not source_choice:
             instance.income_source = None
         if commit:

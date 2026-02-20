@@ -21,7 +21,7 @@
           <li>
             <span>{{ row.code|default:"-" }} · {{ row.title }}</span>
             <span class="muted">
-              {{ row.get_status_display }} · {{ row.total_amount }} {{ row.currency.code }} ·
+              {{ row.get_status_display }} · {% if row.vat_code %}IVA {{ row.vat_code.code }} ({{ row.vat_code.rate }}%){% else %}IVA 0%{% endif %} · {{ row.total_amount }} {{ row.currency.code }} ·
               righe articolo: {{ row.lines.count }}
             </span>
             <a class="btn" href="/finance/quotes/update?id={{ row.id }}">Modifica</a>

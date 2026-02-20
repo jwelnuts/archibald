@@ -1,18 +1,82 @@
 from datetime import timedelta
+from decimal import Decimal
 
+from contacts.models import Contact
+from contacts.services import ensure_legacy_records_for_contact, upsert_contact
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from .forms import InvoiceForm, QuoteForm, QuoteLineFormSet, WorkOrderForm
-from .models import Invoice, Quote, WorkOrder
+from .forms import InvoiceForm, QuoteForm, QuoteLineFormSet, VatCodeForm, WorkOrderForm
+from .models import Invoice, Quote, VatCode, WorkOrder
+
+
+def _sync_contact_from_customer(owner, customer):
+    if owner is None or customer is None:
+        return
+    contact = upsert_contact(
+        owner,
+        customer.name,
+        entity_type=Contact.EntityType.HYBRID,
+        email=customer.email,
+        phone=customer.phone,
+        notes=customer.notes,
+        roles={"role_customer"},
+    )
+    ensure_legacy_records_for_contact(contact)
+
+
+def _ensure_default_vat_codes(user):
+    defaults = [
+        ("22", "IVA ordinaria", Decimal("22.00")),
+        ("10", "IVA ridotta", Decimal("10.00")),
+        ("4", "IVA super ridotta", Decimal("4.00")),
+        ("ESENTE", "Operazione esente", Decimal("0.00")),
+    ]
+    for code, description, rate in defaults:
+        VatCode.objects.get_or_create(
+            owner=user,
+            code=code,
+            defaults={
+                "description": description,
+                "rate": rate,
+                "is_active": True,
+            },
+        )
+
+
+def _vat_rates_payload(user):
+    rows = VatCode.objects.filter(owner=user, is_active=True).order_by("rate", "code")
+    return [
+        {
+            "id": row.id,
+            "code": row.code,
+            "rate": str(row.rate),
+            "description": row.description,
+        }
+        for row in rows
+    ]
+
+
+def _apply_quote_vat_to_line(line, quote):
+    vat_rate = quote.vat_code.rate if quote.vat_code_id else Decimal("0.00")
+    multiplier = Decimal("1.00") + (vat_rate / Decimal("100.00"))
+    line.vat_code = quote.vat_code.code if quote.vat_code_id else ""
+    line.gross_amount = ((line.net_amount or Decimal("0.00")) * multiplier).quantize(Decimal("0.01"))
+
+
+def _sync_quote_lines_vat(quote):
+    for line in quote.lines.all():
+        _apply_quote_vat_to_line(line, quote)
+        line.save(update_fields=["vat_code", "gross_amount", "updated_at"])
 
 
 @login_required
 def dashboard(request):
     user = request.user
+    _ensure_default_vat_codes(user)
     today = timezone.now().date()
     next_week = today + timedelta(days=7)
 
@@ -78,9 +142,10 @@ def dashboard(request):
 
 @login_required
 def quotes(request):
+    _ensure_default_vat_codes(request.user)
     rows = (
         Quote.objects.filter(owner=request.user)
-        .select_related("customer", "project", "currency")
+        .select_related("customer", "project", "currency", "vat_code")
         .prefetch_related("lines")
         .order_by("-issue_date", "-id")[:100]
     )
@@ -89,6 +154,7 @@ def quotes(request):
 
 @login_required
 def add_quote(request):
+    _ensure_default_vat_codes(request.user)
     if request.method == "POST":
         form = QuoteForm(request.POST, owner=request.user)
         temp_item = Quote(owner=request.user)
@@ -107,17 +173,30 @@ def add_quote(request):
                     line.quote = item
                     if not line.row_order:
                         line.row_order = idx
+                    _apply_quote_vat_to_line(line, item)
                     line.save()
+                _sync_quote_lines_vat(item)
                 item.refresh_totals_from_lines(save=True)
+                _sync_contact_from_customer(request.user, item.customer)
             return redirect("/finance/quotes/")
     else:
         form = QuoteForm(owner=request.user)
         line_formset = QuoteLineFormSet(instance=Quote(owner=request.user), prefix="lines")
-    return render(request, "finance_hub/quote_form.html", {"form": form, "line_formset": line_formset, "mode": "add"})
+    return render(
+        request,
+        "finance_hub/quote_form.html",
+        {
+            "form": form,
+            "line_formset": line_formset,
+            "mode": "add",
+            "vat_rates": _vat_rates_payload(request.user),
+        },
+    )
 
 
 @login_required
 def update_quote(request):
+    _ensure_default_vat_codes(request.user)
     item_id = request.GET.get("id")
     item = None
     if item_id:
@@ -136,8 +215,11 @@ def update_quote(request):
                         line.quote = saved_item
                         if not line.row_order:
                             line.row_order = idx
+                        _apply_quote_vat_to_line(line, saved_item)
                         line.save()
+                    _sync_quote_lines_vat(saved_item)
                     saved_item.refresh_totals_from_lines(save=True)
+                    _sync_contact_from_customer(request.user, saved_item.customer)
                 return redirect("/finance/quotes/")
         else:
             form = QuoteForm(instance=item, owner=request.user)
@@ -145,7 +227,13 @@ def update_quote(request):
         return render(
             request,
             "finance_hub/quote_form.html",
-            {"form": form, "line_formset": line_formset, "mode": "update", "item": item},
+            {
+                "form": form,
+                "line_formset": line_formset,
+                "mode": "update",
+                "item": item,
+                "vat_rates": _vat_rates_payload(request.user),
+            },
         )
     rows = Quote.objects.filter(owner=request.user).order_by("-issue_date", "-id")[:20]
     return render(request, "finance_hub/quote_form.html", {"rows": rows, "mode": "select"})
@@ -153,6 +241,7 @@ def update_quote(request):
 
 @login_required
 def remove_quote(request):
+    _ensure_default_vat_codes(request.user)
     item_id = request.GET.get("id")
     item = None
     if item_id:
@@ -166,6 +255,7 @@ def remove_quote(request):
 
 @login_required
 def invoices(request):
+    _ensure_default_vat_codes(request.user)
     rows = Invoice.objects.filter(owner=request.user).select_related(
         "quote", "customer", "project", "account", "currency"
     ).order_by("-issue_date", "-id")[:100]
@@ -174,12 +264,14 @@ def invoices(request):
 
 @login_required
 def add_invoice(request):
+    _ensure_default_vat_codes(request.user)
     if request.method == "POST":
         form = InvoiceForm(request.POST, owner=request.user)
         if form.is_valid():
             item = form.save(commit=False)
             item.owner = request.user
             item.save()
+            _sync_contact_from_customer(request.user, item.customer)
             return redirect("/finance/invoices/")
     else:
         form = InvoiceForm(owner=request.user)
@@ -188,6 +280,7 @@ def add_invoice(request):
 
 @login_required
 def update_invoice(request):
+    _ensure_default_vat_codes(request.user)
     item_id = request.GET.get("id")
     item = None
     if item_id:
@@ -195,7 +288,8 @@ def update_invoice(request):
         if request.method == "POST":
             form = InvoiceForm(request.POST, instance=item, owner=request.user)
             if form.is_valid():
-                form.save()
+                saved_item = form.save()
+                _sync_contact_from_customer(request.user, saved_item.customer)
                 return redirect("/finance/invoices/")
         else:
             form = InvoiceForm(instance=item, owner=request.user)
@@ -206,6 +300,7 @@ def update_invoice(request):
 
 @login_required
 def remove_invoice(request):
+    _ensure_default_vat_codes(request.user)
     item_id = request.GET.get("id")
     item = None
     if item_id:
@@ -219,6 +314,7 @@ def remove_invoice(request):
 
 @login_required
 def work_orders(request):
+    _ensure_default_vat_codes(request.user)
     rows = WorkOrder.objects.filter(owner=request.user).select_related("customer", "project", "account", "currency").order_by(
         "-start_date", "-id"
     )[:100]
@@ -227,12 +323,14 @@ def work_orders(request):
 
 @login_required
 def add_work_order(request):
+    _ensure_default_vat_codes(request.user)
     if request.method == "POST":
         form = WorkOrderForm(request.POST, owner=request.user)
         if form.is_valid():
             item = form.save(commit=False)
             item.owner = request.user
             item.save()
+            _sync_contact_from_customer(request.user, item.customer)
             return redirect("/finance/work-orders/")
     else:
         form = WorkOrderForm(owner=request.user)
@@ -241,6 +339,7 @@ def add_work_order(request):
 
 @login_required
 def update_work_order(request):
+    _ensure_default_vat_codes(request.user)
     item_id = request.GET.get("id")
     item = None
     if item_id:
@@ -248,7 +347,8 @@ def update_work_order(request):
         if request.method == "POST":
             form = WorkOrderForm(request.POST, instance=item, owner=request.user)
             if form.is_valid():
-                form.save()
+                saved_item = form.save()
+                _sync_contact_from_customer(request.user, saved_item.customer)
                 return redirect("/finance/work-orders/")
         else:
             form = WorkOrderForm(instance=item, owner=request.user)
@@ -259,6 +359,7 @@ def update_work_order(request):
 
 @login_required
 def remove_work_order(request):
+    _ensure_default_vat_codes(request.user)
     item_id = request.GET.get("id")
     item = None
     if item_id:
@@ -268,3 +369,42 @@ def remove_work_order(request):
             return redirect("/finance/work-orders/")
     rows = WorkOrder.objects.filter(owner=request.user).order_by("-start_date", "-id")[:20]
     return render(request, "finance_hub/work_order_remove.html", {"item": item, "rows": rows})
+
+
+@login_required
+def vat_codes(request):
+    _ensure_default_vat_codes(request.user)
+    edit_id = request.GET.get("id")
+    edit_item = get_object_or_404(VatCode, id=edit_id, owner=request.user) if edit_id else None
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "save").strip().lower()
+        if action == "delete":
+            item_id = request.POST.get("item_id")
+            if item_id:
+                item = get_object_or_404(VatCode, id=item_id, owner=request.user)
+                item.delete()
+            return redirect("/finance/vat-codes/")
+
+        item_id = request.POST.get("item_id")
+        instance = get_object_or_404(VatCode, id=item_id, owner=request.user) if item_id else edit_item
+        form = VatCodeForm(request.POST, instance=instance)
+        form.instance.owner = request.user
+        if form.is_valid():
+            item = form.save(commit=False)
+            item.owner = request.user
+            item.save()
+            return redirect("/finance/vat-codes/")
+    else:
+        form = VatCodeForm(instance=edit_item)
+
+    rows = VatCode.objects.filter(owner=request.user).order_by("rate", "code", "id")
+    return render(
+        request,
+        "finance_hub/vat_codes.html",
+        {
+            "form": form,
+            "rows": rows,
+            "edit_item": edit_item,
+        },
+    )

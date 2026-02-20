@@ -47,27 +47,130 @@
 
   <section class="panel" id="transactions-list-panel">
     <h2 id="transactions-list-title">Ultime transazioni</h2>
-    {% if recent %}
-      <div class="log-table">
-        <div class="log-row log-head">
-          <span>Data</span>
-          <span>Tipo</span>
-          <span>Descrizione</span>
-          <span>Importo</span>
-          <span>Account</span>
-        </div>
-        {% for tx in recent %}
-          <div class="log-row">
-            <span>{{ tx.date }}</span>
-            <span>{{ tx.get_tx_type_display }}</span>
-            <span>{{ tx.payee|default:"-" }}</span>
-            <span>{{ tx.amount }} {{ tx.currency.code }}</span>
-            <span>{{ tx.account }}</span>
-          </div>
-        {% endfor %}
+    <div class="transactions-grid-shell">
+      <div id="transactions-grid" class="transactions-grid"></div>
+      <div id="transactions-grid-fallback" class="note" hidden>
+        Impossibile caricare la grid. Ricarica la pagina.
       </div>
-    {% else %}
-      <div class="note">Nessuna transazione disponibile.</div>
-    {% endif %}
+    </div>
   </section>
+  {{ grid_rows|json_script:"transactions-grid-data" }}
+  <script>
+    (function () {
+      function initGrid() {
+        var payload = document.getElementById("transactions-grid-data");
+        var fallback = document.getElementById("transactions-grid-fallback");
+        var gridTarget = document.getElementById("transactions-grid");
+        if (!payload || !gridTarget) {
+          if (fallback) {
+            fallback.hidden = false;
+          }
+          return;
+        }
+
+        var rows = JSON.parse(payload.textContent || "[]");
+        var makeTypeChip = function (row) {
+          if (row.type_code === "IN") {
+            return '<span class="tx-type-chip tx-type-chip--in">Entrata</span>';
+          }
+          if (row.type_code === "OUT") {
+            return '<span class="tx-type-chip tx-type-chip--out">Uscita</span>';
+          }
+          return '<span class="tx-type-chip tx-type-chip--xfer">Trasferimento</span>';
+        };
+        var actionButton = function (label, href, className) {
+          var css = "tx-action " + (className || "");
+          if (!href) {
+            return '<span class="' + css + ' is-muted">' + label + "</span>";
+          }
+          return '<a class="' + css + '" href="' + href + '">' + label + "</a>";
+        };
+        var actionCell = function (row) {
+          return [
+            '<div class="tx-actions">',
+            actionButton("Modifica", row.update_url, "is-primary"),
+            actionButton("Rimuovi", row.remove_url, "is-danger"),
+            actionButton("Allegato", row.attachment_url, ""),
+            actionButton("Tipo", row.filter_type_url, ""),
+            "</div>",
+          ].join("");
+        };
+
+        new window.tui.Grid({
+          el: gridTarget,
+          data: rows,
+          scrollX: true,
+          scrollY: true,
+          bodyHeight: 420,
+          rowHeight: 46,
+          minRowHeight: 44,
+          columnOptions: { resizable: true },
+          columns: [
+            { header: "Data", name: "date", align: "center", width: 110, sortable: true },
+            {
+              header: "Tipo",
+              name: "type_code",
+              align: "center",
+              width: 140,
+              sortable: true,
+              formatter: function (ctx) {
+                return makeTypeChip(ctx.row);
+              },
+              escapeHTML: false,
+            },
+            { header: "Controparte", name: "counterparty", minWidth: 180, sortable: true },
+            { header: "Nota", name: "note", minWidth: 220 },
+            {
+              header: "Importo",
+              name: "amount",
+              align: "right",
+              width: 140,
+              sortable: true,
+              formatter: function (ctx) {
+                return ctx.row.amount + " " + ctx.row.currency;
+              },
+            },
+            { header: "Account", name: "account", minWidth: 180, sortable: true },
+            { header: "Progetto", name: "project", minWidth: 140, sortable: true },
+            { header: "Categoria", name: "category", minWidth: 130, sortable: true },
+            {
+              header: "Azioni rapide",
+              name: "actions",
+              align: "right",
+              minWidth: 280,
+              formatter: function (ctx) {
+                return actionCell(ctx.row);
+              },
+              escapeHTML: false,
+            },
+          ],
+        });
+      }
+
+      function waitForGrid(maxAttempts) {
+        var fallback = document.getElementById("transactions-grid-fallback");
+        if (window.tui && window.tui.Grid) {
+          initGrid();
+          return;
+        }
+        if (maxAttempts <= 0) {
+          if (fallback) {
+            fallback.hidden = false;
+          }
+          return;
+        }
+        window.setTimeout(function () {
+          waitForGrid(maxAttempts - 1);
+        }, 120);
+      }
+
+      if (document.readyState === "complete") {
+        waitForGrid(25);
+      } else {
+        window.addEventListener("load", function () {
+          waitForGrid(25);
+        });
+      }
+    })();
+  </script>
 {% endblock %}

@@ -1,0 +1,189 @@
+.contacts-grid-shell {
+  margin-top: 10px;
+}
+
+.contacts-grid {
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #fff;
+  min-height: 460px;
+}
+
+.contacts-empty-note {
+  margin-top: 10px;
+}
+
+.contacts-grid .tui-grid-container {
+  border: none;
+  background: #fff;
+  font-family: "Alegreya Sans", "Trebuchet MS", "Segoe UI", sans-serif;
+}
+
+.contacts-grid .tui-grid-header-area {
+  border-bottom: 2px solid var(--border);
+}
+
+.contacts-grid .tui-grid-cell-header {
+  background: #edf2ff;
+  font-weight: 700;
+  color: #1b1e22;
+}
+
+.contacts-grid .tui-grid-cell {
+  background: #fff;
+}
+
+.contacts-grid .tui-grid-row-odd .tui-grid-cell {
+  background: #f8fbff;
+}
+
+.ct-entity-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ct-entity-chip--person {
+  background: #e7f5ff;
+  color: #1864ab;
+}
+
+.ct-entity-chip--company {
+  background: #ebfbee;
+  color: #2b8a3e;
+}
+
+.ct-entity-chip--hybrid {
+  background: #fff4e6;
+  color: #d9480f;
+}
+
+.ct-role-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.ct-role-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ct-role-chip--customer {
+  background: #e7f5ff;
+  color: #1971c2;
+}
+
+.ct-role-chip--supplier {
+  background: #f3f0ff;
+  color: #5f3dc4;
+}
+
+.ct-role-chip--payee {
+  background: #fff5f5;
+  color: #c92a2a;
+}
+
+.ct-role-chip--income {
+  background: #ebfbee;
+  color: #2b8a3e;
+}
+
+.ct-role-chip--none {
+  background: #f1f3f5;
+  color: #495057;
+}
+
+.ct-contact-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.ct-contact-row {
+  line-height: 1.25;
+}
+
+.ct-muted {
+  color: #868e96;
+}
+
+.ct-status-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ct-status-chip--active {
+  background: #ebfbee;
+  color: #2b8a3e;
+}
+
+.ct-status-chip--inactive {
+  background: #fff5f5;
+  color: #c92a2a;
+}
+
+.ct-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ct-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  transition: all 140ms ease;
+}
+
+.ct-action:hover {
+  transform: translateY(-1px);
+  border-color: #8da2d9;
+}
+
+.ct-action.is-primary {
+  background: #4c6ef5;
+  color: #fff;
+  border-color: #4c6ef5;
+}
+
+.ct-action.is-danger {
+  background: #fff5f5;
+  color: #c92a2a;
+  border-color: #ffc9c9;
+}
+
+.ct-action.is-muted {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .contacts-grid {
+    min-height: 360px;
+  }
+}

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}MIO - Workbench{% endblock %}</title>
     <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    {% include "core/partials/uikit_head.html" %}
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
   <body>
@@ -54,6 +55,7 @@
       </footer>
     </div>
     {{ hero_actions_config|json_script:"hero-actions-config" }}
+        {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/app.js' %}"></script>
   </body>
 </html>

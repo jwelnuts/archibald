@@ -1,4 +1,5 @@
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from todo.models import Task
@@ -98,3 +99,42 @@ def remove_item(request):
             return redirect("/planner/")
     items = PlannerItem.objects.filter(owner=request.user).order_by("-created_at")[:20]
     return render(request, "planner/remove_item.html", {"item": item, "items": items})
+
+
+@login_required
+def transfer_to_todo(request):
+    if request.method != "POST":
+        return redirect("/planner/")
+
+    item_id = request.POST.get("id")
+    item = get_object_or_404(PlannerItem, id=item_id, owner=request.user)
+
+    status_map = {
+        PlannerItem.Status.PLANNED: Task.Status.OPEN,
+        PlannerItem.Status.DONE: Task.Status.DONE,
+        PlannerItem.Status.SKIPPED: Task.Status.OPEN,
+    }
+    task_status = status_map.get(item.status, Task.Status.OPEN)
+
+    note_parts = []
+    if item.note:
+        note_parts.append(item.note)
+    if item.amount is not None:
+        note_parts.append(f"[Da Planner] Importo: {item.amount}")
+    if item.category_id:
+        note_parts.append(f"[Da Planner] Categoria: {item.category.name}")
+    note = "\n".join(note_parts)
+
+    with transaction.atomic():
+        Task.objects.create(
+            owner=request.user,
+            title=item.title,
+            project=item.project,
+            due_date=item.due_date,
+            status=task_status,
+            priority=Task.Priority.MEDIUM,
+            note=note,
+        )
+        item.delete()
+
+    return redirect("/todo/")

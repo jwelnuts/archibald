@@ -3,63 +3,207 @@
 {% block title %}MIO - Projects Dashboard{% endblock %}
 
 {% block content %}
-  <section class="hero" id="app-head">
-    <div class="hero-copy" id="app-header">
-      <h1>Progetti e componenti</h1>
-      <p>
-        Organizza le spese e le entrate per progetto. Ogni componente si
-        riflette sulle altre app del sistema.
-      </p>
-      <div class="hero-actions" id="app-actions" data-module="projects">
-        <a class="btn primary" href="/projects/api/add" data-action="add">Nuovo progetto</a>
-        <a class="btn" href="/projects/api/update" data-action="update">Aggiorna</a>
-      </div>
-    </div>
-    <div class="hero-card" id="projects-upcoming-panel">
-      <div class="card-title" id="upcoming-title">Progetti attivi</div>
-      <ul class="list" id="projects-upcoming-list">
-        {% if active_projects %}
-          {% for project in active_projects %}
-            <li>
-              <span class="dot dot-blue"></span>
-              <a href="/projects/view?id={{ project.id }}">{{ project.name }}</a>
-              <span class="muted">Attivo</span>
+  <section class="uk-section uk-section-small">
+    <div class="uk-grid-large" uk-grid>
+      <div class="uk-width-expand@m">
+        <div class="uk-card uk-card-default uk-card-body uk-box-shadow-small">
+          <h1 class="uk-card-title uk-margin-remove-bottom">Projects workspace</h1>
+          <p class="uk-text-meta uk-margin-small-top uk-margin-medium-bottom">
+            Vista centrale per monitorare lo stato operativo e finanziario di ogni progetto.
+            Ogni riga mostra dati chiave e azioni dedicate.
+          </p>
+
+          <div class="uk-grid-small uk-child-width-auto uk-margin-bottom" uk-grid>
+            <div>
+              <a class="uk-button uk-button-primary uk-button-small" href="/projects/api/add" data-action="add">
+                <span uk-icon="plus"></span>
+                Nuovo progetto
+              </a>
+            </div>
+            <div>
+              <a class="uk-button uk-button-default uk-button-small" href="/projects/categories/">
+                <span uk-icon="tag"></span>
+                Categorie
+              </a>
+            </div>
+            <div>
+              <a class="uk-button uk-button-default uk-button-small" href="/projects/customers/">
+                <span uk-icon="users"></span>
+                Clienti
+              </a>
+            </div>
+          </div>
+
+          <ul class="uk-subnav uk-subnav-pill uk-margin-remove-bottom">
+            <li {% if scope == 'active' %}class="uk-active"{% endif %}>
+              <a href="/projects/?scope=active"><span uk-icon="check"></span>&nbsp;Attivi</a>
             </li>
-          {% endfor %}
-        {% else %}
-          <li class="muted">Nessun progetto attivo.</li>
-        {% endif %}
-      </ul>
+            <li {% if scope == 'archived' %}class="uk-active"{% endif %}>
+              <a href="/projects/?scope=archived"><span uk-icon="archive"></span>&nbsp;Archiviati</a>
+            </li>
+            <li {% if scope == 'all' %}class="uk-active"{% endif %}>
+              <a href="/projects/?scope=all"><span uk-icon="list"></span>&nbsp;Tutti</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="uk-width-1-3@m">
+        <div class="uk-card uk-card-default uk-card-body uk-box-shadow-small">
+          <h3 class="uk-card-title uk-margin-small-bottom">Riepilogo</h3>
+          <div class="uk-child-width-1-2 uk-grid-small" uk-grid>
+            <div>
+              <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                <div class="uk-text-meta">Attivi</div>
+                <div class="uk-text-large uk-text-bold">{{ counts.active }}</div>
+              </div>
+            </div>
+            <div>
+              <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                <div class="uk-text-meta">Archiviati</div>
+                <div class="uk-text-large uk-text-bold">{{ counts.archived }}</div>
+              </div>
+            </div>
+            <div>
+              <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                <div class="uk-text-meta">Categorie</div>
+                <div class="uk-text-large uk-text-bold">{{ counts.categories }}</div>
+              </div>
+            </div>
+            <div>
+              <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                <div class="uk-text-meta">Clienti</div>
+                <div class="uk-text-large uk-text-bold">{{ counts.customers }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="grid" id="projects-info-grid">
-    <article class="panel" id="projects-info-panel">
-      <h2 id="projects-stats-title">Componenti</h2>
-      <div class="stat-row" id="projects-info">
-        <div class="stat">
-          <div class="stat-label">Attivi</div>
-          <div class="stat-value">{{ counts.active }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Archiviati</div>
-          <div class="stat-value">{{ counts.archived }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Categorie</div>
-          <div class="stat-value">{{ counts.categories }}</div>
-        </div>
-      </div>
-    </article>
+  <section class="uk-section uk-section-xsmall">
+    <div class="uk-card uk-card-default uk-card-body uk-box-shadow-small">
+      <h2 class="uk-margin-remove-top">Lista progetti</h2>
 
-    <article class="panel" id="projects-notes-panel">
-      <h2 id="projects-notes-title">Note rapide</h2>
-      <div class="note">
-        Usa Category come tassonomia comune per income, outcome e subscription.
+    {% if project_rows %}
+      <div class="uk-grid-small" uk-grid>
+        {% for row in project_rows %}
+          <div class="uk-width-1-1">
+            <article class="uk-card uk-card-small {% if row.project.is_archived %}uk-card-muted{% else %}uk-card-default{% endif %} uk-card-body uk-box-shadow-xsmall">
+              <div class="uk-grid-small uk-flex-middle" uk-grid>
+                <div class="uk-width-expand@m">
+                  <h3 class="uk-margin-remove-bottom">
+                    <a class="uk-link-heading" href="/projects/view?id={{ row.project.id }}">{{ row.project.name }}</a>
+                    {% if row.project.is_archived %}
+                      <span class="uk-label uk-label-warning uk-margin-small-left">Archiviato</span>
+                    {% else %}
+                      <span class="uk-label uk-margin-small-left">Attivo</span>
+                    {% endif %}
+                  </h3>
+                  <div class="uk-text-meta uk-margin-small-top">
+                    Cliente: {{ row.customer_name }} | Categoria: {{ row.category_name }} |
+                    Ultima transazione: {{ row.last_tx_date|default:"-" }} |
+                    Prossima scadenza: {{ row.next_subscription_due|default:"-" }}
+                  </div>
+                </div>
+
+                <div class="uk-width-auto@m">
+                  <div class="uk-grid-small uk-child-width-auto" uk-grid>
+                    <div>
+                      <a class="uk-button uk-button-primary uk-button-small" href="/projects/view?id={{ row.project.id }}">
+                        <span uk-icon="file-text"></span>
+                        Dettaglio
+                      </a>
+                    </div>
+                    <div>
+                      <a class="uk-button uk-button-default uk-button-small" href="/projects/storyboard?id={{ row.project.id }}">
+                        <span uk-icon="table"></span>
+                        Storyboard
+                      </a>
+                    </div>
+                    <div>
+                      <a class="uk-button uk-button-default uk-button-small" href="/projects/api/update?id={{ row.project.id }}">
+                        <span uk-icon="pencil"></span>
+                        Modifica
+                      </a>
+                    </div>
+                    <div>
+                      <a class="uk-button uk-button-default uk-button-small" href="/projects/hero-actions?id={{ row.project.id }}">
+                        <span uk-icon="cog"></span>
+                        Azioni
+                      </a>
+                    </div>
+                    <div>
+                      <a class="uk-button uk-button-danger uk-button-small" href="/projects/api/remove?id={{ row.project.id }}">
+                        <span uk-icon="trash"></span>
+                        Rimuovi
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="uk-grid-small uk-child-width-1-2 uk-child-width-1-4@m uk-margin-top" uk-grid>
+                <div>
+                  <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                    <div class="uk-text-meta">Saldo</div>
+                    <div class="uk-text-bold">{{ row.balance }}</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                    <div class="uk-text-meta">Entrate</div>
+                    <div class="uk-text-bold">{{ row.income_total }}</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                    <div class="uk-text-meta">Uscite</div>
+                    <div class="uk-text-bold">{{ row.expense_total }}</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                    <div class="uk-text-meta">Transazioni</div>
+                    <div class="uk-text-bold">{{ row.tx_total }}</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                    <div class="uk-text-meta">Abbonamenti attivi/totali</div>
+                    <div class="uk-text-bold">{{ row.subscriptions_active }}/{{ row.subscriptions_total }}</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                    <div class="uk-text-meta">Todo aperti/totali</div>
+                    <div class="uk-text-bold">{{ row.todo_open }}/{{ row.todo_total }}</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                    <div class="uk-text-meta">Planner planned/totali</div>
+                    <div class="uk-text-bold">{{ row.planner_planned }}/{{ row.planner_total }}</div>
+                  </div>
+                </div>
+                <div>
+                  <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+                    <div class="uk-text-meta">Routine attive</div>
+                    <div class="uk-text-bold">{{ row.routines_active }}</div>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+        {% endfor %}
       </div>
-      <div class="note">
-        I progetti sono il collegamento tra componenti e analytics.
+    {% else %}
+      <div class="uk-alert-primary" uk-alert>
+        <span uk-icon="info"></span>
+        Nessun progetto trovato con il filtro selezionato.
       </div>
-    </article>
+    {% endif %}
+    </div>
   </section>
 {% endblock %}

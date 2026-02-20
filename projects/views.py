@@ -1,7 +1,9 @@
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.db.models import Count, Max, Min, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
+from contacts.models import Contact
+from contacts.services import ensure_legacy_records_for_contact, upsert_contact
 from .category_forms import CategoryForm
 from .customer_forms import CustomerForm
 from .note_forms import ProjectNoteForm
@@ -41,18 +43,127 @@ def _resolve_hero_actions(user, module, override_config=None):
 @login_required
 def dashboard(request):
     user = request.user
-    active_projects = Project.objects.filter(owner=user, is_archived=False).order_by("name")[:5]
+    scope = (request.GET.get("scope") or "active").strip().lower()
+    if scope not in {"active", "archived", "all"}:
+        scope = "active"
+
+    projects_qs = Project.objects.filter(owner=user).select_related("customer", "category").order_by("is_archived", "name")
+    if scope == "active":
+        projects_qs = projects_qs.filter(is_archived=False)
+    elif scope == "archived":
+        projects_qs = projects_qs.filter(is_archived=True)
+
+    project_ids = list(projects_qs.values_list("id", flat=True))
+    project_rows = []
+    if project_ids:
+        from planner.models import PlannerItem
+        from routines.models import RoutineItem
+        from subscriptions.models import Subscription
+        from todo.models import Task
+        from transactions.models import Transaction
+
+        tx_map = {
+            row["project_id"]: row
+            for row in (
+                Transaction.objects.filter(owner=user, project_id__in=project_ids)
+                .values("project_id")
+                .annotate(
+                    total=Count("id"),
+                    income=Sum("amount", filter=Q(tx_type=Transaction.Type.INCOME)),
+                    expense=Sum("amount", filter=Q(tx_type=Transaction.Type.EXPENSE)),
+                    last_date=Max("date"),
+                )
+            )
+        }
+        sub_map = {
+            row["project_id"]: row
+            for row in (
+                Subscription.objects.filter(owner=user, project_id__in=project_ids)
+                .values("project_id")
+                .annotate(
+                    total=Count("id"),
+                    active=Count("id", filter=Q(status=Subscription.Status.ACTIVE)),
+                    next_due=Min("next_due_date", filter=Q(status=Subscription.Status.ACTIVE)),
+                )
+            )
+        }
+        todo_map = {
+            row["project_id"]: row
+            for row in (
+                Task.objects.filter(owner=user, project_id__in=project_ids)
+                .values("project_id")
+                .annotate(
+                    total=Count("id"),
+                    open_count=Count("id", filter=Q(status__in=[Task.Status.OPEN, Task.Status.IN_PROGRESS])),
+                )
+            )
+        }
+        planner_map = {
+            row["project_id"]: row
+            for row in (
+                PlannerItem.objects.filter(owner=user, project_id__in=project_ids)
+                .values("project_id")
+                .annotate(
+                    total=Count("id"),
+                    planned=Count("id", filter=Q(status=PlannerItem.Status.PLANNED)),
+                )
+            )
+        }
+        routine_map = {
+            row["project_id"]: row
+            for row in (
+                RoutineItem.objects.filter(owner=user, project_id__in=project_ids)
+                .values("project_id")
+                .annotate(
+                    total=Count("id"),
+                    active=Count("id", filter=Q(is_active=True)),
+                )
+            )
+        }
+
+        for project in projects_qs:
+            tx = tx_map.get(project.id, {})
+            subs = sub_map.get(project.id, {})
+            todo = todo_map.get(project.id, {})
+            planner = planner_map.get(project.id, {})
+            routine = routine_map.get(project.id, {})
+
+            income_total = tx.get("income") or 0
+            expense_total = tx.get("expense") or 0
+            project_rows.append(
+                {
+                    "project": project,
+                    "customer_name": project.customer.name if project.customer else "Nessun cliente",
+                    "category_name": project.category.name if project.category else "Nessuna categoria",
+                    "tx_total": tx.get("total", 0),
+                    "income_total": income_total,
+                    "expense_total": expense_total,
+                    "balance": income_total - expense_total,
+                    "last_tx_date": tx.get("last_date"),
+                    "subscriptions_total": subs.get("total", 0),
+                    "subscriptions_active": subs.get("active", 0),
+                    "next_subscription_due": subs.get("next_due"),
+                    "todo_open": todo.get("open_count", 0),
+                    "todo_total": todo.get("total", 0),
+                    "planner_planned": planner.get("planned", 0),
+                    "planner_total": planner.get("total", 0),
+                    "routines_active": routine.get("active", 0),
+                }
+            )
+
     counts = {
         "active": Project.objects.filter(owner=user, is_archived=False).count(),
         "archived": Project.objects.filter(owner=user, is_archived=True).count(),
         "categories": Category.objects.filter(owner=user).count(),
+        "customers": Customer.objects.filter(owner=user).count(),
     }
     return render(
         request,
         "projects/dashboard.html",
         {
-            "active_projects": active_projects,
+            "project_rows": project_rows,
             "counts": counts,
+            "scope": scope,
         },
     )
 
@@ -343,6 +454,16 @@ def add_customer(request):
             customer = form.save(commit=False)
             customer.owner = request.user
             customer.save()
+            contact = upsert_contact(
+                request.user,
+                customer.name,
+                entity_type=Contact.EntityType.HYBRID,
+                email=customer.email,
+                phone=customer.phone,
+                notes=customer.notes,
+                roles={"role_customer"},
+            )
+            ensure_legacy_records_for_contact(contact)
             return redirect("/projects/customers/")
     else:
         form = CustomerForm()
@@ -358,7 +479,17 @@ def update_customer(request):
         if request.method == "POST":
             form = CustomerForm(request.POST, instance=customer)
             if form.is_valid():
-                form.save()
+                saved = form.save()
+                contact = upsert_contact(
+                    request.user,
+                    saved.name,
+                    entity_type=Contact.EntityType.HYBRID,
+                    email=saved.email,
+                    phone=saved.phone,
+                    notes=saved.notes,
+                    roles={"role_customer"},
+                )
+                ensure_legacy_records_for_contact(contact)
                 return redirect("/projects/customers/")
         else:
             form = CustomerForm(instance=customer)

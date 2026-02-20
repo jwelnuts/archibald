@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MIO - Registrazione</title>
     <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    {% include "core/partials/uikit_head.html" %}
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
   <body>
@@ -64,5 +65,6 @@
         </form>
       </section>
     </div>
+      {% include "core/partials/uikit_body.html" %}
   </body>
 </html>

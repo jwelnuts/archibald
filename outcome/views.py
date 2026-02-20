@@ -41,7 +41,7 @@ def dashboard(request):
 @login_required
 def add_outcome(request):
     if request.method == "POST":
-        form = OutcomeForm(request.POST, owner=request.user)
+        form = OutcomeForm(request.POST, request.FILES, owner=request.user)
         if form.is_valid():
             tx = form.save(commit=False)
             tx.owner = request.user
@@ -89,7 +89,7 @@ def update_outcome(request):
             tx_type=Transaction.Type.EXPENSE,
         )
         if request.method == "POST":
-            form = OutcomeForm(request.POST, instance=tx, owner=request.user)
+            form = OutcomeForm(request.POST, request.FILES, instance=tx, owner=request.user)
             if form.is_valid():
                 form.save()
                 return redirect("/outcome/")

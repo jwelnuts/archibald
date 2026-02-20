@@ -1,6 +1,7 @@
 from datetime import timedelta, date
 
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 
 from planner.models import PlannerItem
@@ -88,3 +89,40 @@ def update_task(request):
         return render(request, "todo/update_task.html", {"form": form, "task": task})
     tasks = Task.objects.filter(owner=request.user).order_by("-created_at")[:20]
     return render(request, "todo/update_task.html", {"tasks": tasks})
+
+
+@login_required
+def transfer_to_planner(request):
+    if request.method != "POST":
+        return redirect("/todo/")
+
+    task_id = request.POST.get("id")
+    task = get_object_or_404(Task, id=task_id, owner=request.user)
+
+    status_map = {
+        Task.Status.OPEN: PlannerItem.Status.PLANNED,
+        Task.Status.IN_PROGRESS: PlannerItem.Status.PLANNED,
+        Task.Status.DONE: PlannerItem.Status.DONE,
+    }
+    planner_status = status_map.get(task.status, PlannerItem.Status.PLANNED)
+
+    note_parts = []
+    if task.note:
+        note_parts.append(task.note)
+    note_parts.append(f"[Da Todo] Priorita: {task.get_priority_display()}")
+    if task.status == Task.Status.IN_PROGRESS:
+        note_parts.append("[Da Todo] Stato origine: In progress")
+    note = "\n".join(note_parts)
+
+    with transaction.atomic():
+        PlannerItem.objects.create(
+            owner=request.user,
+            title=task.title,
+            due_date=task.due_date,
+            project=task.project,
+            status=planner_status,
+            note=note,
+        )
+        task.delete()
+
+    return redirect("/planner/")

@@ -1,0 +1,276 @@
+{% extends "contacts/base.html" %}
+
+{% block title %}MIO - Contacts{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <div class="hero-copy">
+      <h1>Contacts</h1>
+      <p>Rubrica multidimensionale per clienti, fornitori, beneficiari e fonti entrata.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/contacts/add">Nuovo contatto</a>
+        <a class="btn" href="/finance/quotes/add">Nuovo preventivo</a>
+      </div>
+    </div>
+    <div class="hero-card">
+      <div class="card-title">Conteggi rapidi</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Totali</div>
+          <div class="stat-value">{{ counts.total }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Attivi</div>
+          <div class="stat-value">{{ counts.active }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Clienti</div>
+          <div class="stat-value">{{ counts.customers }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Fornitori</div>
+          <div class="stat-value">{{ counts.suppliers }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Filtri</h2>
+    <form class="form" method="get" action="">
+      <div class="field">
+        <label for="id_role">Ruolo</label>
+        <select id="id_role" name="role">
+          <option value="" {% if not filters.role %}selected{% endif %}>Tutti</option>
+          <option value="active" {% if filters.role == "active" %}selected{% endif %}>Solo attivi</option>
+          <option value="customer" {% if filters.role == "customer" %}selected{% endif %}>Clienti</option>
+          <option value="supplier" {% if filters.role == "supplier" %}selected{% endif %}>Fornitori</option>
+          <option value="payee" {% if filters.role == "payee" %}selected{% endif %}>Beneficiari</option>
+          <option value="income" {% if filters.role == "income" %}selected{% endif %}>Fonti entrata</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="id_q">Ricerca</label>
+        <input id="id_q" name="q" type="text" value="{{ filters.q }}" placeholder="Nome, azienda, email...">
+      </div>
+      <div class="actions">
+        <button class="btn primary" type="submit">Applica</button>
+        <a class="btn" href="/contacts/">Reset</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <h2>Rubrica</h2>
+    <div class="contacts-grid-shell">
+      <div id="contacts-grid" class="contacts-grid"></div>
+      <div id="contacts-grid-fallback" class="note" hidden>
+        Impossibile caricare la grid. Ricarica la pagina.
+      </div>
+    </div>
+    {% if not rows %}
+      <div class="note contacts-empty-note">Nessun contatto disponibile con i filtri attuali.</div>
+    {% endif %}
+  </section>
+  {{ grid_rows|json_script:"contacts-grid-data" }}
+  <script>
+    (function () {
+      function escapeHtml(value) {
+        return String(value || "").replace(/[&<>"']/g, function (char) {
+          return {
+            "&": "&amp;",
+            "<": "&lt;",
+            ">": "&gt;",
+            '"': "&quot;",
+            "'": "&#39;"
+          }[char];
+        });
+      }
+
+      function entityChip(row) {
+        var label = escapeHtml(row.entity_type || "N/D");
+        var css = "ct-entity-chip ct-entity-chip--person";
+        if (row.entity_code === "COMPANY") {
+          css = "ct-entity-chip ct-entity-chip--company";
+        } else if (row.entity_code === "HYBRID") {
+          css = "ct-entity-chip ct-entity-chip--hybrid";
+        }
+        return '<span class="' + css + '">' + label + "</span>";
+      }
+
+      function roleChips(row) {
+        var chips = [];
+        if (row.role_customer) {
+          chips.push('<span class="ct-role-chip ct-role-chip--customer">Cliente</span>');
+        }
+        if (row.role_supplier) {
+          chips.push('<span class="ct-role-chip ct-role-chip--supplier">Fornitore</span>');
+        }
+        if (row.role_payee) {
+          chips.push('<span class="ct-role-chip ct-role-chip--payee">Beneficiario</span>');
+        }
+        if (row.role_income_source) {
+          chips.push('<span class="ct-role-chip ct-role-chip--income">Fonte entrata</span>');
+        }
+        if (!chips.length) {
+          chips.push('<span class="ct-role-chip ct-role-chip--none">Nessun ruolo</span>');
+        }
+        return '<div class="ct-role-wrap">' + chips.join("") + "</div>";
+      }
+
+      function contactBlock(row) {
+        var parts = [];
+        if (row.email) {
+          parts.push('<span class="ct-contact-row">' + escapeHtml(row.email) + "</span>");
+        }
+        if (row.phone) {
+          parts.push('<span class="ct-contact-row">' + escapeHtml(row.phone) + "</span>");
+        }
+        if (row.city) {
+          parts.push('<span class="ct-contact-row">' + escapeHtml(row.city) + "</span>");
+        }
+        if (!parts.length) {
+          return '<span class="ct-muted">-</span>';
+        }
+        return '<div class="ct-contact-block">' + parts.join("") + "</div>";
+      }
+
+      function statusChip(row) {
+        if (row.is_active) {
+          return '<span class="ct-status-chip ct-status-chip--active">Attivo</span>';
+        }
+        return '<span class="ct-status-chip ct-status-chip--inactive">Disattivo</span>';
+      }
+
+      function actionButton(label, href, className) {
+        var css = "ct-action " + (className || "");
+        if (!href) {
+          return '<span class="' + css + ' is-muted">' + escapeHtml(label) + "</span>";
+        }
+        return '<a class="' + css + '" href="' + href + '">' + escapeHtml(label) + "</a>";
+      }
+
+      function actionCell(row) {
+        return [
+          '<div class="ct-actions">',
+          actionButton("Modifica", row.update_url, "is-primary"),
+          actionButton("Rimuovi", row.remove_url, "is-danger"),
+          actionButton("Cerca", row.search_url, ""),
+          "</div>",
+        ].join("");
+      }
+
+      function initGrid() {
+        var payload = document.getElementById("contacts-grid-data");
+        var fallback = document.getElementById("contacts-grid-fallback");
+        var gridTarget = document.getElementById("contacts-grid");
+        if (!payload || !gridTarget) {
+          if (fallback) {
+            fallback.hidden = false;
+          }
+          return;
+        }
+
+        var rows = JSON.parse(payload.textContent || "[]");
+
+        new window.tui.Grid({
+          el: gridTarget,
+          data: rows,
+          scrollX: true,
+          scrollY: true,
+          bodyHeight: 460,
+          rowHeight: 46,
+          minRowHeight: 44,
+          columnOptions: { resizable: true },
+          columns: [
+            { header: "Nome", name: "display_name", minWidth: 220, sortable: true },
+            {
+              header: "Tipo",
+              name: "entity_type",
+              align: "center",
+              width: 150,
+              sortable: true,
+              formatter: function (ctx) {
+                return entityChip(ctx.row);
+              },
+              escapeHTML: false,
+            },
+            { header: "Persona", name: "person_name", minWidth: 160, sortable: true },
+            { header: "Azienda", name: "business_name", minWidth: 170, sortable: true },
+            {
+              header: "Contatti",
+              name: "email",
+              minWidth: 220,
+              formatter: function (ctx) {
+                return contactBlock(ctx.row);
+              },
+              escapeHTML: false,
+            },
+            {
+              header: "Ruoli",
+              name: "roles_text",
+              minWidth: 220,
+              formatter: function (ctx) {
+                return roleChips(ctx.row);
+              },
+              escapeHTML: false,
+            },
+            {
+              header: "Stato",
+              name: "is_active",
+              align: "center",
+              width: 120,
+              sortable: true,
+              formatter: function (ctx) {
+                return statusChip(ctx.row);
+              },
+              escapeHTML: false,
+            },
+            {
+              header: "Azioni rapide",
+              name: "actions",
+              align: "right",
+              minWidth: 260,
+              formatter: function (ctx) {
+                return actionCell(ctx.row);
+              },
+              escapeHTML: false,
+            },
+          ],
+        });
+      }
+
+      function waitForGrid(maxAttempts) {
+        var fallback = document.getElementById("contacts-grid-fallback");
+        if (window.tui && window.tui.Grid) {
+          try {
+            initGrid();
+          } catch (error) {
+            if (fallback) {
+              fallback.hidden = false;
+            }
+            console.error("Contacts grid init error", error);
+          }
+          return;
+        }
+        if (maxAttempts <= 0) {
+          if (fallback) {
+            fallback.hidden = false;
+          }
+          return;
+        }
+        window.setTimeout(function () {
+          waitForGrid(maxAttempts - 1);
+        }, 120);
+      }
+
+      if (document.readyState === "complete") {
+        waitForGrid(25);
+      } else {
+        window.addEventListener("load", function () {
+          waitForGrid(25);
+        });
+      }
+    })();
+  </script>
+{% endblock %}

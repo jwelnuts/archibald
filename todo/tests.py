@@ -60,3 +60,21 @@ class TodoProjectBindingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("planner_upcoming", response.context)
         self.assertIn("planner_counts", response.context)
+
+    def test_transfer_task_to_planner(self):
+        task = Task.objects.create(
+            owner=self.user,
+            title="Contattare cliente",
+            status=Task.Status.IN_PROGRESS,
+            priority=Task.Priority.HIGH,
+            note="Call entro domani",
+        )
+        self.client.login(username="todo_user", password="test1234")
+        response = self.client.post("/todo/to-planner", {"id": task.id})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/planner/")
+        self.assertFalse(Task.objects.filter(id=task.id).exists())
+        planner_item = PlannerItem.objects.get(owner=self.user, title="Contattare cliente")
+        self.assertEqual(planner_item.status, PlannerItem.Status.PLANNED)
+        self.assertIn("Call entro domani", planner_item.note)
+        self.assertIn("[Da Todo] Priorita:", planner_item.note)

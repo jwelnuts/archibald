@@ -45,6 +45,7 @@ urlpatterns = [
         ),
     ),
     path('link_storage/', include('link_storage.urls')),
+    path('contacts/', include('contacts.urls')),
 ]
 
 if settings.DEBUG:

@@ -77,9 +77,11 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 - `todo` (`/todo/`):
   - Task con stato/priority/due date
   - associazione progetto esistente o creazione progetto inline
+  - trasferimento rapido Task -> Planner
 - `planner` (`/planner/`):
   - PlannerItem con amount/category/project/status
   - quando aggiungi item con project, crea automaticamente una `ProjectNote`
+  - trasferimento rapido Planner -> Todo
 - `routines` (`/routines/`):
   - Routine e RoutineItem settimanali
   - check settimanali (`RoutineCheck`) con stati planned/done/skipped
