@@ -1450,11 +1450,30 @@ body {
   margin-top: 16px;
 }
 
+.profile-flash-stack {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 2px;
+}
+
+.profile-flash {
+  border: 1px solid #2f5a42;
+  background: #1b3025;
+  color: #d4f5df;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
 .profile-card {
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 16px;
   background: #fff;
+}
+
+.profile-card-wide {
+  grid-column: 1 / -1;
 }
 
 .profile-row {
@@ -1482,6 +1501,121 @@ body {
 
 .link:hover {
   color: var(--accent-2);
+}
+
+.archibald-instructions-form {
+  margin-top: 10px;
+}
+
+.archibald-instructions-form textarea {
+  min-height: 170px;
+  resize: vertical;
+  line-height: 1.4;
+  background: #f7fbff;
+}
+
+.archibald-tools-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.archibald-state-name {
+  min-width: 240px;
+  flex: 1 1 240px;
+}
+
+.archibald-system-preview {
+  margin-top: 14px;
+}
+
+.archibald-system-preview summary {
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.archibald-system-preview pre {
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f7fbff;
+  padding: 12px;
+  white-space: pre-wrap;
+  line-height: 1.4;
+  max-height: 280px;
+  overflow: auto;
+}
+
+.archibald-states-section {
+  margin-top: 18px;
+}
+
+.archibald-states-section h3 {
+  margin: 0 0 10px;
+}
+
+.archibald-states-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.archibald-state-card {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fdfdfd;
+  padding: 12px;
+}
+
+.archibald-state-name-label {
+  font-weight: 700;
+}
+
+.archibald-state-meta {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 3px;
+}
+
+.archibald-state-snippet {
+  margin: 10px 0;
+  border-radius: 10px;
+  background: #f7fbff;
+  border: 1px solid var(--border);
+  padding: 10px;
+  white-space: pre-wrap;
+  max-height: 140px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.bias-settings-form {
+  margin-top: 8px;
+}
+
+.bias-grid {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.bias-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: #f7fbff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bias-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
 }
 
 .site-footer {
@@ -1533,6 +1667,15 @@ body {
 
   .project-row-actions {
     justify-content: flex-start;
+  }
+
+  .archibald-tools-row {
+    align-items: stretch;
+  }
+
+  .archibald-state-name {
+    width: 100%;
+    min-width: 0;
   }
 }
 

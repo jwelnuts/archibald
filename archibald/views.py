@@ -1,7 +1,3 @@
-import json
-import os
-import urllib.error
-import urllib.request
 from datetime import date
 
 from django.contrib.auth.decorators import login_required
@@ -11,66 +7,14 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import ArchibaldPromptForm
 from .models import ArchibaldMessage, ArchibaldThread
+from .openai_client import request_openai_response
+from .prompting import build_archibald_system_for_user
 from .services import build_context_messages, build_insight_cards
 
 
-ARCHIBALD_SYSTEM = (
-    "Sei Archibald, il maggiordomo personale dell'utente. "
-    "Parla in modo caldo, elegante e amichevole, come un maggiordomo fidato. "
-    "Sii chiaro e concreto, ma con un tocco di discrezione. "
-    "Rimani centrato esclusivamente sulle funzionalita' di questo progetto (MIO) "
-    "e sui dati disponibili nell'app; non proporre app o servizi esterni "
-    "a meno che l'utente lo richieda esplicitamente. "
-    "Se l'utente chiede fonti esterne o confronti, puoi citarle, ma resta "
-    "sempre nel ruolo di assistente di MIO. "
-    "Hai pieno accesso ai dati dell'utente corrente in tutte le app del progetto. "
-    "Se l'utente vuole progettare pannelli o dashboard personali, proponi una struttura pratica: "
-    "obiettivo, blocchi, KPI, filtri, azioni rapide e passi di implementazione. "
-    "Quando richiesto esplicitamente, prepara anche JSON pronto per UI Generator. "
-    "Quando utile, chiudi con 1-3 azioni pratiche."
-)
-def _openai_response(messages):
-    api_key = os.getenv("OPENAI_API_KEY", "")
-    if not api_key:
-        return "OPENAI_API_KEY non configurata."
-
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    payload = {
-        "model": model,
-        "instructions": ARCHIBALD_SYSTEM,
-        "input": messages,
-    }
-
-    req = urllib.request.Request(
-        "https://api.openai.com/v1/responses",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-        },
-        method="POST",
-    )
-
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as exc:
-        detail = exc.read().decode("utf-8") if exc.fp else ""
-        return f"Errore API: {exc} {detail}"
-    except Exception as exc:
-        return f"Errore API: {exc}"
-
-    if isinstance(data, dict):
-        if data.get("output_text"):
-            return data["output_text"]
-        output = data.get("output", [])
-        for item in output:
-            if item.get("type") == "message":
-                content = item.get("content", [])
-                for block in content:
-                    if block.get("type") in {"output_text", "text"}:
-                        return block.get("text", "")
-    return "Nessuna risposta disponibile."
+def _openai_response(user, messages):
+    instructions = build_archibald_system_for_user(user)
+    return request_openai_response(messages, instructions)
 
 
 def _build_messages(history, user_text):
@@ -133,7 +77,7 @@ def dashboard(request):
                 history.reverse()
                 messages = _build_messages(history, prompt)
                 messages = build_context_messages(request.user, prompt) + messages
-                response_text = _openai_response(messages)
+                response_text = _openai_response(request.user, messages)
                 with transaction.atomic():
                     user_msg = ArchibaldMessage.objects.create(
                         owner=request.user,
@@ -276,7 +220,7 @@ def quick_chat(request):
     )
     history.reverse()
     messages = build_context_messages(request.user, prompt) + _build_messages(history, prompt)
-    response_text = _openai_response(messages)
+    response_text = _openai_response(request.user, messages)
 
     with transaction.atomic():
         user_msg = ArchibaldMessage.objects.create(

@@ -30,6 +30,14 @@
           <h1>Profilo</h1>
           <p class="muted">Gestisci le informazioni personali e le preferenze.</p>
 
+          {% if messages %}
+            <div class="profile-flash-stack">
+              {% for message in messages %}
+                <div class="profile-flash">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+
           <div class="profile-grid">
             <div class="profile-card">
               <h2>Dati principali</h2>
@@ -77,6 +85,116 @@
                 </div>
                 <div class="actions">
                   <button class="btn primary" type="submit">Salva</button>
+                </div>
+              </form>
+            </div>
+
+            <div class="profile-card profile-card-wide" id="archibald-instructions">
+              <h2>Istruzioni Attive Archibald</h2>
+              <p class="muted">
+                Personalizza lo stile operativo del maggiordomo e salva stati richiamabili per diversi contesti.
+              </p>
+              <form class="form archibald-instructions-form" method="post" action="">
+                {% csrf_token %}
+                <div class="field">
+                  <label for="archibald_custom_instructions">Istruzioni personalizzate</label>
+                  <textarea
+                    id="archibald_custom_instructions"
+                    name="archibald_custom_instructions"
+                    rows="8"
+                    placeholder="Es: evita toni troppo accondiscendenti, vai diretto su analisi + piano, evidenzia tradeoff."
+                  >{{ archibald_custom_instructions }}</textarea>
+                </div>
+                <div class="archibald-tools-row">
+                  <button class="btn primary" type="submit" name="action" value="save_archibald_instructions">
+                    Salva istruzioni attive
+                  </button>
+                  <input
+                    type="text"
+                    class="archibald-state-name"
+                    name="state_name"
+                    maxlength="120"
+                    placeholder="Nome stato (es. Operativo Secco)"
+                  >
+                  <button class="btn" type="submit" name="action" value="save_archibald_state">
+                    Salva come stato
+                  </button>
+                </div>
+              </form>
+
+              <details class="archibald-system-preview">
+                <summary>Istruzioni complete attive (preview)</summary>
+                <pre>{{ archibald_system_preview }}</pre>
+              </details>
+
+              <div class="archibald-states-section">
+                <h3>Stati salvati</h3>
+                {% if archibald_instruction_states %}
+                  <div class="archibald-states-grid">
+                    {% for state in archibald_instruction_states %}
+                      <article class="archibald-state-card">
+                        <div class="archibald-state-name-label">{{ state.name }}</div>
+                        <div class="archibald-state-meta">Aggiornato: {{ state.updated_at|date:"d/m/Y H:i" }}</div>
+                        <pre class="archibald-state-snippet">{{ state.instructions_text|default:"(vuoto)" }}</pre>
+                        <div class="actions">
+                          <form method="post" action="">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="apply_archibald_state">
+                            <input type="hidden" name="state_id" value="{{ state.id }}">
+                            <button class="btn" type="submit">Applica</button>
+                          </form>
+                          <form method="post" action="">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_archibald_state">
+                            <input type="hidden" name="state_id" value="{{ state.id }}">
+                            <button class="btn danger" type="submit">Elimina</button>
+                          </form>
+                        </div>
+                      </article>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="note">Nessuno stato salvato al momento.</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="profile-card profile-card-wide" id="bias-cognitivi">
+              <h2>Bias Cognitivi</h2>
+              <p class="muted">
+                Sezione dedicata: scegli i bias che Archibald deve monitorare quando il controllo bias è attivo.
+              </p>
+              <form class="form bias-settings-form" method="post" action="">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_bias_settings">
+                <div class="bias-grid">
+                  <label class="bias-item">
+                    <input type="checkbox" name="bias_catastrophizing" {% if archibald_persona.bias_catastrophizing %}checked{% endif %}>
+                    <span>Catastrofismo</span>
+                  </label>
+                  <label class="bias-item">
+                    <input type="checkbox" name="bias_all_or_nothing" {% if archibald_persona.bias_all_or_nothing %}checked{% endif %}>
+                    <span>Pensiero tutto-o-nulla</span>
+                  </label>
+                  <label class="bias-item">
+                    <input type="checkbox" name="bias_overgeneralization" {% if archibald_persona.bias_overgeneralization %}checked{% endif %}>
+                    <span>Sovrageneralizzazione</span>
+                  </label>
+                  <label class="bias-item">
+                    <input type="checkbox" name="bias_mind_reading" {% if archibald_persona.bias_mind_reading %}checked{% endif %}>
+                    <span>Lettura del pensiero</span>
+                  </label>
+                  <label class="bias-item">
+                    <input type="checkbox" name="bias_negative_filtering" {% if archibald_persona.bias_negative_filtering %}checked{% endif %}>
+                    <span>Filtro negativo</span>
+                  </label>
+                  <label class="bias-item">
+                    <input type="checkbox" name="bias_confirmation_bias" {% if archibald_persona.bias_confirmation_bias %}checked{% endif %}>
+                    <span>Bias di conferma</span>
+                  </label>
+                </div>
+                <div class="actions">
+                  <button class="btn primary" type="submit">Salva bias cognitivi</button>
                 </div>
               </form>
             </div>

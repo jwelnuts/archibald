@@ -1,6 +1,16 @@
 {% extends 'ai_lab/base.html' %}
 
 {% block content %}
+  {% if messages %}
+    <section class="panel">
+      <div class="flash-stack">
+        {% for message in messages %}
+          <div class="flash-item">{{ message }}</div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
   <section class="panel">
     <h2>Zona apprendimento AI/ML</h2>
     <p>
@@ -25,6 +35,81 @@
         </ul>
       </div>
     </div>
+  </section>
+
+  <section class="panel" id="archibald-lab">
+    <h2>Archibald Persona Lab</h2>
+    <p>
+      Qui regoli il modo di rispondere di Archibald e fai test rapidi prima di usarlo in chat.
+    </p>
+    <div class="grid">
+      <div class="card">
+        <h3>Configurazione stile</h3>
+        <form class="form" method="post" action="">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save_persona">
+          {{ persona_form.non_field_errors }}
+          <div class="persona-core-grid">
+            {% for field in persona_form.visible_fields %}
+              {% if field.name not in psychological_field_names %}
+                <div class="field-block">
+                  <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  {{ field }}
+                  {% if field.help_text %}
+                    <small class="field-help">{{ field.help_text }}</small>
+                  {% endif %}
+                  {{ field.errors }}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <h4 class="psych-title">Sfaccettature psicologiche (toggle booleani)</h4>
+          <ul class="psych-list">
+            {% for field in persona_form.visible_fields %}
+              {% if field.name in psychological_field_names %}
+                <li class="psych-item">
+                  <label for="{{ field.id_for_label }}" class="psych-toggle">
+                    {{ field }}
+                    <span class="psych-label">{{ field.label }}</span>
+                  </label>
+                  {% if field.help_text %}
+                    <div class="psych-help">{{ field.help_text }}</div>
+                  {% endif %}
+                  {{ field.errors }}
+                </li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+          <div class="actions">
+            <button class="btn primary" type="submit">Salva profilo</button>
+            <a class="btn" href="/archibald/">Apri Archibald</a>
+          </div>
+        </form>
+      </div>
+      <div class="card">
+        <h3>Sandbox test</h3>
+        <form class="form" method="post" action="">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="test_persona">
+          {{ sandbox_form.as_p }}
+          <div class="actions">
+            <button class="btn primary" type="submit">Esegui test</button>
+            <a class="btn" href="/ai-lab/#archibald-lab">Reset test</a>
+          </div>
+        </form>
+        {% if sandbox_result %}
+          <div class="sandbox-result">
+            <div class="sandbox-label">Risposta preview</div>
+            <pre class="sandbox-output">{{ sandbox_result }}</pre>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    <details class="system-preview">
+      <summary>Vedi istruzioni attive di Archibald</summary>
+      <pre>{{ system_preview }}</pre>
+    </details>
   </section>
 
   <section class="panel">

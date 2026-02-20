@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 
+from django.contrib import messages as django_messages
 from django.contrib.auth import login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
@@ -122,7 +123,87 @@ def logout_view(request):
 
 @login_required
 def profile(request):
-    return render(request, "core/profile.html")
+    from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
+    from archibald.prompting import build_archibald_system_for_user
+
+    persona, _ = ArchibaldPersonaConfig.objects.get_or_create(owner=request.user)
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        custom_text = (request.POST.get("archibald_custom_instructions") or "").strip()
+
+        if action == "save_archibald_instructions":
+            persona.custom_instructions = custom_text
+            persona.save()
+            django_messages.success(request, "Istruzioni Archibald salvate.")
+            return redirect("/profile/")
+
+        if action == "save_archibald_state":
+            state_name = (request.POST.get("state_name") or "").strip()
+            if not state_name:
+                django_messages.error(request, "Inserisci un nome stato prima di salvare.")
+            else:
+                persona.custom_instructions = custom_text
+                persona.save()
+                state, created = ArchibaldInstructionState.objects.update_or_create(
+                    owner=request.user,
+                    name=state_name,
+                    defaults={"instructions_text": custom_text},
+                )
+                label = "creato" if created else "aggiornato"
+                django_messages.success(request, f"Stato '{state.name}' {label}.")
+            return redirect("/profile/")
+
+        if action == "apply_archibald_state":
+            state_id = request.POST.get("state_id")
+            state = ArchibaldInstructionState.objects.filter(owner=request.user, id=state_id).first()
+            if not state:
+                django_messages.error(request, "Stato non trovato.")
+            else:
+                persona.custom_instructions = state.instructions_text
+                persona.save()
+                django_messages.success(request, f"Stato '{state.name}' applicato alle istruzioni attive.")
+            return redirect("/profile/")
+
+        if action == "delete_archibald_state":
+            state_id = request.POST.get("state_id")
+            state = ArchibaldInstructionState.objects.filter(owner=request.user, id=state_id).first()
+            if not state:
+                django_messages.error(request, "Stato non trovato.")
+            else:
+                label = state.name
+                state.delete()
+                django_messages.success(request, f"Stato '{label}' eliminato.")
+            return redirect("/profile/")
+
+        if action == "save_bias_settings":
+            persona.bias_catastrophizing = request.POST.get("bias_catastrophizing") == "on"
+            persona.bias_all_or_nothing = request.POST.get("bias_all_or_nothing") == "on"
+            persona.bias_overgeneralization = request.POST.get("bias_overgeneralization") == "on"
+            persona.bias_mind_reading = request.POST.get("bias_mind_reading") == "on"
+            persona.bias_negative_filtering = request.POST.get("bias_negative_filtering") == "on"
+            persona.bias_confirmation_bias = request.POST.get("bias_confirmation_bias") == "on"
+            persona.save(
+                update_fields=[
+                    "bias_catastrophizing",
+                    "bias_all_or_nothing",
+                    "bias_overgeneralization",
+                    "bias_mind_reading",
+                    "bias_negative_filtering",
+                    "bias_confirmation_bias",
+                ]
+            )
+            django_messages.success(request, "Impostazioni bias cognitivi salvate.")
+            return redirect("/profile/#bias-cognitivi")
+
+    states = ArchibaldInstructionState.objects.filter(owner=request.user).order_by("-updated_at", "name")
+    context = {
+        "archibald_custom_instructions": persona.custom_instructions or "",
+        "archibald_instruction_states": states[:24],
+        "archibald_system_preview": build_archibald_system_for_user(request.user),
+        "archibald_persona": persona,
+    }
+    return render(request, "core/profile.html", context)
 
 
 @login_required
