@@ -1,8 +1,10 @@
+import json
+
 from django.contrib import messages as django_messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
-from archibald.openai_client import request_openai_response
+from archibald.openai_client import request_openai_response, request_openai_response_with_debug
 from archibald.prompting import build_archibald_system_for_user
 
 from .forms import ArchibaldPersonaConfigForm, ArchibaldSandboxPromptForm, LabEntryForm
@@ -15,35 +17,6 @@ def dashboard(request):
     entries = LabEntry.objects.filter(owner=request.user).order_by("-updated_at")
     if status_filter in LabEntry.Status.values:
         entries = entries.filter(status=status_filter)
-
-    persona, _ = ArchibaldPersonaConfig.objects.get_or_create(owner=request.user)
-    persona_form = ArchibaldPersonaConfigForm(instance=persona)
-    sandbox_form = ArchibaldSandboxPromptForm()
-    sandbox_prompt = ""
-    sandbox_result = ""
-    system_preview = build_archibald_system_for_user(request.user)
-
-    if request.method == "POST":
-        action = (request.POST.get("action") or "").strip()
-        if action == "save_persona":
-            persona_form = ArchibaldPersonaConfigForm(request.POST, instance=persona)
-            if persona_form.is_valid():
-                persona_form.save()
-                django_messages.success(request, "Profilo Archibald salvato.")
-                return redirect("/ai-lab/")
-        elif action == "test_persona":
-            sandbox_form = ArchibaldSandboxPromptForm(request.POST)
-            if sandbox_form.is_valid():
-                sandbox_prompt = (sandbox_form.cleaned_data.get("prompt") or "").strip()
-                if sandbox_prompt:
-                    messages = [
-                        {
-                            "role": "user",
-                            "content": sandbox_prompt,
-                        }
-                    ]
-                    system_preview = build_archibald_system_for_user(request.user)
-                    sandbox_result = request_openai_response(messages, system_preview)
 
     status_cards = [
         {
@@ -61,10 +34,87 @@ def dashboard(request):
             "status_filter": status_filter,
             "status_choices": LabEntry.Status.choices,
             "status_cards": status_cards,
+        },
+    )
+
+
+@login_required
+def personal_lab(request):
+    persona, _ = ArchibaldPersonaConfig.objects.get_or_create(owner=request.user)
+    persona_form = ArchibaldPersonaConfigForm(instance=persona)
+    sandbox_form = ArchibaldSandboxPromptForm()
+    sandbox_prompt = ""
+    sandbox_result = ""
+    sandbox_debug_enabled = True
+    sandbox_debug_text = ""
+    system_preview = build_archibald_system_for_user(request.user)
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "save_persona":
+            persona_form = ArchibaldPersonaConfigForm(request.POST, instance=persona)
+            if persona_form.is_valid():
+                persona_form.save()
+                django_messages.success(request, "Profilo Archibald salvato.")
+                return redirect("/ai-lab/personal-lab/")
+        elif action == "test_persona":
+            sandbox_form = ArchibaldSandboxPromptForm(request.POST)
+            sandbox_debug_enabled = request.POST.get("debug_enabled") == "on"
+            if sandbox_form.is_valid():
+                sandbox_prompt = (sandbox_form.cleaned_data.get("prompt") or "").strip()
+                custom_instructions_override = None
+                if "custom_instructions_preview" in request.POST:
+                    custom_instructions_override = request.POST.get("custom_instructions_preview", "")
+                if sandbox_prompt:
+                    test_messages = [
+                        {
+                            "role": "user",
+                            "content": sandbox_prompt,
+                        }
+                    ]
+                    system_preview = build_archibald_system_for_user(
+                        request.user,
+                        custom_instructions_override=custom_instructions_override,
+                    )
+                    if sandbox_debug_enabled:
+                        sandbox_result, openai_debug = request_openai_response_with_debug(
+                            test_messages,
+                            system_preview,
+                        )
+                        debug_payload = {
+                            "step_1_input": {
+                                "prompt": sandbox_prompt,
+                                "custom_instructions_override": custom_instructions_override,
+                            },
+                            "step_2_system_prompt": {
+                                "chars": len(system_preview or ""),
+                                "preview": (system_preview or "")[:2500],
+                            },
+                            "step_3_messages": test_messages,
+                            "step_4_openai_call": openai_debug,
+                            "step_5_output": {
+                                "chars": len(sandbox_result or ""),
+                                "preview": (sandbox_result or "")[:2500],
+                            },
+                        }
+                        sandbox_debug_text = json.dumps(
+                            debug_payload,
+                            ensure_ascii=False,
+                            indent=2,
+                        )
+                    else:
+                        sandbox_result = request_openai_response(test_messages, system_preview)
+
+    return render(
+        request,
+        "ai_lab/personal_lab.html",
+        {
             "persona_form": persona_form,
             "sandbox_form": sandbox_form,
             "sandbox_prompt": sandbox_prompt,
             "sandbox_result": sandbox_result,
+            "sandbox_debug_enabled": sandbox_debug_enabled,
+            "sandbox_debug_text": sandbox_debug_text,
             "system_preview": system_preview,
             "psychological_field_names": ArchibaldPersonaConfigForm.PSYCHOLOGICAL_BOOLEAN_FIELDS,
         },

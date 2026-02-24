@@ -96,12 +96,16 @@ def _persona_lines(config):
 
     custom = (config.custom_instructions or "").strip()
     if custom:
-        lines.append(f"- Istruzioni personali dell'utente: {custom}")
+        lines.append(
+            "- Regola prioritaria: rispetta sempre le istruzioni personali dell'utente;"
+            " se chiedono lingua o formato, applicali all'intera risposta salvo vincoli di sicurezza."
+        )
+        lines.append(f"- Istruzioni personali dell'utente (priorita alta): {custom}")
 
     return lines
 
 
-def build_archibald_system_for_user(user) -> str:
+def build_archibald_system_for_user(user, custom_instructions_override=None) -> str:
     instructions = [ARCHIBALD_BASE_SYSTEM]
     if user is None or not getattr(user, "is_authenticated", False):
         return "\n".join(instructions)
@@ -113,7 +117,12 @@ def build_archibald_system_for_user(user) -> str:
 
     config = ArchibaldPersonaConfig.objects.filter(owner=user).first()
     if not config:
-        return "\n".join(instructions)
+        if custom_instructions_override is None:
+            return "\n".join(instructions)
+        config = ArchibaldPersonaConfig(owner=user)
+
+    if custom_instructions_override is not None:
+        config.custom_instructions = (custom_instructions_override or "").strip()
 
     instructions.extend(_persona_lines(config))
     return "\n".join(instructions)

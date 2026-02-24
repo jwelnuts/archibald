@@ -65,6 +65,10 @@
                 <span class="label">Hero actions</span>
                 <a class="link" href="/profile/hero-actions/">Configura</a>
               </div>
+              <div class="profile-row">
+                <span class="label">Personal Lab Archibald</span>
+                <a class="link" href="/ai-lab/personal-lab/">Apri</a>
+              </div>
               <form class="form" method="post" action="">
                 {% csrf_token %}
                 <div class="field">
@@ -94,6 +98,9 @@
               <p class="muted">
                 Personalizza lo stile operativo del maggiordomo e salva stati richiamabili per diversi contesti.
               </p>
+              <div class="actions">
+                <a class="btn" href="/ai-lab/personal-lab/">Vai a Personal Lab</a>
+              </div>
               <form class="form archibald-instructions-form" method="post" action="">
                 {% csrf_token %}
                 <div class="field">

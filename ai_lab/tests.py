@@ -3,6 +3,8 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
+from archibald.prompting import build_archibald_system_for_user
+
 from .models import ArchibaldPersonaConfig, LabEntry
 
 
@@ -12,6 +14,10 @@ class AiLabViewsTests(TestCase):
 
     def test_dashboard_requires_login(self):
         response = self.client.get("/ai-lab/")
+        self.assertEqual(response.status_code, 302)
+
+    def test_personal_lab_requires_login(self):
+        response = self.client.get("/ai-lab/personal-lab/")
         self.assertEqual(response.status_code, 302)
 
     def test_add_entry(self):
@@ -35,7 +41,7 @@ class AiLabViewsTests(TestCase):
     def test_save_archibald_persona(self):
         self.client.login(username="alab", password="test1234")
         response = self.client.post(
-            "/ai-lab/",
+            "/ai-lab/personal-lab/",
             {
                 "action": "save_persona",
                 "preset": ArchibaldPersonaConfig.Preset.OPERATIVE,
@@ -69,7 +75,7 @@ class AiLabViewsTests(TestCase):
     def test_sandbox_prompt_returns_preview(self, mocked_openai):
         self.client.login(username="alab", password="test1234")
         response = self.client.post(
-            "/ai-lab/",
+            "/ai-lab/personal-lab/",
             {
                 "action": "test_persona",
                 "prompt": "Fammi una risposta piu diretta.",
@@ -78,3 +84,44 @@ class AiLabViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Risposta sandbox")
         mocked_openai.assert_called_once()
+
+    @patch("ai_lab.views.request_openai_response", return_value="Risposta sandbox")
+    def test_sandbox_uses_unsaved_custom_instructions_override(self, mocked_openai):
+        self.client.login(username="alab", password="test1234")
+        response = self.client.post(
+            "/ai-lab/personal-lab/",
+            {
+                "action": "test_persona",
+                "prompt": "Scrivi un saluto.",
+                "custom_instructions_preview": "Rispondi sempre in polacco.",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        mocked_openai.assert_called_once()
+        _, instructions = mocked_openai.call_args[0]
+        self.assertIn("Rispondi sempre in polacco.", instructions)
+        self.assertIn("Regola prioritaria", instructions)
+
+    @patch("ai_lab.views.request_openai_response_with_debug", return_value=("Risposta sandbox", {"status": "ok"}))
+    def test_sandbox_debug_panel_visible_when_enabled(self, mocked_openai_debug):
+        self.client.login(username="alab", password="test1234")
+        response = self.client.post(
+            "/ai-lab/personal-lab/",
+            {
+                "action": "test_persona",
+                "prompt": "Debugga questa risposta.",
+                "debug_enabled": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Debug pipeline sandbox")
+        self.assertContains(response, "&quot;status&quot;: &quot;ok&quot;")
+        mocked_openai_debug.assert_called_once()
+
+    def test_build_system_supports_custom_override_without_saved_config(self):
+        system = build_archibald_system_for_user(
+            self.user,
+            custom_instructions_override="Rispondi in polacco.",
+        )
+        self.assertIn("Rispondi in polacco.", system)
+        self.assertIn("Regola prioritaria", system)
