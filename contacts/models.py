@@ -8,8 +8,9 @@ from common.models import OwnedModel, TimeStampedModel
 class Contact(OwnedModel, TimeStampedModel):
     class EntityType(models.TextChoices):
         PERSON = "PERSON", "Persona"
-        COMPANY = "COMPANY", "Azienda"
         HYBRID = "HYBRID", "Persona + Attivita"
+        ENTITY = "ENTITY", "Ente"
+        COMPANY = "COMPANY", "Azienda"
 
     display_name = models.CharField(max_length=160)
     entity_type = models.CharField(max_length=10, choices=EntityType.choices, default=EntityType.PERSON)

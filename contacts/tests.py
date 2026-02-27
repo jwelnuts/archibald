@@ -8,6 +8,7 @@ from income.models import IncomeSource
 from projects.models import Customer
 
 from .models import Contact, ContactPriceList, ContactPriceListItem, ContactToolbox
+from .services import sync_contacts_from_legacy
 
 
 class ContactsViewsTests(TestCase):
@@ -59,6 +60,53 @@ class ContactsViewsTests(TestCase):
         self.assertTrue(
             Contact.objects.filter(owner=self.user, display_name="Fonte Legacy", role_income_source=True).exists()
         )
+
+    def test_update_contact_can_change_entity_type(self):
+        contact = Contact.objects.create(
+            owner=self.user,
+            display_name="Contatto Tipo",
+            entity_type=Contact.EntityType.HYBRID,
+            role_customer=True,
+        )
+        self.client.login(username="contacts_user", password="pwd12345")
+        response = self.client.post(
+            f"/contacts/update?id={contact.id}",
+            {
+                "display_name": "Contatto Tipo",
+                "entity_type": Contact.EntityType.ENTITY,
+                "person_name": "",
+                "business_name": "",
+                "email": "",
+                "phone": "",
+                "website": "",
+                "city": "",
+                "role_customer": "on",
+                "role_supplier": "",
+                "role_payee": "",
+                "role_income_source": "",
+                "notes": "",
+                "is_active": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/contacts/")
+
+        contact.refresh_from_db()
+        self.assertEqual(contact.entity_type, Contact.EntityType.ENTITY)
+
+    def test_sync_from_legacy_does_not_override_manual_entity_type(self):
+        contact = Contact.objects.create(
+            owner=self.user,
+            display_name="Cliente Manuale",
+            entity_type=Contact.EntityType.COMPANY,
+            role_customer=True,
+        )
+        Customer.objects.create(owner=self.user, name="Cliente Manuale", email="legacy@example.com")
+
+        sync_contacts_from_legacy(self.user)
+        contact.refresh_from_db()
+
+        self.assertEqual(contact.entity_type, Contact.EntityType.COMPANY)
 
 
 class ContactToolboxPriceListTests(TestCase):

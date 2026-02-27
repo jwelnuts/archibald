@@ -41,9 +41,8 @@ def upsert_contact(
     contact, _ = Contact.objects.get_or_create(owner=owner, display_name=label, defaults=defaults)
 
     update_fields = []
-    if entity_type and contact.entity_type != entity_type:
-        contact.entity_type = entity_type
-        update_fields.append("entity_type")
+    # Do not override an existing manual entity type during legacy sync.
+    # Entity type from integrations is used only at creation time (defaults above).
     for field_name, value in (
         ("person_name", person_name),
         ("business_name", business_name),

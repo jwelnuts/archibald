@@ -68,6 +68,11 @@
   color: #2b8a3e;
 }
 
+.ct-entity-chip--entity {
+  background: #f3f0ff;
+  color: #5f3dc4;
+}
+
 .ct-entity-chip--hybrid {
   background: #fff4e6;
   color: #d9480f;

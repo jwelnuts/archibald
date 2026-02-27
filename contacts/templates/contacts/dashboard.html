@@ -93,6 +93,8 @@
         var css = "ct-entity-chip ct-entity-chip--person";
         if (row.entity_code === "COMPANY") {
           css = "ct-entity-chip ct-entity-chip--company";
+        } else if (row.entity_code === "ENTITY") {
+          css = "ct-entity-chip ct-entity-chip--entity";
         } else if (row.entity_code === "HYBRID") {
           css = "ct-entity-chip ct-entity-chip--hybrid";
         }
