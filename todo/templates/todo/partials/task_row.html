@@ -11,6 +11,7 @@
     <div class="uk-text-meta">
       {{ task.get_item_type_display }} · {{ task.get_priority_display }}
       {% if task.project %} · {{ task.project.name }}{% endif %}
+      {% if task.category %} · {{ task.category.name }}{% endif %}
       {% if task.due_date %}
         · {{ task.due_date|date:"d/m/Y" }}{% if task.due_time %} {{ task.due_time|time:"H:i" }}{% endif %}
       {% else %}

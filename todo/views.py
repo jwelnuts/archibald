@@ -32,7 +32,7 @@ def dashboard(request):
     today = date.today()
     task_rows = (
         Task.objects.filter(owner=user)
-        .select_related("project")
+        .select_related("project", "category")
         .annotate(
             status_rank=Case(
                 When(status=Task.Status.OPEN, then=Value(0)),
@@ -135,6 +135,8 @@ def transfer_to_planner(request):
     note_parts.append(f"[Da Todo] Priorita: {task.get_priority_display()}")
     if task.status == Task.Status.IN_PROGRESS:
         note_parts.append("[Da Todo] Stato origine: In progress")
+    if task.category_id:
+        note_parts.append(f"[Da Todo] Categoria: {task.category.name}")
     note = "\n".join(note_parts)
 
     with transaction.atomic():
@@ -143,6 +145,7 @@ def transfer_to_planner(request):
             title=task.title,
             due_date=task.due_date,
             project=task.project,
+            category=task.category,
             status=planner_status,
             note=note,
         )

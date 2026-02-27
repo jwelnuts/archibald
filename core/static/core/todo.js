@@ -8,6 +8,9 @@ withStimulusModule(({ Controller }) => {
       this.projectChoice = this.element.querySelector("#id_project_choice");
       this.projectNameRow = this.element.querySelector("[data-project-name-row]");
       this.projectNameInput = this.element.querySelector("#id_project_name");
+      this.categoryChoice = this.element.querySelector("#id_category_choice");
+      this.categoryNameRow = this.element.querySelector("[data-category-name-row]");
+      this.categoryNameInput = this.element.querySelector("#id_category_name");
       this.filterButtons = this.element.querySelectorAll("[data-todo-filter]");
       this.activeFilter = "all";
 
@@ -23,6 +26,7 @@ withStimulusModule(({ Controller }) => {
       this.applyUIKitFieldClasses();
       this.initDatePickers();
       this.syncProjectFieldVisibility();
+      this.syncCategoryFieldVisibility();
       this.refreshTaskRows();
       this.setFilter(this.activeFilter);
     }
@@ -43,6 +47,9 @@ withStimulusModule(({ Controller }) => {
     handleChange(event) {
       if (event.target && event.target.id === "id_project_choice") {
         this.syncProjectFieldVisibility();
+      }
+      if (event.target && event.target.id === "id_category_choice") {
+        this.syncCategoryFieldVisibility();
       }
     }
 
@@ -122,6 +129,18 @@ withStimulusModule(({ Controller }) => {
       this.projectNameInput.disabled = !useNewProject;
       if (!useNewProject) {
         this.projectNameInput.value = "";
+      }
+    }
+
+    syncCategoryFieldVisibility() {
+      if (!this.categoryChoice || !this.categoryNameRow || !this.categoryNameInput) {
+        return;
+      }
+      const useNewCategory = this.categoryChoice.value === "__new__";
+      this.categoryNameRow.classList.toggle("todo-hidden", !useNewCategory);
+      this.categoryNameInput.disabled = !useNewCategory;
+      if (!useNewCategory) {
+        this.categoryNameInput.value = "";
       }
     }
 

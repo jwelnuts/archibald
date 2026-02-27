@@ -31,6 +31,14 @@
     <label class="uk-form-label" for="id_project_name">Nuovo progetto (se non esiste)</label>
     <div class="uk-form-controls">{{ form.project_name }}</div>
   </div>
+  <div class="field">
+    <label class="uk-form-label" for="id_category_choice">Categoria</label>
+    <div class="uk-form-controls">{{ form.category_choice }}</div>
+  </div>
+  <div class="field" data-category-name-row>
+    <label class="uk-form-label" for="id_category_name">Nuova categoria (se non esiste)</label>
+    <div class="uk-form-controls">{{ form.category_name }}</div>
+  </div>
   <div class="field uk-width-1-1">
     <label class="uk-form-label" for="id_note">Note</label>
     <div class="uk-form-controls">{{ form.note }}</div>

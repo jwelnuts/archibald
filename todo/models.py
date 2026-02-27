@@ -23,6 +23,9 @@ class Task(OwnedModel, TimeStampedModel):
     project = models.ForeignKey(
         "projects.Project", null=True, blank=True, on_delete=models.SET_NULL, related_name="todo_tasks"
     )
+    category = models.ForeignKey(
+        "projects.Category", null=True, blank=True, on_delete=models.SET_NULL, related_name="todo_tasks"
+    )
     item_type = models.CharField(max_length=12, choices=ItemType.choices, default=ItemType.TASK)
     due_date = models.DateField(null=True, blank=True)
     due_time = models.TimeField(null=True, blank=True)
@@ -34,6 +37,7 @@ class Task(OwnedModel, TimeStampedModel):
         indexes = [
             models.Index(fields=["owner", "status"]),
             models.Index(fields=["owner", "due_date"]),
+            models.Index(fields=["owner", "category"]),
         ]
 
     def __str__(self):
