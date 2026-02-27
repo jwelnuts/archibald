@@ -1,0 +1,99 @@
+{% extends "contacts/base.html" %}
+
+{% block title %}MIO - Toolbox contatto{% endblock %}
+
+{% block content %}
+  {% if contact %}
+    <section class="panel">
+      <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap uk-gap-small">
+        <div>
+          <h1 class="uk-margin-remove">Toolbox - {{ contact.display_name }}</h1>
+          <p class="muted uk-margin-small-top">Contenitore strumenti per il contatto. Qui puoi gestire listini e futuri tool dedicati.</p>
+        </div>
+        <div class="uk-flex uk-flex-wrap uk-gap-small">
+          <a class="btn" href="/contacts/">Rubrica</a>
+          <a class="btn primary" href="/contacts/price-lists/add?contact_id={{ contact.id }}">Nuovo listino</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel narrow">
+      <h2>Note interne toolbox</h2>
+      <form class="form" method="post" action="">
+        {% csrf_token %}
+        <div class="field">
+          <label for="id_internal_notes">Note</label>
+          {{ form.internal_notes }}
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Salva note</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="panel">
+      <h2>Listini cliente</h2>
+      {% if price_lists %}
+        <table class="uk-table uk-table-divider uk-table-small">
+          <thead>
+            <tr>
+              <th>Titolo</th>
+              <th>Articoli</th>
+              <th>Valuta</th>
+              <th>Subtotale</th>
+              <th>IVA</th>
+              <th>Totale finale</th>
+              <th>Stato</th>
+              <th class="uk-text-right">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in price_lists %}
+              <tr>
+                <td>
+                  <strong>{{ row.title }}</strong>
+                  <div class="uk-text-meta">Aggiornato: {{ row.updated_at|date:"d/m/Y H:i" }}</div>
+                </td>
+                <td>{{ row.items.count }}</td>
+                <td>{{ row.currency_code }}</td>
+                <td>{{ row.subtotal_net }}</td>
+                <td>{{ row.tax_amount }}</td>
+                <td><strong>{{ row.total_amount }}</strong></td>
+                <td>
+                  {% if row.is_active %}
+                    <span class="ct-status-chip ct-status-chip--active">Attivo</span>
+                  {% else %}
+                    <span class="ct-status-chip ct-status-chip--inactive">Disattivo</span>
+                  {% endif %}
+                </td>
+                <td class="uk-text-right">
+                  <a class="btn" href="/contacts/price-lists/update?id={{ row.id }}">Apri</a>
+                  <a class="btn danger" href="/contacts/price-lists/remove?id={{ row.id }}">Rimuovi</a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="note">Nessun listino associato a questo contatto.</div>
+      {% endif %}
+    </section>
+  {% else %}
+    <section class="panel narrow">
+      <h1>Apri toolbox contatto</h1>
+      <p class="muted">Seleziona un contatto per accedere ai suoi strumenti dedicati.</p>
+      {% if rows %}
+        <ul class="list">
+          {% for row in rows %}
+            <li>
+              <span>{{ row.display_name }}</span>
+              <a class="btn" href="/contacts/toolbox?id={{ row.id }}">Apri toolbox</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun contatto disponibile.</div>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}

@@ -9,6 +9,7 @@
       <p>Rubrica multidimensionale per clienti, fornitori, beneficiari e fonti entrata.</p>
       <div class="hero-actions">
         <a class="btn primary" href="/contacts/add">Nuovo contatto</a>
+        <a class="btn" href="/contacts/toolbox">Toolbox contatti</a>
         <a class="btn" href="/finance/quotes/add">Nuovo preventivo</a>
       </div>
     </div>
@@ -153,6 +154,7 @@
       function actionCell(row) {
         return [
           '<div class="ct-actions">',
+          actionButton("Toolbox", row.toolbox_url, ""),
           actionButton("Modifica", row.update_url, "is-primary"),
           actionButton("Rimuovi", row.remove_url, "is-danger"),
           actionButton("Cerca", row.search_url, ""),
@@ -230,7 +232,7 @@
               header: "Azioni rapide",
               name: "actions",
               align: "right",
-              minWidth: 260,
+              minWidth: 340,
               formatter: function (ctx) {
                 return actionCell(ctx.row);
               },

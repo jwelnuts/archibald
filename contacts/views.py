@@ -1,12 +1,18 @@
 from urllib.parse import quote_plus
 
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import ContactForm
-from .models import Contact
+from .forms import ContactForm, ContactPriceListForm, ContactPriceListItemFormSet, ContactToolboxForm
+from .models import Contact, ContactPriceList, ContactToolbox
 from .services import ensure_legacy_records_for_contact, sync_contacts_from_legacy
+
+
+def _ensure_toolbox(contact):
+    toolbox, _ = ContactToolbox.objects.get_or_create(owner=contact.owner, contact=contact)
+    return toolbox
 
 
 @login_required
@@ -70,6 +76,7 @@ def dashboard(request):
                 "update_url": f"/contacts/update?id={item.id}",
                 "remove_url": f"/contacts/remove?id={item.id}",
                 "search_url": f"/contacts/?q={quote_plus(item.display_name)}",
+                "toolbox_url": f"/contacts/toolbox?id={item.id}",
             }
         )
 
@@ -103,6 +110,7 @@ def add_contact(request):
             item = form.save(commit=False)
             item.owner = request.user
             item.save()
+            _ensure_toolbox(item)
             ensure_legacy_records_for_contact(item)
             return redirect("/contacts/")
     else:
@@ -121,6 +129,7 @@ def update_contact(request):
             form = ContactForm(request.POST, instance=item)
             if form.is_valid():
                 saved = form.save()
+                _ensure_toolbox(saved)
                 ensure_legacy_records_for_contact(saved)
                 return redirect("/contacts/")
         else:
@@ -142,3 +151,168 @@ def remove_contact(request):
             return redirect("/contacts/")
     rows = Contact.objects.filter(owner=request.user).order_by("display_name")[:30]
     return render(request, "contacts/remove_contact.html", {"item": item, "rows": rows})
+
+
+@login_required
+def toolbox(request):
+    sync_contacts_from_legacy(request.user)
+    contact_id = request.GET.get("id")
+    if contact_id:
+        contact = get_object_or_404(Contact, id=contact_id, owner=request.user)
+        toolbox_item = _ensure_toolbox(contact)
+
+        if request.method == "POST":
+            form = ContactToolboxForm(request.POST, instance=toolbox_item)
+            if form.is_valid():
+                saved = form.save(commit=False)
+                saved.owner = request.user
+                saved.contact = contact
+                saved.save()
+                return redirect(f"/contacts/toolbox?id={contact.id}")
+        else:
+            form = ContactToolboxForm(instance=toolbox_item)
+
+        price_lists = (
+            ContactPriceList.objects.filter(owner=request.user, toolbox=toolbox_item)
+            .prefetch_related("items")
+            .order_by("-updated_at", "-id")
+        )
+        return render(
+            request,
+            "contacts/toolbox.html",
+            {
+                "contact": contact,
+                "toolbox": toolbox_item,
+                "form": form,
+                "price_lists": price_lists,
+            },
+        )
+
+    rows = Contact.objects.filter(owner=request.user).order_by("display_name")[:50]
+    return render(request, "contacts/toolbox.html", {"rows": rows})
+
+
+@login_required
+def add_price_list(request):
+    sync_contacts_from_legacy(request.user)
+    contact_id = request.GET.get("contact_id")
+    contact = get_object_or_404(Contact, id=contact_id, owner=request.user)
+    toolbox_item = _ensure_toolbox(contact)
+
+    if request.method == "POST":
+        form = ContactPriceListForm(request.POST)
+        temp_item = ContactPriceList(owner=request.user, toolbox=toolbox_item)
+        item_formset = ContactPriceListItemFormSet(request.POST, instance=temp_item, prefix="items")
+        if form.is_valid() and item_formset.is_valid():
+            with transaction.atomic():
+                price_list = form.save(commit=False)
+                price_list.owner = request.user
+                price_list.toolbox = toolbox_item
+                price_list.save()
+
+                item_formset.instance = price_list
+                line_items = item_formset.save(commit=False)
+                for deleted in item_formset.deleted_objects:
+                    deleted.delete(refresh_price_list=False)
+                for idx, line in enumerate(line_items, start=1):
+                    line.owner = request.user
+                    line.price_list = price_list
+                    if not line.row_order:
+                        line.row_order = idx
+                    line.save(refresh_price_list=False)
+                price_list.refresh_totals_from_items(save=True)
+            return redirect(f"/contacts/toolbox?id={contact.id}")
+    else:
+        form = ContactPriceListForm()
+        item_formset = ContactPriceListItemFormSet(
+            instance=ContactPriceList(owner=request.user, toolbox=toolbox_item),
+            prefix="items",
+        )
+
+    return render(
+        request,
+        "contacts/price_list_form.html",
+        {
+            "mode": "add",
+            "contact": contact,
+            "toolbox": toolbox_item,
+            "form": form,
+            "item_formset": item_formset,
+        },
+    )
+
+
+@login_required
+def update_price_list(request):
+    sync_contacts_from_legacy(request.user)
+    item_id = request.GET.get("id")
+    if item_id:
+        price_list = get_object_or_404(
+            ContactPriceList.objects.select_related("toolbox", "toolbox__contact"),
+            id=item_id,
+            owner=request.user,
+        )
+        contact = price_list.contact
+        if request.method == "POST":
+            form = ContactPriceListForm(request.POST, instance=price_list)
+            item_formset = ContactPriceListItemFormSet(request.POST, instance=price_list, prefix="items")
+            if form.is_valid() and item_formset.is_valid():
+                with transaction.atomic():
+                    saved_price_list = form.save(commit=False)
+                    saved_price_list.owner = request.user
+                    saved_price_list.toolbox = price_list.toolbox
+                    saved_price_list.save()
+
+                    line_items = item_formset.save(commit=False)
+                    for deleted in item_formset.deleted_objects:
+                        deleted.delete(refresh_price_list=False)
+                    for idx, line in enumerate(line_items, start=1):
+                        line.owner = request.user
+                        line.price_list = saved_price_list
+                        if not line.row_order:
+                            line.row_order = idx
+                        line.save(refresh_price_list=False)
+                    saved_price_list.refresh_totals_from_items(save=True)
+                return redirect(f"/contacts/toolbox?id={contact.id}")
+        else:
+            form = ContactPriceListForm(instance=price_list)
+            item_formset = ContactPriceListItemFormSet(instance=price_list, prefix="items")
+        return render(
+            request,
+            "contacts/price_list_form.html",
+            {
+                "mode": "update",
+                "contact": contact,
+                "toolbox": price_list.toolbox,
+                "item": price_list,
+                "form": form,
+                "item_formset": item_formset,
+            },
+        )
+
+    rows = ContactPriceList.objects.filter(owner=request.user).select_related("toolbox__contact").order_by("-updated_at", "-id")[
+        :40
+    ]
+    return render(request, "contacts/price_list_form.html", {"mode": "select", "rows": rows})
+
+
+@login_required
+def remove_price_list(request):
+    sync_contacts_from_legacy(request.user)
+    item_id = request.GET.get("id")
+    if item_id:
+        price_list = get_object_or_404(
+            ContactPriceList.objects.select_related("toolbox", "toolbox__contact"),
+            id=item_id,
+            owner=request.user,
+        )
+        if request.method == "POST":
+            contact_id = price_list.contact.id
+            price_list.delete()
+            return redirect(f"/contacts/toolbox?id={contact_id}")
+        return render(request, "contacts/price_list_remove.html", {"item": price_list, "contact": price_list.contact})
+
+    rows = ContactPriceList.objects.filter(owner=request.user).select_related("toolbox__contact").order_by("-updated_at", "-id")[
+        :40
+    ]
+    return render(request, "contacts/price_list_remove.html", {"rows": rows})

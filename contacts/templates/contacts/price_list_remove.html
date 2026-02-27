@@ -1,0 +1,38 @@
+{% extends "contacts/base.html" %}
+
+{% block title %}MIO - Rimuovi listino{% endblock %}
+
+{% block content %}
+  {% if item %}
+    <section class="panel narrow">
+      <h1>Rimuovi listino</h1>
+      <p class="muted">Conferma eliminazione del listino selezionato.</p>
+      <div class="warning-box">
+        Stai per rimuovere <strong>{{ item.title }}</strong> per il contatto
+        <strong>{{ contact.display_name }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/contacts/toolbox?id={{ contact.id }}">Annulla</a>
+      </form>
+    </section>
+  {% else %}
+    <section class="panel narrow">
+      <h1>Seleziona listino da rimuovere</h1>
+      {% if rows %}
+        <ul class="list">
+          {% for row in rows %}
+            <li>
+              <span>{{ row.title }} - {{ row.toolbox.contact.display_name }}</span>
+              <a class="btn danger" href="/contacts/price-lists/remove?id={{ row.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun listino disponibile.</div>
+      {% endif %}
+    </section>
+  {% endif %}
+{% endblock %}
