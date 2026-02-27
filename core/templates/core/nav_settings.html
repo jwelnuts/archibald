@@ -1,0 +1,75 @@
+{% extends "core/profile.html" %}
+
+{% block content %}
+  <section class="panel profile-panel">
+    <h1>Navigazione</h1>
+    <p class="muted">
+      Personalizza il menu in alto: scegli ordine e visibilita delle app, aggiungi link personali.
+    </p>
+
+    <form class="form" method="post" action="">
+      {% csrf_token %}
+      <div class="form-section">
+        <h2>App nel menu</h2>
+        <p class="muted">Ogni app puo essere nascosta e riordinata.</p>
+        {% for app in app_rows %}
+          <div class="form-row">
+            <label class="toggle">
+              <input
+                type="checkbox"
+                name="app_visible_{{ app.key }}"
+                {% if app.visible %}checked{% endif %}
+              >
+              <span>{{ app.label }}</span>
+            </label>
+            <input
+              type="number"
+              name="app_order_{{ app.key }}"
+              value="{{ app.order }}"
+              min="1"
+              step="1"
+              style="max-width: 90px;"
+            >
+            <span class="muted">{{ app.url }}</span>
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="form-section">
+        <h2>Link personali</h2>
+        <p class="muted">Massimo 6 link. URL validi: percorso interno (`/qualcosa/`) o `http(s)`.</p>
+        {% for row in custom_link_rows %}
+          <div class="form-row">
+            <input
+              type="text"
+              name="custom_label_{{ row.index }}"
+              value="{{ row.label }}"
+              placeholder="Etichetta link"
+              maxlength="40"
+            >
+            <input
+              type="text"
+              name="custom_url_{{ row.index }}"
+              value="{{ row.url }}"
+              placeholder="/mia-pagina/ oppure https://..."
+              maxlength="300"
+            >
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="form-section">
+        <h2>Widget personali (base futura)</h2>
+        <p class="muted">
+          Per ora salviamo solo configurazione JSON. Nessun codice viene eseguito lato server.
+        </p>
+        <textarea name="widgets_json" rows="10" placeholder='[{"title":"Mio widget","type":"text","config":{"text":"..."}]'>{{ widgets_json }}</textarea>
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" type="submit">Salva navigazione</button>
+        <a class="btn" href="/profile/">Indietro</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

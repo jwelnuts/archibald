@@ -28,3 +28,15 @@ class UserHeroActionsConfig(models.Model):
 
     def __str__(self):
         return f"HeroActionsConfig({self.user_id})"
+
+
+class UserNavConfig(models.Model):
+    user = models.OneToOneField(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="nav_config",
+    )
+    config = models.JSONField(default=dict, blank=True)
+
+    def __str__(self):
+        return f"UserNavConfig({self.user_id})"

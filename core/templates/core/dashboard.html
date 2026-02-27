@@ -33,6 +33,7 @@
           <a href="/projects/">Projects</a>
           <a href="/subs/">Subscriptions</a>
           <a href="/todo/">Todo</a>
+          <a href="/agenda/">Agenda</a>
           <a href="/routines/">Routines</a>
           <a href="/archibald/">Archibald</a>
           <a href="/ai-lab/">AI Lab</a>
@@ -132,9 +133,12 @@
             </div>
             <div class="calendar-legend">
               <span class="legend-item"><i class="legend-dot event-task"></i> Task</span>
+              <span class="legend-item"><i class="legend-dot event-agenda_activity"></i> Agenda attività</span>
+              <span class="legend-item"><i class="legend-dot event-agenda_reminder"></i> Agenda reminder</span>
               <span class="legend-item"><i class="legend-dot event-planner"></i> Planner</span>
               <span class="legend-item"><i class="legend-dot event-subscription"></i> Abbonamenti</span>
               <span class="legend-item"><i class="legend-dot event-transaction"></i> Transazioni</span>
+              <span class="legend-item"><i class="legend-dot event-worklog"></i> Ore lavoro</span>
               <span class="legend-item"><i class="legend-dot event-routine"></i> Routine</span>
             </div>
           </section>
@@ -150,6 +154,7 @@
               <a class="quick-card" href="/finance/invoices/add">Nuova fattura</a>
               <a class="quick-card" href="/todo/api/add">Nuovo task</a>
               <a class="quick-card" href="/planner/add">Nuovo planner</a>
+              <a class="quick-card" href="/agenda/">Apri agenda</a>
               <a class="quick-card" href="/routines/api/add">Nuova routine</a>
               <a class="quick-card" href="/subs/api/add">Nuovo abbonamento</a>
               <a class="quick-card" href="/projects/api/add">Nuovo progetto</a>
@@ -244,6 +249,11 @@
           <div class="portlet-title">Planner</div>
           <p>Pianifica obiettivi e budget della settimana.</p>
           <a class="portlet-link" href="/planner/">Vai al modulo</a>
+        </div>
+        <div class="portlet" data-module="agenda" data-group="planning">
+          <div class="portlet-title">Agenda</div>
+          <p>Calendario operativo giornaliero e ore lavorate.</p>
+          <a class="portlet-link" href="/agenda/">Vai al modulo</a>
         </div>
         <div class="portlet" data-module="routines" data-group="planning">
           <div class="portlet-title">Routines</div>

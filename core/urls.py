@@ -9,6 +9,7 @@ urlpatterns = [
     path('accounts/signup/', views.signup, name='signup'),
     path('profile/', views.profile, name='profile'),
     path('profile/hero-actions/', views.hero_actions, name='hero-actions'),
+    path('profile/nav/', views.nav_settings, name='nav-settings'),
     path('calendar/events', views.calendar_events, name='core-calendar-events'),
     path('core/accounts/', views.accounts, name='core-accounts'),
     path('core/accounts/add', views.add_account, name='core-accounts-add'),

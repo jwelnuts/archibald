@@ -12,6 +12,7 @@
         <div class="form-errors">
           {{ form.non_field_errors }}
           {{ form.title.errors }}
+          {{ form.item_type.errors }}
           {{ form.due_date.errors }}
           {{ form.status.errors }}
           {{ form.priority.errors }}
@@ -26,6 +27,10 @@
       <div class="field">
         <label for="id_title">Titolo</label>
         {{ form.title }}
+      </div>
+      <div class="field">
+        <label for="id_item_type">Tipo voce</label>
+        {{ form.item_type }}
       </div>
       <div class="field">
         <label for="id_due_date">Scadenza</label>

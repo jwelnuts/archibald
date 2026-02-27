@@ -29,6 +29,7 @@ urlpatterns = [
     path('outcome/', include('outcome.urls')),
     path('projects/', include('projects.urls')),
     path('todo/', include('todo.urls')),
+    path('agenda/', include('agenda.urls')),
     path('workbench/', include('workbench.urls')),
     path('transactions/', include('transactions.urls')),
     path('planner/', include('planner.urls')),

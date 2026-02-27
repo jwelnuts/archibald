@@ -1,0 +1,29 @@
+<header class="site-header">
+  <div class="brand">
+    <div class="brand-mark">MIO</div>
+    <div class="brand-text">
+      <div class="brand-title">Money Organizer</div>
+      <div class="brand-sub">{{ module_subtitle|default:"App module" }}</div>
+    </div>
+  </div>
+  <nav class="site-nav">
+    <a href="/" class="nav-link">Dashboard</a>
+    {% for custom in site_nav.custom_links %}
+      <a
+        href="{{ custom.url }}"
+        class="nav-link"
+        {% if custom.external %}target="_blank" rel="noopener noreferrer"{% endif %}
+      >{{ custom.label }}</a>
+    {% endfor %}
+    <div class="nav-select">
+      <label for="app-switch" class="nav-label">App</label>
+      <select id="app-switch" onchange="if (this.value) window.location.href = this.value;">
+        <option value="">Seleziona...</option>
+        {% for app in site_nav.app_options %}
+          <option value="{{ app.url }}" {% if site_nav.selected_app_key == app.key %}selected{% endif %}>{{ app.label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <a href="/accounts/logout/" class="nav-link">Logout</a>
+  </nav>
+</header>

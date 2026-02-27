@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     'projects',
     'subscriptions',
     'todo',
+    'agenda',
     'workbench',
     'transactions',
     'planner',

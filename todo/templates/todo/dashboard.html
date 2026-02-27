@@ -16,13 +16,14 @@
       </div>
     </div>
     <div class="hero-card" id="todo-upcoming-panel">
-      <div class="card-title" id="upcoming-title">Task aperti</div>
+      <div class="card-title" id="upcoming-title">Voci aperte</div>
       <ul class="list" id="todo-upcoming-list">
         {% if open_tasks %}
           {% for task in open_tasks %}
             <li>
               <span class="dot dot-amber"></span>
               <span>{{ task.title }}</span>
+              <span class="muted">{{ task.get_item_type_display }}</span>
               <span class="muted">{{ task.due_date|default:"-" }}</span>
               <form method="post" action="/todo/to-planner" style="display:inline;">
                 {% csrf_token %}

@@ -4,6 +4,11 @@ from common.models import OwnedModel, TimeStampedModel
 
 
 class Task(OwnedModel, TimeStampedModel):
+    class ItemType(models.TextChoices):
+        TASK = "TASK", "Task da completare"
+        REMINDER = "REMINDER", "Reminder"
+        APPOINTMENT = "APPOINTMENT", "Appuntamento"
+
     class Status(models.TextChoices):
         OPEN = "OPEN", "Open"
         IN_PROGRESS = "IN_PROGRESS", "In progress"
@@ -18,6 +23,7 @@ class Task(OwnedModel, TimeStampedModel):
     project = models.ForeignKey(
         "projects.Project", null=True, blank=True, on_delete=models.SET_NULL, related_name="todo_tasks"
     )
+    item_type = models.CharField(max_length=12, choices=ItemType.choices, default=ItemType.TASK)
     due_date = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.OPEN)
     priority = models.CharField(max_length=8, choices=Priority.choices, default=Priority.MEDIUM)

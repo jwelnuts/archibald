@@ -557,6 +557,18 @@ body {
   color: #1d4f7a;
 }
 
+.event-agenda_activity {
+  background: rgba(14, 165, 233, 0.12);
+  border-color: rgba(14, 165, 233, 0.3);
+  color: #075985;
+}
+
+.event-agenda_reminder {
+  background: rgba(236, 72, 153, 0.12);
+  border-color: rgba(236, 72, 153, 0.3);
+  color: #9d174d;
+}
+
 .event-planner {
   background: rgba(47, 158, 68, 0.12);
   border-color: rgba(47, 158, 68, 0.3);
@@ -573,6 +585,12 @@ body {
   background: rgba(112, 72, 232, 0.12);
   border-color: rgba(112, 72, 232, 0.3);
   color: #4a2fb3;
+}
+
+.event-worklog {
+  background: rgba(202, 138, 4, 0.12);
+  border-color: rgba(202, 138, 4, 0.3);
+  color: #854d0e;
 }
 
 .event-routine {
@@ -603,15 +621,26 @@ body {
 }
 
 .legend-dot.event-task,
+.legend-dot.event-agenda_activity,
+.legend-dot.event-agenda_reminder,
 .legend-dot.event-planner,
 .legend-dot.event-subscription,
 .legend-dot.event-transaction,
+.legend-dot.event-worklog,
 .legend-dot.event-routine {
   border: 1px solid transparent;
 }
 
 .legend-dot.event-task {
   background: rgba(25, 113, 194, 0.6);
+}
+
+.legend-dot.event-agenda_activity {
+  background: rgba(14, 165, 233, 0.6);
+}
+
+.legend-dot.event-agenda_reminder {
+  background: rgba(236, 72, 153, 0.6);
 }
 
 .legend-dot.event-planner {
@@ -624,6 +653,10 @@ body {
 
 .legend-dot.event-transaction {
   background: rgba(112, 72, 232, 0.6);
+}
+
+.legend-dot.event-worklog {
+  background: rgba(202, 138, 4, 0.6);
 }
 
 .legend-dot.event-routine {

@@ -109,6 +109,7 @@ def transfer_to_planner(request):
     note_parts = []
     if task.note:
         note_parts.append(task.note)
+    note_parts.append(f"[Da Todo] Tipo: {task.get_item_type_display()}")
     note_parts.append(f"[Da Todo] Priorita: {task.get_priority_display()}")
     if task.status == Task.Status.IN_PROGRESS:
         note_parts.append("[Da Todo] Stato origine: In progress")

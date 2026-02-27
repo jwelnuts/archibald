@@ -18,6 +18,7 @@ class TodoProjectBindingTests(TestCase):
             "/todo/api/add",
             {
                 "title": "Task con progetto",
+                "item_type": Task.ItemType.TASK,
                 "due_date": "",
                 "status": Task.Status.OPEN,
                 "priority": Task.Priority.MEDIUM,
@@ -36,6 +37,7 @@ class TodoProjectBindingTests(TestCase):
             "/todo/api/add",
             {
                 "title": "Task nuovo progetto",
+                "item_type": Task.ItemType.TASK,
                 "due_date": "",
                 "status": Task.Status.OPEN,
                 "priority": Task.Priority.HIGH,
@@ -65,6 +67,7 @@ class TodoProjectBindingTests(TestCase):
         task = Task.objects.create(
             owner=self.user,
             title="Contattare cliente",
+            item_type=Task.ItemType.REMINDER,
             status=Task.Status.IN_PROGRESS,
             priority=Task.Priority.HIGH,
             note="Call entro domani",
@@ -77,4 +80,43 @@ class TodoProjectBindingTests(TestCase):
         planner_item = PlannerItem.objects.get(owner=self.user, title="Contattare cliente")
         self.assertEqual(planner_item.status, PlannerItem.Status.PLANNED)
         self.assertIn("Call entro domani", planner_item.note)
+        self.assertIn("[Da Todo] Tipo: Reminder", planner_item.note)
         self.assertIn("[Da Todo] Priorita:", planner_item.note)
+
+    def test_add_task_as_reminder(self):
+        self.client.login(username="todo_user", password="test1234")
+        response = self.client.post(
+            "/todo/api/add",
+            {
+                "title": "Ricordati rinnovo",
+                "item_type": Task.ItemType.REMINDER,
+                "due_date": "",
+                "status": Task.Status.OPEN,
+                "priority": Task.Priority.LOW,
+                "project_choice": "",
+                "project_name": "",
+                "note": "Controlla il contratto",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        task = Task.objects.get(owner=self.user, title="Ricordati rinnovo")
+        self.assertEqual(task.item_type, Task.ItemType.REMINDER)
+
+    def test_add_task_as_appointment(self):
+        self.client.login(username="todo_user", password="test1234")
+        response = self.client.post(
+            "/todo/api/add",
+            {
+                "title": "Call cliente ore 15",
+                "item_type": Task.ItemType.APPOINTMENT,
+                "due_date": "",
+                "status": Task.Status.OPEN,
+                "priority": Task.Priority.MEDIUM,
+                "project_choice": "",
+                "project_name": "",
+                "note": "",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        task = Task.objects.get(owner=self.user, title="Call cliente ore 15")
+        self.assertEqual(task.item_type, Task.ItemType.APPOINTMENT)

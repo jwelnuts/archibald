@@ -65,9 +65,12 @@ const initCalendar = () => {
     monthListEl.innerHTML = "";
     const kinds = [
       { key: "task", label: "Task" },
+      { key: "agenda_activity", label: "Agenda attivita" },
+      { key: "agenda_reminder", label: "Agenda reminder" },
       { key: "planner", label: "Planner" },
       { key: "subscription", label: "Abbonamenti" },
       { key: "transaction", label: "Transazioni" },
+      { key: "worklog", label: "Ore lavoro" },
       { key: "routine", label: "Routine" },
     ];
     const hasAny = kinds.some((k) => summary[k.key]);
@@ -109,9 +112,12 @@ const initCalendar = () => {
     },
     calendars: [
       { id: "task", name: "Task", backgroundColor: "#1971c2", borderColor: "#1971c2" },
+      { id: "agenda_activity", name: "Agenda attivita", backgroundColor: "#0ea5e9", borderColor: "#0ea5e9" },
+      { id: "agenda_reminder", name: "Agenda reminder", backgroundColor: "#ec4899", borderColor: "#ec4899" },
       { id: "planner", name: "Planner", backgroundColor: "#2f9e44", borderColor: "#2f9e44" },
       { id: "subscription", name: "Abbonamenti", backgroundColor: "#f08c00", borderColor: "#f08c00" },
       { id: "transaction", name: "Transazioni", backgroundColor: "#7048e8", borderColor: "#7048e8" },
+      { id: "worklog", name: "Ore lavoro", backgroundColor: "#ca8a04", borderColor: "#ca8a04" },
       { id: "routine", name: "Routine", backgroundColor: "#0f766e", borderColor: "#0f766e" },
     ],
   });

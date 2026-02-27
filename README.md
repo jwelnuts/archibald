@@ -135,6 +135,7 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 
 ```bash
 cd mio_master
+cp .env.local.example .env
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -148,6 +149,16 @@ Apri: `http://127.0.0.1:8000/`
 ## Variabili ambiente
 
 Il progetto carica automaticamente `.env` in root (`mio_master/.env`) se presente.
+
+Template consigliati:
+
+- Locale: `.env.local.example`
+- VPS/Produzione: `.env.vps.example`
+
+In pratica:
+
+- locale -> copia `.env.local.example` in `.env`
+- vps -> copia `.env.vps.example` in `.env`
 
 Obbligatorie in produzione:
 
@@ -184,12 +195,14 @@ File principali:
 - `docker-compose.yml`
 - `docker/entrypoint.sh`
 - `docker/caddy/Caddyfile`
-- `.env.docker.example`
+- `.env.vps.example`
+- `.env.local.example`
+- `.env.docker.example` (legacy/compatibilita)
 
 Setup rapido su VPS:
 
 1. Copia progetto su VPS.
-2. Crea `.env` partendo da `.env.docker.example`.
+2. Crea `.env` partendo da `.env.vps.example`.
   - Per HTTPS reale imposta:
     - `CADDY_SITE_HOST=tuo-dominio.it`
     - `DJANGO_ALLOWED_HOSTS=tuo-dominio.it,www.tuo-dominio.it`

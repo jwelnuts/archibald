@@ -2,6 +2,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
+from .models import UserNavConfig
 
 
 class ProfileArchibaldInstructionsTests(TestCase):
@@ -92,3 +93,42 @@ class ProfileArchibaldInstructionsTests(TestCase):
         self.assertFalse(persona.bias_mind_reading)
         self.assertTrue(persona.bias_negative_filtering)
         self.assertTrue(persona.bias_confirmation_bias)
+
+
+class NavSettingsTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="nav_user", password="test12345")
+
+    def test_nav_settings_requires_login(self):
+        response = self.client.get("/profile/nav/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_save_nav_settings_and_render_in_header(self):
+        self.client.login(username="nav_user", password="test12345")
+        response = self.client.post(
+            "/profile/nav/",
+            {
+                "app_visible_todo": "on",
+                "app_order_todo": "1",
+                "app_visible_agenda": "on",
+                "app_order_agenda": "2",
+                "app_order_planner": "3",
+                "custom_label_1": "Wiki Team",
+                "custom_url_1": "https://example.com/wiki",
+                "widgets_json": '[{"title":"KPI","type":"text","config":{"source":"local"}}]',
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
+        nav_cfg = UserNavConfig.objects.get(user=self.user)
+        self.assertTrue(nav_cfg.config.get("_configured"))
+        self.assertIn("todo", nav_cfg.config.get("app_order", []))
+        self.assertIn("planner", nav_cfg.config.get("hidden_apps", []))
+        self.assertEqual(nav_cfg.config.get("custom_links", [])[0]["label"], "Wiki Team")
+
+        page = self.client.get("/todo/")
+        self.assertEqual(page.status_code, 200)
+        self.assertContains(page, "Wiki Team")
+        self.assertContains(page, '<option value="/todo/" selected>', html=False)
+        self.assertNotContains(page, '<option value="/planner/"', html=False)

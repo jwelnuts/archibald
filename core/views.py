@@ -1,16 +1,19 @@
 from datetime import date, timedelta
+import json
 
 from django.contrib import messages as django_messages
 from django.contrib.auth import login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.db.models import Count, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_http_methods
 
+from agenda.models import AgendaItem, WorkLog
 from .forms import AccountForm, SignUpForm
 from .hero_actions import HERO_ACTIONS
-from .models import UserHeroActionsConfig
+from .models import UserHeroActionsConfig, UserNavConfig
+from .navigation import DEFAULT_APP_OPTIONS, normalize_nav_config, parse_widgets_json
 from planner.models import PlannerItem
 from routines.models import RoutineItem
 from subscriptions.models import Account
@@ -38,6 +41,32 @@ def _calendar_events_for_range(user, start: date, end: date):
     for row in tasks:
         add_event(row["due_date"], "task", "Task", row["count"])
 
+    agenda_activities = (
+        AgendaItem.objects.filter(
+            owner=user,
+            due_date__range=(start, end),
+            item_type=AgendaItem.ItemType.ACTIVITY,
+            status=AgendaItem.Status.PLANNED,
+        )
+        .values("due_date")
+        .annotate(count=Count("id"))
+    )
+    for row in agenda_activities:
+        add_event(row["due_date"], "agenda_activity", "Agenda attivita", row["count"])
+
+    agenda_reminders = (
+        AgendaItem.objects.filter(
+            owner=user,
+            due_date__range=(start, end),
+            item_type=AgendaItem.ItemType.REMINDER,
+            status=AgendaItem.Status.PLANNED,
+        )
+        .values("due_date")
+        .annotate(count=Count("id"))
+    )
+    for row in agenda_reminders:
+        add_event(row["due_date"], "agenda_reminder", "Agenda reminder", row["count"])
+
     planner = (
         PlannerItem.objects.filter(owner=user, due_date__range=(start, end), status=PlannerItem.Status.PLANNED)
         .values("due_date")
@@ -61,6 +90,15 @@ def _calendar_events_for_range(user, start: date, end: date):
     )
     for row in tx:
         add_event(row["date"], "transaction", "Transazioni", row["count"])
+
+    work_logs = (
+        WorkLog.objects.filter(owner=user, work_date__range=(start, end))
+        .values("work_date")
+        .annotate(total_hours=Sum("hours"))
+    )
+    for row in work_logs:
+        if row["total_hours"]:
+            add_event(row["work_date"], "worklog", "Ore lavoro", 1)
 
     routine_counts = (
         RoutineItem.objects.filter(owner=user, is_active=True)
@@ -204,6 +242,116 @@ def profile(request):
         "archibald_persona": persona,
     }
     return render(request, "core/profile.html", context)
+
+
+@login_required
+def nav_settings(request):
+    config_obj, _ = UserNavConfig.objects.get_or_create(user=request.user)
+    raw = config_obj.config or {}
+    normalized = normalize_nav_config(raw)
+    apps_by_key = {item["key"]: item for item in DEFAULT_APP_OPTIONS}
+
+    if request.method == "POST":
+        errors = []
+        ordered_rows = []
+        for index, item in enumerate(DEFAULT_APP_OPTIONS, start=1):
+            key = item["key"]
+            visible = request.POST.get(f"app_visible_{key}") == "on"
+            order_raw = (request.POST.get(f"app_order_{key}") or "").strip()
+            try:
+                order_value = int(order_raw) if order_raw else index
+            except ValueError:
+                order_value = index
+            ordered_rows.append((order_value, index, key, visible))
+        ordered_rows.sort(key=lambda row: (row[0], row[1]))
+
+        app_order = [row[2] for row in ordered_rows]
+        hidden_apps = [row[2] for row in ordered_rows if not row[3]]
+
+        custom_links = []
+        for idx in range(1, 7):
+            label = (request.POST.get(f"custom_label_{idx}") or "").strip()
+            url = (request.POST.get(f"custom_url_{idx}") or "").strip()
+            if not label and not url:
+                continue
+            if not label or not url:
+                errors.append(f"Link personalizzato #{idx}: inserisci sia etichetta che URL.")
+                continue
+            if not (url.startswith("/") or url.startswith("http://") or url.startswith("https://")):
+                errors.append(f"Link personalizzato #{idx}: URL non valido.")
+                continue
+            custom_links.append(
+                {
+                    "label": label[:40],
+                    "url": url[:300],
+                    "external": url.startswith("http://") or url.startswith("https://"),
+                }
+            )
+
+        widgets_json_raw = request.POST.get("widgets_json") or ""
+        try:
+            widgets = parse_widgets_json(widgets_json_raw)
+        except json.JSONDecodeError:
+            widgets = []
+            errors.append("JSON widgets non valido.")
+        except ValueError as exc:
+            widgets = []
+            errors.append(str(exc))
+
+        if errors:
+            for msg in errors:
+                django_messages.error(request, msg)
+            normalized = normalize_nav_config(
+                {
+                    "_configured": True,
+                    "app_order": app_order,
+                    "hidden_apps": hidden_apps,
+                    "custom_links": custom_links,
+                    "widgets": widgets,
+                }
+            )
+        else:
+            config_obj.config = {
+                "_configured": True,
+                "app_order": app_order,
+                "hidden_apps": hidden_apps,
+                "custom_links": custom_links,
+                "widgets": widgets,
+            }
+            config_obj.save(update_fields=["config"])
+            django_messages.success(request, "Navigazione personalizzata salvata.")
+            return redirect("/profile/nav/")
+
+    app_rows = []
+    for position, key in enumerate(normalized["app_order"], start=1):
+        item = apps_by_key.get(key)
+        if not item:
+            continue
+        app_rows.append(
+            {
+                "key": key,
+                "label": item["label"],
+                "url": item["url"],
+                "visible": key not in normalized["hidden_apps"],
+                "order": position,
+            }
+        )
+
+    custom_link_rows = []
+    saved_links = normalized["custom_links"]
+    for idx in range(6):
+        if idx < len(saved_links):
+            row = saved_links[idx]
+            custom_link_rows.append({"index": idx + 1, "label": row.get("label", ""), "url": row.get("url", "")})
+        else:
+            custom_link_rows.append({"index": idx + 1, "label": "", "url": ""})
+
+    context = {
+        "app_rows": app_rows,
+        "custom_link_rows": custom_link_rows,
+        "widgets_json": json.dumps(normalized["widgets"], ensure_ascii=True, indent=2),
+    }
+    return render(request, "core/nav_settings.html", context)
 
 
 @login_required

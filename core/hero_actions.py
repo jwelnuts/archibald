@@ -14,6 +14,10 @@ HERO_ACTIONS = {
         {"key": "add", "label": "Nuovo task", "default": True},
         {"key": "update", "label": "Aggiorna", "default": True},
     ],
+    "agenda": [
+        {"key": "add_item", "label": "Nuova attivita", "default": True},
+        {"key": "log_hours", "label": "Registra ore", "default": True},
+    ],
     "projects": [
         {"key": "add", "label": "Nuovo progetto", "default": True},
         {"key": "update", "label": "Aggiorna", "default": True},

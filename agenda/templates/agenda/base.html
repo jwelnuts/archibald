@@ -4,24 +4,20 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}MIO - Income{% endblock %}</title>
+    <title>{% block title %}MIO - Agenda{% endblock %}</title>
     <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    <link rel="stylesheet" href="{% static 'agenda/styles.css' %}">
     {% include "core/partials/uikit_head.html" %}
     <link rel="stylesheet" href="{% static 'core/vendor/flatpickr/flatpickr.min.css' %}">
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
   <body>
     <div class="page">
-      {% include "core/partials/site_header.html" with module_subtitle="Income module" %}
+      {% include "core/partials/site_header.html" with module_subtitle="Agenda module" %}
 
       <main class="content">
         {% block content %}{% endblock %}
       </main>
-
-      <footer class="site-footer">
-        <span>Module: income</span>
-        <span>Version: alpha</span>
-      </footer>
     </div>
     <script src="{% static 'core/vendor/flatpickr/flatpickr.min.js' %}"></script>
     <script>
