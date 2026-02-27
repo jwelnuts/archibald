@@ -65,24 +65,27 @@ class AgendaDashboardTests(TestCase):
         self.assertContains(response, "Standup team")
         self.assertEqual(response.context["month_total_hours"], "7.5")
 
-    def test_add_agenda_item(self):
+    def test_add_todo_item_from_agenda_uses_todo_model(self):
         self.client.login(username="agenda_user", password="test1234")
         response = self.client.post(
             "/agenda/?month=2026-02&selected=2026-02-10",
             {
-                "action": "add_item",
-                "title": "Call cliente",
-                "item_type": AgendaItem.ItemType.REMINDER,
-                "due_date": "2026-02-10",
-                "due_time": "09:30",
-                "status": AgendaItem.Status.PLANNED,
-                "project": "",
-                "note": "Preparare documento",
+                "action": "add_todo_item",
+                "title": "Ricordati revisione",
+                "item_type": Task.ItemType.REMINDER,
+                "due_date": "2026-02-11",
+                "due_time": "15:45",
+                "status": Task.Status.OPEN,
+                "priority": Task.Priority.MEDIUM,
+                "project_choice": "",
+                "project_name": "",
+                "note": "Porta il report",
             },
         )
         self.assertEqual(response.status_code, 302)
-        item = AgendaItem.objects.get(owner=self.user, title="Call cliente")
-        self.assertEqual(item.item_type, AgendaItem.ItemType.REMINDER)
+        task = Task.objects.get(owner=self.user, title="Ricordati revisione")
+        self.assertEqual(task.item_type, Task.ItemType.REMINDER)
+        self.assertEqual(task.due_time.strftime("%H:%M"), "15:45")
 
     def test_log_hours_updates_same_day(self):
         self.client.login(username="agenda_user", password="test1234")

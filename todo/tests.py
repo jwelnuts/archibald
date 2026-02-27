@@ -109,7 +109,8 @@ class TodoProjectBindingTests(TestCase):
             {
                 "title": "Call cliente ore 15",
                 "item_type": Task.ItemType.APPOINTMENT,
-                "due_date": "",
+                "due_date": "2026-03-02",
+                "due_time": "15:00",
                 "status": Task.Status.OPEN,
                 "priority": Task.Priority.MEDIUM,
                 "project_choice": "",
@@ -120,3 +121,4 @@ class TodoProjectBindingTests(TestCase):
         self.assertEqual(response.status_code, 302)
         task = Task.objects.get(owner=self.user, title="Call cliente ore 15")
         self.assertEqual(task.item_type, Task.ItemType.APPOINTMENT)
+        self.assertEqual(task.due_time.strftime("%H:%M"), "15:00")

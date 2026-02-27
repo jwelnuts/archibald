@@ -11,9 +11,10 @@ class TaskForm(forms.ModelForm):
 
     class Meta:
         model = Task
-        fields = ("title", "item_type", "due_date", "status", "priority", "note")
+        fields = ("title", "item_type", "due_date", "due_time", "status", "priority", "note")
         widgets = {
             "due_date": forms.DateInput(attrs={"class": "date-field", "placeholder": "Seleziona data"}),
+            "due_time": forms.TimeInput(attrs={"type": "time", "step": "900"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -59,4 +60,6 @@ class TaskForm(forms.ModelForm):
         project_name = (cleaned.get("project_name") or "").strip()
         if project_choice == "__new__" and not project_name:
             self.add_error("project_name", "Inserisci il nome del nuovo progetto.")
+        if cleaned.get("due_time") and not cleaned.get("due_date"):
+            self.add_error("due_date", "Imposta una data se specifichi anche l'orario.")
         return cleaned

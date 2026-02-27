@@ -7,7 +7,7 @@
     <title>{% block title %}MIO - Contacts{% endblock %}</title>
     <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
     {% include "core/partials/uikit_head.html" %}
-    <link rel="stylesheet" href="https://uicdn.toast.com/grid/latest/tui-grid.min.css">
+    <link rel="stylesheet" href="{% static 'core/vendor/toastui-grid/tui-grid.min.css' %}">
     <link rel="stylesheet" href="{% static 'contacts/grid.css' %}">
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
@@ -24,7 +24,7 @@
         <span>Version: alpha</span>
       </footer>
     </div>
-    <script src="https://uicdn.toast.com/grid/latest/tui-grid.min.js"></script>
+    <script src="{% static 'core/vendor/toastui-grid/tui-grid.min.js' %}"></script>
     {{ hero_actions_config|json_script:"hero-actions-config" }}
     {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/app.js' %}"></script>

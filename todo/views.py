@@ -15,7 +15,7 @@ def dashboard(request):
     user = request.user
     open_tasks = (
         Task.objects.filter(owner=user, status=Task.Status.OPEN)
-        .order_by("due_date", "created_at")[:5]
+        .order_by("due_date", "due_time", "created_at")[:5]
     )
     counts = {
         "open": Task.objects.filter(owner=user, status=Task.Status.OPEN).count(),

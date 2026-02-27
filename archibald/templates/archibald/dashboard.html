@@ -1,4 +1,5 @@
 {% extends "archibald/base.html" %}
+{% load static %}
 
 {% block title %}MIO - Archibald{% endblock %}
 
@@ -339,8 +340,8 @@
     </script>
   {% endif %}
 
-  <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+  <link rel="stylesheet" href="{% static 'core/vendor/quill/quill.snow.css' %}">
+  <script src="{% static 'core/vendor/quill/quill.min.js' %}"></script>
   <script>
     (function () {
       var promptField = document.getElementById('id_prompt');

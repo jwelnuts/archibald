@@ -24,7 +24,7 @@
               <span class="dot dot-amber"></span>
               <span>{{ task.title }}</span>
               <span class="muted">{{ task.get_item_type_display }}</span>
-              <span class="muted">{{ task.due_date|default:"-" }}</span>
+              <span class="muted">{{ task.due_date|default:"-" }}{% if task.due_time %} {{ task.due_time|time:"H:i" }}{% endif %}</span>
               <form method="post" action="/todo/to-planner" style="display:inline;">
                 {% csrf_token %}
                 <input type="hidden" name="id" value="{{ task.id }}">

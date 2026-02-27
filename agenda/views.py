@@ -9,9 +9,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from planner.models import PlannerItem
 from routines.models import RoutineCheck, RoutineItem
+from todo.forms import TaskForm
 from todo.models import Task
 
-from .forms import AgendaItemForm, WorkLogForm
+from .forms import WorkLogForm
 from .models import AgendaItem, WorkLog
 
 MONTH_NAMES_IT = [
@@ -97,7 +98,14 @@ def dashboard(request):
         selected_date = selected_default
     selected_param = selected_date.isoformat()
 
-    item_form = AgendaItemForm(owner=request.user, initial={"due_date": selected_date})
+    todo_form = TaskForm(
+        owner=request.user,
+        initial={
+            "due_date": selected_date,
+            "item_type": Task.ItemType.REMINDER,
+            "status": Task.Status.OPEN,
+        },
+    )
     selected_log = WorkLog.objects.filter(owner=request.user, work_date=selected_date).first()
     if selected_log:
         work_form = WorkLogForm(instance=selected_log)
@@ -109,13 +117,15 @@ def dashboard(request):
         posted_month = request.POST.get("month") or month_param
         posted_selected = request.POST.get("selected") or selected_param
 
-        if action == "add_item":
-            item_form = AgendaItemForm(request.POST, owner=request.user)
-            if item_form.is_valid():
-                item = item_form.save(commit=False)
-                item.owner = request.user
-                item.save()
-                return _redirect_agenda(item.due_date.strftime("%Y-%m"), item.due_date.isoformat())
+        if action == "add_todo_item":
+            todo_form = TaskForm(request.POST, owner=request.user)
+            if todo_form.is_valid():
+                task = todo_form.save(commit=False)
+                task.owner = request.user
+                task.save()
+                if task.due_date:
+                    return _redirect_agenda(task.due_date.strftime("%Y-%m"), task.due_date.isoformat())
+                return _redirect_agenda(posted_month, posted_selected)
         elif action == "log_hours":
             work_form = WorkLogForm(request.POST)
             if work_form.is_valid():
@@ -148,7 +158,7 @@ def dashboard(request):
         Task.objects.filter(owner=request.user, due_date__range=(month_start, month_end))
         .exclude(status=Task.Status.DONE)
         .select_related("project")
-        .order_by("due_date", "created_at")
+        .order_by("due_date", "due_time", "created_at")
     )
     planner_items = (
         PlannerItem.objects.filter(
@@ -203,6 +213,7 @@ def dashboard(request):
             continue
         ensure_day(task.due_date)
         summary_map[task.due_date]["todo"] += 1
+        time_text = task.due_time.strftime("%H:%M") if task.due_time else ""
         meta_parts = [task.get_item_type_display(), task.get_status_display()]
         if task.project_id:
             meta_parts.append(task.project.name)
@@ -211,7 +222,7 @@ def dashboard(request):
                 "kind": "todo",
                 "label": "Todo",
                 "title": task.title,
-                "time": "",
+                "time": time_text,
                 "meta": " · ".join(meta_parts),
                 "is_agenda_item": False,
             }
@@ -380,7 +391,7 @@ def dashboard(request):
             "planned": agenda_items.filter(status=AgendaItem.Status.PLANNED).count(),
             "done": agenda_items.filter(status=AgendaItem.Status.DONE).count(),
         },
-        "item_form": item_form,
+        "todo_form": todo_form,
         "work_form": work_form,
     }
     return render(request, "agenda/dashboard.html", context)

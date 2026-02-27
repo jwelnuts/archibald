@@ -14,6 +14,7 @@
           {{ form.title.errors }}
           {{ form.item_type.errors }}
           {{ form.due_date.errors }}
+          {{ form.due_time.errors }}
           {{ form.status.errors }}
           {{ form.priority.errors }}
           {{ form.project_choice.errors }}
@@ -24,38 +25,7 @@
     {% endif %}
     <form class="form" method="post" action="">
       {% csrf_token %}
-      <div class="field">
-        <label for="id_title">Titolo</label>
-        {{ form.title }}
-      </div>
-      <div class="field">
-        <label for="id_item_type">Tipo voce</label>
-        {{ form.item_type }}
-      </div>
-      <div class="field">
-        <label for="id_due_date">Scadenza</label>
-        {{ form.due_date }}
-      </div>
-      <div class="field">
-        <label for="id_status">Status</label>
-        {{ form.status }}
-      </div>
-      <div class="field">
-        <label for="id_priority">Priorita</label>
-        {{ form.priority }}
-      </div>
-      <div class="field">
-        <label for="id_project_choice">Progetto</label>
-        {{ form.project_choice }}
-      </div>
-      <div class="field">
-        <label for="id_project_name">Nuovo progetto (se non esiste)</label>
-        {{ form.project_name }}
-      </div>
-      <div class="field">
-        <label for="id_note">Note</label>
-        {{ form.note }}
-      </div>
+      {% include "todo/partials/task_form_fields.html" with form=form %}
       <div class="actions">
         <button class="btn primary" type="submit">Salva</button>
         <a class="btn" href="/todo/">Annulla</a>

@@ -1,4 +1,5 @@
 {% extends "projects/base.html" %}
+{% load static %}
 
 {% block title %}MIO - {{ project.name }}{% endblock %}
 
@@ -240,62 +241,72 @@
     </article>
   </section>
 {% if hidden_actions %}
-  <script type="module">
-    import {computePosition, autoUpdate, offset, flip, shift} from "https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.7.4/+esm";
+  <script src="{% static 'core/vendor/floating-ui/floating-ui.core.umd.min.js' %}"></script>
+  <script src="{% static 'core/vendor/floating-ui/floating-ui.dom.umd.min.js' %}"></script>
+  <script>
+    (function () {
+      var floating = window.FloatingUIDOM;
+      if (!floating) return;
+      var computePosition = floating.computePosition;
+      var autoUpdate = floating.autoUpdate;
+      var offset = floating.offset;
+      var flip = floating.flip;
+      var shift = floating.shift;
 
-    const trigger = document.getElementById("hidden-actions-trigger");
-    const menu = document.getElementById("hidden-actions-menu");
-    if (trigger && menu) {
-      let cleanup = null;
+      var trigger = document.getElementById("hidden-actions-trigger");
+      var menu = document.getElementById("hidden-actions-menu");
+      if (trigger && menu) {
+        var cleanup = null;
 
-      function update() {
-        return computePosition(trigger, menu, {
-          placement: "bottom-start",
-          middleware: [offset(8), flip(), shift({padding: 8})],
-        }).then(({x, y}) => {
-          Object.assign(menu.style, {
-            left: `${x}px`,
-            top: `${y}px`,
+        function update() {
+          return computePosition(trigger, menu, {
+            placement: "bottom-start",
+            middleware: [offset(8), flip(), shift({padding: 8})],
+          }).then(function (result) {
+            Object.assign(menu.style, {
+              left: result.x + "px",
+              top: result.y + "px",
+            });
           });
+        }
+
+        function openMenu() {
+          menu.hidden = false;
+          menu.style.display = "grid";
+          trigger.setAttribute("aria-expanded", "true");
+          menu.style.width = "max-content";
+          cleanup = autoUpdate(trigger, menu, update);
+        }
+
+        function closeMenu() {
+          menu.hidden = true;
+          menu.style.display = "none";
+          trigger.setAttribute("aria-expanded", "false");
+          if (cleanup) {
+            cleanup();
+            cleanup = null;
+          }
+        }
+
+        trigger.addEventListener("click", function () {
+          if (menu.hidden) {
+            openMenu();
+          } else {
+            closeMenu();
+          }
+        });
+
+        menu.addEventListener("click", function () {
+          closeMenu();
+        });
+
+        document.addEventListener("click", function (event) {
+          if (!menu.hidden && !menu.contains(event.target) && !trigger.contains(event.target)) {
+            closeMenu();
+          }
         });
       }
-
-      function openMenu() {
-        menu.hidden = false;
-        menu.style.display = "grid";
-        trigger.setAttribute("aria-expanded", "true");
-        menu.style.width = "max-content";
-        cleanup = autoUpdate(trigger, menu, update);
-      }
-
-      function closeMenu() {
-        menu.hidden = true;
-        menu.style.display = "none";
-        trigger.setAttribute("aria-expanded", "false");
-        if (cleanup) {
-          cleanup();
-          cleanup = null;
-        }
-      }
-
-      trigger.addEventListener("click", () => {
-        if (menu.hidden) {
-          openMenu();
-        } else {
-          closeMenu();
-        }
-      });
-
-      menu.addEventListener("click", () => {
-        closeMenu();
-      });
-
-      document.addEventListener("click", (event) => {
-        if (!menu.hidden && !menu.contains(event.target) && !trigger.contains(event.target)) {
-          closeMenu();
-        }
-      });
-    }
+    })();
   </script>
 {% endif %}
   {% if hero_actions_override %}

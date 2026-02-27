@@ -136,6 +136,53 @@
   }
 
   .agenda-day {
-    min-height: 92px;
+    min-height: 78px;
+    padding: 6px;
+  }
+
+  .agenda-calendar {
+    gap: 6px;
+  }
+
+  .agenda-day-number {
+    margin-bottom: 6px;
+  }
+
+  .agenda-day-chips {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 640px) {
+  .agenda-calendar {
+    gap: 4px;
+  }
+
+  .agenda-weekday {
+    font-size: 10px;
+  }
+
+  .agenda-day {
+    min-height: 66px;
+    padding: 5px;
+    border-radius: 8px;
+  }
+
+  .agenda-day-number {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+
+  .agenda-chip {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .agenda-events-list li {
+    gap: 8px;
+  }
+
+  .agenda-hours-total {
+    font-size: 30px;
   }
 }

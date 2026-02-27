@@ -8,7 +8,7 @@
     <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
     {% include "core/partials/uikit_head.html" %}
     <link rel="stylesheet" href="{% static 'core/vendor/flatpickr/flatpickr.min.css' %}">
-    <link rel="stylesheet" href="https://uicdn.toast.com/grid/latest/tui-grid.min.css">
+    <link rel="stylesheet" href="{% static 'core/vendor/toastui-grid/tui-grid.min.css' %}">
     <link rel="stylesheet" href="{% static 'transactions/grid.css' %}">
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
@@ -21,7 +21,7 @@
       </main>
     </div>
     <script src="{% static 'core/vendor/flatpickr/flatpickr.min.js' %}"></script>
-    <script src="https://uicdn.toast.com/grid/latest/tui-grid.min.js"></script>
+    <script src="{% static 'core/vendor/toastui-grid/tui-grid.min.js' %}"></script>
     <script>
       document.querySelectorAll(".date-field").forEach(function (el) {
         window.flatpickr(el, { dateFormat: "Y-m-d" });

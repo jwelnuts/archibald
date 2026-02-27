@@ -8,7 +8,7 @@
       <h1>Agenda</h1>
       <p>Pianifica giorno per giorno, gestisci attivita e reminder, registra ore lavorate.</p>
       <div class="hero-actions" id="app-actions" data-module="agenda">
-        <a class="btn primary" href="#agenda-item-form" data-action="add_item">Nuova attivita</a>
+        <a class="btn primary" href="#agenda-todo-form" data-action="add_todo_item">Nuovo reminder</a>
         <a class="btn" href="#agenda-worklog-form" data-action="log_hours">Registra ore</a>
       </div>
     </div>
@@ -104,56 +104,32 @@
   </section>
 
   <section class="grid agenda-grid-forms">
-    <article class="panel" id="agenda-item-form">
-      <h2>Nuova attivita / reminder</h2>
-      {% if item_form.errors %}
+    <article class="panel" id="agenda-todo-form">
+      <h2>Nuovo reminder / task / appuntamento</h2>
+      <p class="muted">Usa lo stesso form dell'app Todo per mantenere coerenza.</p>
+      {% if todo_form.errors %}
         <div class="warning-box">
-          Controlla i campi della nuova voce.
+          Controlla i campi della nuova voce Todo.
           <div class="form-errors">
-            {{ item_form.non_field_errors }}
-            {{ item_form.title.errors }}
-            {{ item_form.item_type.errors }}
-            {{ item_form.due_date.errors }}
-            {{ item_form.due_time.errors }}
-            {{ item_form.status.errors }}
-            {{ item_form.project.errors }}
-            {{ item_form.note.errors }}
+            {{ todo_form.non_field_errors }}
+            {{ todo_form.title.errors }}
+            {{ todo_form.item_type.errors }}
+            {{ todo_form.due_date.errors }}
+            {{ todo_form.due_time.errors }}
+            {{ todo_form.status.errors }}
+            {{ todo_form.priority.errors }}
+            {{ todo_form.project_choice.errors }}
+            {{ todo_form.project_name.errors }}
+            {{ todo_form.note.errors }}
           </div>
         </div>
       {% endif %}
       <form class="form" method="post" action="">
         {% csrf_token %}
-        <input type="hidden" name="action" value="add_item">
-        <div class="field">
-          <label for="id_title">Titolo</label>
-          {{ item_form.title }}
-        </div>
-        <div class="field">
-          <label for="id_item_type">Tipo</label>
-          {{ item_form.item_type }}
-        </div>
-        <div class="field">
-          <label for="id_due_date">Data</label>
-          {{ item_form.due_date }}
-        </div>
-        <div class="field">
-          <label for="id_due_time">Ora (opzionale)</label>
-          {{ item_form.due_time }}
-        </div>
-        <div class="field">
-          <label for="id_status">Stato</label>
-          {{ item_form.status }}
-        </div>
-        <div class="field">
-          <label for="id_project">Progetto</label>
-          {{ item_form.project }}
-        </div>
-        <div class="field">
-          <label for="id_note">Note</label>
-          {{ item_form.note }}
-        </div>
+        <input type="hidden" name="action" value="add_todo_item">
+        {% include "todo/partials/task_form_fields.html" with form=todo_form %}
         <div class="actions">
-          <button class="btn primary" type="submit">Salva voce</button>
+          <button class="btn primary" type="submit">Salva voce Todo</button>
         </div>
       </form>
     </article>

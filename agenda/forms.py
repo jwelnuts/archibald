@@ -18,9 +18,13 @@ class AgendaItemForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         owner = kwargs.pop("owner", None)
+        activity_only = kwargs.pop("activity_only", False)
         super().__init__(*args, **kwargs)
         if owner is not None:
             self.fields["project"].queryset = Project.objects.filter(owner=owner, is_archived=False).order_by("name")
+        if activity_only:
+            self.fields["item_type"].choices = [(AgendaItem.ItemType.ACTIVITY, "Attivita")]
+            self.fields["item_type"].initial = AgendaItem.ItemType.ACTIVITY
 
 
 class WorkLogForm(forms.ModelForm):

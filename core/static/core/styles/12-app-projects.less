@@ -1,0 +1,163 @@
+.project-topbar {
+  display: grid;
+  gap: 16px;
+}
+
+.project-topbar-main {
+  display: grid;
+  gap: 10px;
+}
+
+.project-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.project-title-group h1 {
+  margin: 4px 0 0;
+}
+
+.project-breadcrumb {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.project-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.meta-pill {
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--panel);
+}
+
+.project-desc {
+  margin: 0;
+  max-width: 780px;
+}
+
+.project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+
+.project-scope {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.project-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.project-row {
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  background: #f5efe2;
+  padding: 14px;
+  display: grid;
+  gap: 14px;
+}
+
+.project-row.is-archived {
+  background: #efeae0;
+}
+
+.project-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.project-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-name {
+  font-weight: 700;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.project-name:hover {
+  text-decoration: underline;
+}
+
+.project-row-status-pill {
+  border: 2px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  background: var(--panel);
+}
+
+.project-row-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  font-size: 13px;
+}
+
+.project-row-actions {
+  justify-content: flex-end;
+}
+
+.project-row-actions .btn {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
+.project-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.metric-chip {
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  background: #fbf7ef;
+}
+
+.metric-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.metric-value {
+  margin-top: 2px;
+  font-size: 16px;
+  font-weight: 700;
+}
+

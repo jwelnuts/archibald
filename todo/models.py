@@ -25,6 +25,7 @@ class Task(OwnedModel, TimeStampedModel):
     )
     item_type = models.CharField(max_length=12, choices=ItemType.choices, default=ItemType.TASK)
     due_date = models.DateField(null=True, blank=True)
+    due_time = models.TimeField(null=True, blank=True)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.OPEN)
     priority = models.CharField(max_length=8, choices=Priority.choices, default=Priority.MEDIUM)
     note = models.TextField(blank=True)
