@@ -34,6 +34,23 @@ class TaskForm(forms.ModelForm):
             self.fields["project_choice"].initial = str(self.instance.project.id)
             self.fields["project_name"].initial = self.instance.project.name
 
+        for name, field in self.fields.items():
+            widget = field.widget
+            existing = widget.attrs.get("class", "")
+            classes = []
+            if isinstance(widget, forms.Select):
+                classes = ["uk-select", "uk-form-small"]
+            elif isinstance(widget, forms.Textarea):
+                classes = ["uk-textarea", "uk-form-small"]
+            else:
+                classes = ["uk-input", "uk-form-small"]
+            widget.attrs["class"] = " ".join(part for part in [existing, *classes] if part).strip()
+
+            if name == "title":
+                widget.attrs.setdefault("placeholder", "Titolo attivita")
+            if name == "project_name":
+                widget.attrs.setdefault("placeholder", "Nome nuovo progetto")
+
     def save(self, commit=True):
         instance = super().save(commit=False)
         project_choice = (self.cleaned_data.get("project_choice") or "").strip()

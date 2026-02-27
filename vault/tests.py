@@ -1,9 +1,28 @@
+import os
+
 import pyotp
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from django.utils import timezone
 
+from .crypto import decrypt_text, encrypt_text
 from .models import VaultItem, VaultProfile
+
+
+class VaultCryptoTests(TestCase):
+    def test_encrypt_decrypt_with_plain_passphrase_env_key(self):
+        original = os.environ.get("VAULT_ENCRYPTION_KEY")
+        os.environ["VAULT_ENCRYPTION_KEY"] = "vault-passphrase-non-base64"
+        try:
+            encrypted = encrypt_text("segreto")
+            self.assertNotEqual(encrypted, "segreto")
+            decrypted = decrypt_text(encrypted)
+            self.assertEqual(decrypted, "segreto")
+        finally:
+            if original is None:
+                os.environ.pop("VAULT_ENCRYPTION_KEY", None)
+            else:
+                os.environ["VAULT_ENCRYPTION_KEY"] = original
 
 
 class VaultFlowTests(TestCase):

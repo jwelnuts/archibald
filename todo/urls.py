@@ -7,5 +7,6 @@ urlpatterns = [
     path('api/add', views.add_task, name='todo-add'),
     path('api/remove', views.remove_task, name='todo-remove'),
     path('api/update', views.update_task, name='todo-update'),
+    path('api/status', views.set_status, name='todo-set-status'),
     path('to-planner', views.transfer_to_planner, name='todo-to-planner'),
 ]

@@ -3,96 +3,123 @@
 {% block title %}MIO - Todo Dashboard{% endblock %}
 
 {% block content %}
-  <section class="hero" id="app-head">
-    <div class="hero-copy" id="app-header">
-      <h1>Task e reminder</h1>
-      <p>
-        Gestisci task operativi collegati alle altre componenti. Questa base
-        e pronta per integrare scadenze e operazioni.
-      </p>
-      <div class="hero-actions" id="app-actions" data-module="todo">
-        <a class="btn primary" href="/todo/api/add" data-action="add">Nuovo task</a>
-        <a class="btn" href="/todo/api/update" data-action="update">Aggiorna</a>
-      </div>
-    </div>
-    <div class="hero-card" id="todo-upcoming-panel">
-      <div class="card-title" id="upcoming-title">Voci aperte</div>
-      <ul class="list" id="todo-upcoming-list">
-        {% if open_tasks %}
-          {% for task in open_tasks %}
-            <li>
-              <span class="dot dot-amber"></span>
-              <span>{{ task.title }}</span>
-              <span class="muted">{{ task.get_item_type_display }}</span>
-              <span class="muted">{{ task.due_date|default:"-" }}{% if task.due_time %} {{ task.due_time|time:"H:i" }}{% endif %}</span>
-              <form method="post" action="/todo/to-planner" style="display:inline;">
-                {% csrf_token %}
-                <input type="hidden" name="id" value="{{ task.id }}">
-                <button class="btn" type="submit">Sposta in Planner</button>
-              </form>
-            </li>
-          {% endfor %}
-        {% else %}
-          <li class="muted">Nessun task disponibile.</li>
-        {% endif %}
-      </ul>
-    </div>
-  </section>
+  <div class="todo-dashboard">
+    <section class="uk-grid-small" uk-grid id="app-head">
+      <article class="uk-width-1-1 uk-width-expand@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body todo-card">
+          <h1 class="uk-card-title uk-margin-remove-bottom">Task, reminder e appuntamenti</h1>
+          <p class="uk-text-meta uk-margin-small-top">
+            Gestisci le voci operative giornaliere e inviale al Planner quando diventano pianificazione.
+          </p>
+          <div class="uk-flex uk-flex-wrap uk-grid-small uk-margin-small-top hero-actions" id="app-actions" data-module="todo">
+            <a class="uk-button uk-button-primary uk-button-small" href="/todo/api/add" data-action="add">Nuova voce</a>
+            <a class="uk-button uk-button-default uk-button-small" href="/todo/api/update" data-action="update">Aggiorna</a>
+            <a class="uk-button uk-button-danger uk-button-small" href="/todo/api/remove" data-action="remove">Rimuovi</a>
+          </div>
+          <div class="uk-button-group uk-margin-small-top todo-filter-group" data-todo-filters>
+            <button class="uk-button uk-button-default uk-button-small is-active" type="button" data-todo-filter="all">Tutte</button>
+            <button class="uk-button uk-button-default uk-button-small" type="button" data-todo-filter="open">Aperte</button>
+            <button class="uk-button uk-button-default uk-button-small" type="button" data-todo-filter="in_progress">In corso</button>
+            <button class="uk-button uk-button-default uk-button-small" type="button" data-todo-filter="done">Fatte</button>
+            <button class="uk-button uk-button-default uk-button-small" type="button" data-todo-filter="today">Oggi</button>
+            <button class="uk-button uk-button-default uk-button-small" type="button" data-todo-filter="overdue">Scadute</button>
+          </div>
+        </div>
+      </article>
 
-  <section class="grid" id="todo-info-grid">
-    <article class="panel" id="todo-info-panel">
-      <h2 id="todo-stats-title">Stato task</h2>
-      <div class="stat-row" id="todo-info">
-        <div class="stat">
-          <div class="stat-label">Aperti</div>
-          <div class="stat-value">{{ counts.open }}</div>
+      <article class="uk-width-1-1 uk-width-2-5@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body todo-card">
+          <h2 class="uk-h4 uk-margin-small-bottom">Stato voci</h2>
+          <div class="uk-grid-small uk-child-width-1-5@s uk-child-width-1-2" uk-grid>
+            <div>
+              <div class="uk-text-meta">Aperti</div>
+              <div id="todo-stat-open" class="uk-text-bold uk-text-large">{{ counts.open }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">In corso</div>
+              <div id="todo-stat-in-progress" class="uk-text-bold uk-text-large">{{ counts.in_progress }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Completati</div>
+              <div id="todo-stat-done" class="uk-text-bold uk-text-large">{{ counts.done }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Scadute</div>
+              <div id="todo-stat-overdue" class="uk-text-bold uk-text-large">{{ counts.overdue }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Oggi</div>
+              <div id="todo-stat-today" class="uk-text-bold uk-text-large">{{ counts.today }}</div>
+            </div>
+          </div>
         </div>
-        <div class="stat">
-          <div class="stat-label">In corso</div>
-          <div class="stat-value">{{ counts.in_progress }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Completati</div>
-          <div class="stat-value">{{ counts.done }}</div>
-        </div>
-      </div>
-    </article>
+      </article>
+    </section>
 
-    <article class="panel" id="todo-notes-panel">
-      <h2 id="todo-notes-title">Snapshot Planner</h2>
-      <div class="note">Todo cattura cose veloci. Planner resta la vista di pianificazione economica/futura.</div>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-label">Planner pianificati</div>
-          <div class="stat-value">{{ planner_counts.planned }}</div>
+    <section class="uk-grid-small" uk-grid id="todo-info-grid">
+      <article class="uk-width-1-1 uk-width-expand@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body todo-card">
+          <h2 class="uk-h4 uk-margin-small-bottom">Elenco Todo</h2>
+          {% if task_rows %}
+            <ul class="uk-list uk-list-divider uk-margin-remove todo-list">
+              {% for task in task_rows %}
+                {% include "todo/partials/task_row.html" with task=task %}
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessuna voce disponibile.</div>
+          {% endif %}
         </div>
-        <div class="stat">
-          <div class="stat-label">In scadenza 7gg</div>
-          <div class="stat-value">{{ planner_counts.due_soon }}</div>
+      </article>
+
+      <article class="uk-width-1-1 uk-width-2-5@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body todo-card">
+          <h2 class="uk-h4 uk-margin-small-bottom">Snapshot Planner</h2>
+          <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+            <div>
+              <div class="uk-text-meta">Pianificati</div>
+              <div class="uk-text-bold uk-text-large">{{ planner_counts.planned }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Scadenza 7gg</div>
+              <div class="uk-text-bold uk-text-large">{{ planner_counts.due_soon }}</div>
+            </div>
+          </div>
+
+          <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
+            <div>
+              <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/planner/">Apri Planner</a>
+            </div>
+            <div>
+              <a class="uk-button uk-button-primary uk-button-small uk-width-1-1" href="/planner/add">Nuova voce</a>
+            </div>
+          </div>
+
+          <h3 class="uk-h5 uk-margin-small-top uk-margin-small-bottom">Prossime voci planner</h3>
+          {% if planner_upcoming %}
+            <ul class="uk-list uk-list-divider uk-margin-remove todo-list">
+              {% for item in planner_upcoming %}
+                <li class="todo-list-item">
+                  <div>
+                    <div class="uk-text-bold uk-text-small">{{ item.title }}</div>
+                    <div class="uk-text-meta">{{ item.due_date|default:"-" }}</div>
+                  </div>
+                  <div class="todo-inline-actions">
+                    <a class="uk-button uk-button-default uk-button-small" href="/planner/update?id={{ item.id }}">Apri</a>
+                    <form method="post" action="/planner/to-todo" class="todo-inline-form">
+                      {% csrf_token %}
+                      <input type="hidden" name="id" value="{{ item.id }}">
+                      <button class="uk-button uk-button-primary uk-button-small" type="submit">Sposta in Todo</button>
+                    </form>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessuna voce planner pianificata.</div>
+          {% endif %}
         </div>
-      </div>
-      <div class="actions">
-        <a class="btn" href="/planner/">Apri Planner</a>
-        <a class="btn" href="/planner/add">Nuova Voce Planner</a>
-      </div>
-      <ul class="list">
-        {% if planner_upcoming %}
-          {% for item in planner_upcoming %}
-            <li>
-              <span>{{ item.title }}</span>
-              <span class="muted">{{ item.due_date|default:"-" }}</span>
-              <a class="btn" href="/planner/update?id={{ item.id }}">Apri</a>
-              <form method="post" action="/planner/to-todo" style="display:inline;">
-                {% csrf_token %}
-                <input type="hidden" name="id" value="{{ item.id }}">
-                <button class="btn" type="submit">Sposta in Todo</button>
-              </form>
-            </li>
-          {% endfor %}
-        {% else %}
-          <li class="muted">Nessuna voce planner pianificata.</li>
-        {% endif %}
-      </ul>
-    </article>
-  </section>
+      </article>
+    </section>
+  </div>
 {% endblock %}

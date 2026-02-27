@@ -1,36 +1,38 @@
-<div class="field">
-  <label for="id_title">Titolo</label>
-  {{ form.title }}
-</div>
-<div class="field">
-  <label for="id_item_type">Tipo voce</label>
-  {{ form.item_type }}
-</div>
-<div class="field">
-  <label for="id_due_date">Scadenza</label>
-  {{ form.due_date }}
-</div>
-<div class="field">
-  <label for="id_due_time">Orario (opzionale)</label>
-  {{ form.due_time }}
-</div>
-<div class="field">
-  <label for="id_status">Status</label>
-  {{ form.status }}
-</div>
-<div class="field">
-  <label for="id_priority">Priorita</label>
-  {{ form.priority }}
-</div>
-<div class="field">
-  <label for="id_project_choice">Progetto</label>
-  {{ form.project_choice }}
-</div>
-<div class="field">
-  <label for="id_project_name">Nuovo progetto (se non esiste)</label>
-  {{ form.project_name }}
-</div>
-<div class="field">
-  <label for="id_note">Note</label>
-  {{ form.note }}
+<div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+  <div class="field">
+    <label class="uk-form-label" for="id_title">Titolo</label>
+    <div class="uk-form-controls">{{ form.title }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="id_item_type">Tipo voce</label>
+    <div class="uk-form-controls">{{ form.item_type }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="id_due_date">Scadenza</label>
+    <div class="uk-form-controls">{{ form.due_date }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="id_due_time">Orario (opzionale)</label>
+    <div class="uk-form-controls">{{ form.due_time }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="id_status">Status</label>
+    <div class="uk-form-controls">{{ form.status }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="id_priority">Priorita</label>
+    <div class="uk-form-controls">{{ form.priority }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="id_project_choice">Progetto</label>
+    <div class="uk-form-controls">{{ form.project_choice }}</div>
+  </div>
+  <div class="field" data-project-name-row>
+    <label class="uk-form-label" for="id_project_name">Nuovo progetto (se non esiste)</label>
+    <div class="uk-form-controls">{{ form.project_name }}</div>
+  </div>
+  <div class="field uk-width-1-1">
+    <label class="uk-form-label" for="id_note">Note</label>
+    <div class="uk-form-controls">{{ form.note }}</div>
+  </div>
 </div>

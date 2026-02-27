@@ -3,33 +3,40 @@
 {% block title %}MIO - Remove Task{% endblock %}
 
 {% block content %}
-  <section class="panel narrow">
-    <h1>Rimuovi task</h1>
-    <p class="muted">Seleziona un task da eliminare.</p>
+  <section class="todo-form-page">
+    <div class="uk-card uk-card-default uk-card-small uk-card-body todo-card todo-form-card">
+      <h1 class="uk-card-title uk-margin-remove-bottom">Rimuovi voce Todo</h1>
+      <p class="uk-text-meta uk-margin-small-top">Seleziona un elemento da eliminare.</p>
 
-    {% if task %}
-      <div class="warning-box">
-        Stai per rimuovere: <strong>{{ task.title }}</strong>.
-        Questa azione non e reversibile.
-      </div>
-      <form class="actions" method="post" action="">
-        {% csrf_token %}
-        <button class="btn danger" type="submit">Conferma rimozione</button>
-        <a class="btn" href="/todo/">Annulla</a>
-      </form>
-    {% else %}
-      {% if tasks %}
-        <ul class="list">
-          {% for item in tasks %}
-            <li>
-              <span>{{ item.title }}</span>
-              <a class="btn" href="/todo/api/remove?id={{ item.id }}">Rimuovi</a>
-            </li>
-          {% endfor %}
-        </ul>
+      {% if task %}
+        <div class="uk-alert-danger uk-padding-small uk-margin-small-top">
+          Stai per rimuovere: <strong>{{ task.title }}</strong>. Questa azione non e reversibile.
+        </div>
+        <form class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid method="post" action="">
+          {% csrf_token %}
+          <div>
+            <button class="uk-button uk-button-danger uk-button-small uk-width-1-1" type="submit">Conferma rimozione</button>
+          </div>
+          <div>
+            <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/todo/">Annulla</a>
+          </div>
+        </form>
       {% else %}
-        <div class="note">Nessun task disponibile.</div>
+        {% if tasks %}
+          <ul class="uk-list uk-list-divider uk-margin-remove todo-list">
+            {% for item in tasks %}
+              <li class="todo-list-item">
+                <div>
+                  <div class="uk-text-bold uk-text-small">{{ item.title }}</div>
+                </div>
+                <a class="uk-button uk-button-danger uk-button-small" href="/todo/api/remove?id={{ item.id }}">Rimuovi</a>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessun task disponibile.</div>
+        {% endif %}
       {% endif %}
-    {% endif %}
+    </div>
   </section>
 {% endblock %}

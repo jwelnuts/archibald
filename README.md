@@ -247,6 +247,12 @@ git pull
 docker compose up -d --build
 ```
 
+Oppure con script rapido (no backup):
+
+```bash
+./deploy_vps.sh
+```
+
 Note:
 
 - Il container `web` esegue automaticamente:

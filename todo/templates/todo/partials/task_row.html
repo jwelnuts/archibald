@@ -1,0 +1,42 @@
+<li
+  id="todo-task-row-{{ task.id }}"
+  class="todo-list-item"
+  data-todo-task-row
+  data-status="{{ task.status }}"
+  data-due-date="{% if task.due_date %}{{ task.due_date|date:'Y-m-d' }}{% endif %}"
+  {% if oob %}hx-swap-oob="outerHTML"{% endif %}
+>
+  <div>
+    <div class="uk-text-bold uk-text-small">{{ task.title }}</div>
+    <div class="uk-text-meta">
+      {{ task.get_item_type_display }} · {{ task.get_priority_display }}
+      {% if task.project %} · {{ task.project.name }}{% endif %}
+      {% if task.due_date %}
+        · {{ task.due_date|date:"d/m/Y" }}{% if task.due_time %} {{ task.due_time|time:"H:i" }}{% endif %}
+      {% else %}
+        · Nessuna scadenza
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="todo-inline-actions">
+    <form method="post" action="/todo/api/status" class="todo-inline-form" hx-post="/todo/api/status" hx-swap="none">
+      {% csrf_token %}
+      <input type="hidden" name="id" value="{{ task.id }}">
+      {% if task.status != "IN_PROGRESS" %}
+        <button class="uk-button uk-button-default uk-button-small" name="status" value="IN_PROGRESS" type="submit">In corso</button>
+      {% endif %}
+      {% if task.status != "DONE" %}
+        <button class="uk-button uk-button-primary uk-button-small" name="status" value="DONE" type="submit">Fatto</button>
+      {% else %}
+        <button class="uk-button uk-button-default uk-button-small" name="status" value="OPEN" type="submit">Riapri</button>
+      {% endif %}
+    </form>
+    <a class="uk-button uk-button-default uk-button-small" href="/todo/api/update?id={{ task.id }}">Modifica</a>
+    <form method="post" action="/todo/to-planner" class="todo-inline-form">
+      {% csrf_token %}
+      <input type="hidden" name="id" value="{{ task.id }}">
+      <button class="uk-button uk-button-default uk-button-small" type="submit">Sposta in Planner</button>
+    </form>
+  </div>
+</li>

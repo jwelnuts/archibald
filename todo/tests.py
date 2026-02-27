@@ -122,3 +122,41 @@ class TodoProjectBindingTests(TestCase):
         task = Task.objects.get(owner=self.user, title="Call cliente ore 15")
         self.assertEqual(task.item_type, Task.ItemType.APPOINTMENT)
         self.assertEqual(task.due_time.strftime("%H:%M"), "15:00")
+
+    def test_set_status_htmx_returns_oob_fragment(self):
+        task = Task.objects.create(
+            owner=self.user,
+            title="Task status htmx",
+            item_type=Task.ItemType.TASK,
+            status=Task.Status.OPEN,
+            priority=Task.Priority.MEDIUM,
+        )
+        self.client.login(username="todo_user", password="test1234")
+        response = self.client.post(
+            "/todo/api/status",
+            {"id": str(task.id), "status": Task.Status.DONE},
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'id="todo-task-row-{task.id}"')
+        self.assertContains(response, 'hx-swap-oob="outerHTML"')
+        task.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.DONE)
+
+    def test_set_status_non_htmx_redirects(self):
+        task = Task.objects.create(
+            owner=self.user,
+            title="Task status redirect",
+            item_type=Task.ItemType.TASK,
+            status=Task.Status.OPEN,
+            priority=Task.Priority.LOW,
+        )
+        self.client.login(username="todo_user", password="test1234")
+        response = self.client.post(
+            "/todo/api/status",
+            {"id": str(task.id), "status": Task.Status.IN_PROGRESS},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/todo/")
+        task.refresh_from_db()
+        self.assertEqual(task.status, Task.Status.IN_PROGRESS)

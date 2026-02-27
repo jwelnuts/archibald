@@ -1,0 +1,92 @@
+.todo-page .content {
+  gap: 14px;
+}
+
+.todo-dashboard {
+  display: grid;
+  gap: 10px;
+}
+
+.todo-card {
+  border: 1px solid rgba(165, 156, 138, 0.55);
+}
+
+.todo-filter-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.todo-filter-group .uk-button.is-active {
+  border-color: rgba(30, 106, 91, 0.8);
+  color: var(--accent);
+  background: rgba(30, 106, 91, 0.12);
+}
+
+.todo-list {
+  display: grid;
+  gap: 8px;
+}
+
+.todo-list-item {
+  display: grid !important;
+  gap: 8px;
+  align-items: start !important;
+  border: 1px solid rgba(165, 156, 138, 0.35);
+  border-radius: 10px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.todo-list-item.is-open {
+  border-color: rgba(30, 106, 91, 0.45);
+}
+
+.todo-list-item.is-in-progress {
+  border-color: rgba(245, 159, 0, 0.55);
+  background: rgba(245, 159, 0, 0.08);
+}
+
+.todo-list-item.is-done {
+  border-color: rgba(47, 158, 68, 0.5);
+  background: rgba(47, 158, 68, 0.08);
+}
+
+.todo-list-item.is-overdue {
+  border-color: rgba(201, 42, 42, 0.58);
+  background: rgba(201, 42, 42, 0.08);
+}
+
+.todo-inline-form {
+  margin: 0;
+}
+
+.todo-inline-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.todo-form-page {
+  display: grid;
+  justify-items: center;
+}
+
+.todo-form-card {
+  width: min(100%, 820px);
+}
+
+.todo-hidden {
+  display: none !important;
+}
+
+@media (min-width: 960px) {
+  .todo-list-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center !important;
+  }
+
+  .todo-inline-actions {
+    grid-auto-flow: column;
+    align-items: center;
+  }
+}

@@ -1,0 +1,7 @@
+{% include "todo/partials/task_row.html" with task=task oob=True %}
+
+<div id="todo-stat-open" class="uk-text-bold uk-text-large" hx-swap-oob="outerHTML">{{ counts.open }}</div>
+<div id="todo-stat-in-progress" class="uk-text-bold uk-text-large" hx-swap-oob="outerHTML">{{ counts.in_progress }}</div>
+<div id="todo-stat-done" class="uk-text-bold uk-text-large" hx-swap-oob="outerHTML">{{ counts.done }}</div>
+<div id="todo-stat-overdue" class="uk-text-bold uk-text-large" hx-swap-oob="outerHTML">{{ counts.overdue }}</div>
+<div id="todo-stat-today" class="uk-text-bold uk-text-large" hx-swap-oob="outerHTML">{{ counts.today }}</div>
