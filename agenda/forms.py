@@ -1,4 +1,5 @@
-from decimal import Decimal
+from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 
 from django import forms
 
@@ -30,18 +31,40 @@ class AgendaItemForm(forms.ModelForm):
 class WorkLogForm(forms.ModelForm):
     class Meta:
         model = WorkLog
-        fields = ("work_date", "hours", "note")
+        fields = ("work_date", "time_start", "time_end", "note")
         widgets = {
             "work_date": forms.DateInput(attrs={"class": "date-field", "placeholder": "Seleziona data"}),
-            "hours": forms.NumberInput(attrs={"step": "0.25", "min": "0.25", "max": "24"}),
+            "time_start": forms.TimeInput(attrs={"type": "time", "step": "300"}),
+            "time_end": forms.TimeInput(attrs={"type": "time", "step": "300"}),
         }
 
-    def clean_hours(self):
-        hours = self.cleaned_data["hours"]
-        if hours is None:
-            return hours
+    def clean(self):
+        cleaned_data = super().clean()
+        time_start = cleaned_data.get("time_start")
+        time_end = cleaned_data.get("time_end")
+
+        if not time_start:
+            self.add_error("time_start", "Inserisci l'orario di inizio.")
+        if not time_end:
+            self.add_error("time_end", "Inserisci l'orario di fine.")
+        if not time_start or not time_end:
+            return cleaned_data
+
+        if time_end <= time_start:
+            self.add_error("time_end", "L'orario di fine deve essere successivo all'orario di inizio.")
+            return cleaned_data
+
+        start_dt = datetime.combine(datetime.min.date(), time_start)
+        end_dt = datetime.combine(datetime.min.date(), time_end)
+        total_minutes = int((end_dt - start_dt).total_seconds() // 60)
+        hours = (Decimal(total_minutes) / Decimal("60")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
         if hours <= Decimal("0"):
-            raise forms.ValidationError("Inserisci un numero di ore maggiore di zero.")
+            self.add_error("time_end", "Inserisci un intervallo orario valido.")
+            return cleaned_data
         if hours > Decimal("24"):
-            raise forms.ValidationError("Non puoi registrare piu di 24 ore in un giorno.")
-        return hours
+            self.add_error("time_end", "Non puoi registrare piu di 24 ore in un giorno.")
+            return cleaned_data
+
+        cleaned_data["hours"] = hours
+        return cleaned_data

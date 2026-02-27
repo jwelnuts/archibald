@@ -4,143 +4,226 @@
 {% block title %}MIO - Routines{% endblock %}
 
 {% block content %}
-  <section class="hero" id="app-head">
-    <div class="hero-copy" id="app-header">
-      <h1>Le mie routine</h1>
-      <p>Gestisci le routine settimanali e segna cosa hai completato.</p>
-      <div class="hero-actions" id="app-actions" data-module="routines">
-        <a class="btn primary" href="/routines/api/add" data-action="add_routine">Nuova routine</a>
-        <a class="btn" href="/routines/items/add" data-action="add_item">Nuova attivita</a>
-      </div>
-    </div>
-    <div class="hero-card" id="routines-week-panel">
-      <div class="card-title">Settimana</div>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-label">Inizio</div>
-          <div class="stat-value">{{ week_start|date:"d/m/Y" }}</div>
+  <div class="routines-dashboard" data-controller="routines">
+    <section class="uk-grid-small" uk-grid id="app-head">
+      <article class="uk-width-1-1 uk-width-expand@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <h1 class="uk-card-title uk-margin-remove-bottom">Le mie routine</h1>
+          <p class="uk-text-meta uk-margin-small-top">Gestisci le routine settimanali e segna cosa hai completato.</p>
+          <div class="uk-flex uk-flex-wrap routines-gap-small uk-margin-small-top" id="app-actions" data-module="routines">
+            <a class="uk-button uk-button-primary uk-button-small" href="/routines/api/add" data-action="add_routine">Nuova routine</a>
+            <a class="uk-button uk-button-default uk-button-small" href="/routines/items/add" data-action="add_item">Nuova attivita</a>
+          </div>
         </div>
-        <div class="stat">
-          <div class="stat-label">Fine</div>
-          <div class="stat-value">{{ week_end|date:"d/m/Y" }}</div>
-        </div>
-      </div>
-      <div class="actions">
-        <a class="btn" href="/routines/?week={{ prev_week }}">Settimana precedente</a>
-        <a class="btn" href="/routines/?week={{ next_week }}">Settimana successiva</a>
-      </div>
-    </div>
-  </section>
+      </article>
 
-  <section class="grid routines-accordion" id="routines-grid">
-    {% for day in week_days %}
-      <details class="panel routine-day" {% if day.date == today %}open{% endif %}>
-        <summary class="routine-day-head">
-          <span class="routine-day-title">{{ day.label }} · {{ day.date|date:"d/m" }}</span>
-          {% if day.date == today %}
-            <span class="routine-day-chip">Oggi</span>
-          {% endif %}
-        </summary>
-        {% with items=grouped|get_item:day.index %}
-          {% if items %}
-            <ul class="list routine-day-list">
-              {% for entry in items %}
-                <li>
-                  <span>{{ entry.item.title }}</span>
-                  <span class="muted">{{ entry.item.routine.name }}{% if entry.item.project %} · {{ entry.item.project.name }}{% endif %}{% if entry.item.time_start %} · {{ entry.item.time_start|time:"H:i" }}{% endif %}{% if entry.item.time_end %}-{{ entry.item.time_end|time:"H:i" }}{% endif %}</span>
-                  <form method="post" action="/routines/check" class="routine-check-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="item_id" value="{{ entry.item.id }}">
-                    <input type="hidden" name="week" value="{{ week_start|date:"Y-m-d" }}">
-                    <div class="actions">
-                      <button
-                        class="btn primary routine-done-btn"
-                        type="button"
-                        data-item-id="{{ entry.item.id }}"
-                        data-week="{{ week_start|date:"Y-m-d" }}"
-                        data-title="{{ entry.item.title }}"
-                        data-schema-id="routine-schema-{{ entry.item.id }}"
-                        data-data-id="routine-data-{{ entry.item.id }}"
-                      >
-                        Fatto
-                      </button>
-                      <button class="btn danger" name="status" value="SKIPPED" type="submit">Saltato</button>
+      <article class="uk-width-1-1 uk-width-2-5@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card" id="routines-week-panel">
+          <h2 class="uk-h4 uk-margin-remove-bottom">Settimana</h2>
+          <div class="uk-grid-collapse uk-child-width-1-2 uk-margin-small-top routines-week-stats" uk-grid>
+            <div class="uk-padding-small">
+              <div class="uk-text-meta">Inizio</div>
+              <div class="uk-text-bold">{{ week_start|date:"d/m/Y" }}</div>
+            </div>
+            <div class="uk-padding-small">
+              <div class="uk-text-meta">Fine</div>
+              <div class="uk-text-bold">{{ week_end|date:"d/m/Y" }}</div>
+            </div>
+          </div>
+          <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
+            <div>
+              <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/routines/?week={{ prev_week }}">Precedente</a>
+            </div>
+            <div>
+              <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/routines/?week={{ next_week }}">Successiva</a>
+            </div>
+          </div>
+          <hr class="uk-margin-small">
+          <div class="routines-today-stats" data-today-date="{{ today|date:"Y-m-d" }}">
+            <h3 class="uk-h5 uk-margin-remove-bottom">Oggi</h3>
+            <div class="uk-grid-small uk-child-width-1-4 uk-margin-small-top" uk-grid>
+              <div>
+                <div class="uk-text-meta">Totale</div>
+                <div id="routine-today-total" class="uk-text-bold">{{ today_stats.total }}</div>
+              </div>
+              <div>
+                <div class="uk-text-meta">Da fare</div>
+                <div id="routine-today-planned" class="uk-text-bold">{{ today_stats.planned }}</div>
+              </div>
+              <div>
+                <div class="uk-text-meta">Fatti</div>
+                <div id="routine-today-done" class="uk-text-bold">{{ today_stats.done }}</div>
+              </div>
+              <div>
+                <div class="uk-text-meta">Saltati</div>
+                <div id="routine-today-skipped" class="uk-text-bold">{{ today_stats.skipped }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="uk-button-group uk-margin-small-top routine-filter-group" data-routine-filters>
+            <button class="uk-button uk-button-default uk-button-small is-active" type="button" data-routine-filter="all">Tutte</button>
+            <button class="uk-button uk-button-default uk-button-small" type="button" data-routine-filter="today">Solo oggi</button>
+            <button class="uk-button uk-button-default uk-button-small" type="button" data-routine-filter="pending">Solo da fare</button>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="uk-margin-small-top" id="routines-grid">
+      <ul class="uk-accordion uk-margin-remove routines-accordion-list" uk-accordion="multiple: true">
+        {% for day in week_days %}
+          {% with items=grouped|get_item:day.index %}
+          <li {% if day.date == today %}class="uk-open"{% endif %} data-routine-day data-day-date="{{ day.date|date:"Y-m-d" }}">
+            <a class="uk-accordion-title routines-accordion-title" href="#">
+              <span>{{ day.label }} · {{ day.date|date:"d/m" }}</span>
+              {% if day.date == today %}
+                <span class="uk-label routines-today-label">Oggi</span>
+              {% endif %}
+            </a>
+            <div class="uk-accordion-content uk-margin-small-top">
+              {% if items %}
+                <div class="uk-grid-small routine-day-list" uk-grid>
+                  {% for entry in items %}
+                    <article class="uk-width-1-1 uk-width-1-2@l" data-routine-card data-day-date="{{ day.date|date:"Y-m-d" }}">
+                      <div class="uk-card uk-card-default uk-card-small uk-card-body routine-entry-card" data-routine-item-id="{{ entry.item.id }}">
+                          <div class="uk-text-bold uk-text-small">{{ entry.item.title }}</div>
+                          <div class="uk-text-meta routine-day-entry-meta">
+                            {{ entry.item.routine.name }}{% if entry.item.project %} · {{ entry.item.project.name }}{% endif %}{% if entry.item.time_start %} · {{ entry.item.time_start|time:"H:i" }}{% endif %}{% if entry.item.time_end %}-{{ entry.item.time_end|time:"H:i" }}{% endif %}
+                          </div>
+                          <div id="routine-status-{{ entry.item.id }}" class="uk-text-meta uk-margin-xsmall-top routine-entry-status" data-routine-status data-routine-status-value="{{ entry.status }}">{{ entry.status }}</div>
+
+                          <form
+                            method="post"
+                            action="/routines/check"
+                            class="routine-check-form uk-form-stacked uk-margin-small-top"
+                            hx-post="/routines/check"
+                            hx-swap="none"
+                          >
+                            {% csrf_token %}
+                            <input type="hidden" name="item_id" value="{{ entry.item.id }}">
+                            <input type="hidden" name="week" value="{{ week_start|date:"Y-m-d" }}">
+                            <div class="uk-grid-small uk-child-width-1-3" uk-grid>
+                              <div>
+                                {% if entry.schema_fields %}
+                                  <button
+                                    class="uk-button uk-button-primary uk-button-small uk-width-1-1 routine-done-btn"
+                                    type="button"
+                                    data-item-id="{{ entry.item.id }}"
+                                    data-week="{{ week_start|date:"Y-m-d" }}"
+                                    data-title="{{ entry.item.title }}"
+                                    data-schema-id="routine-schema-{{ entry.item.id }}"
+                                    data-data-id="routine-data-{{ entry.item.id }}"
+                                  >
+                                    Fatto
+                                  </button>
+                                {% else %}
+                                  <button class="uk-button uk-button-primary uk-button-small uk-width-1-1" name="status" value="DONE" type="submit">Fatto</button>
+                                {% endif %}
+                              </div>
+                              <div>
+                                <button class="uk-button uk-button-danger uk-button-small uk-width-1-1" name="status" value="SKIPPED" type="submit">Saltato</button>
+                              </div>
+                              <div>
+                                <button class="uk-button uk-button-default uk-button-small uk-width-1-1" name="status" value="PLANNED" type="submit">Riapri</button>
+                              </div>
+                            </div>
+                          </form>
+
+                          {% with schema_id="routine-schema-"|add:entry.item.id data_id="routine-data-"|add:entry.item.id %}
+                            {{ entry.schema_fields|default:""|json_script:schema_id }}
+                            {{ entry.data|default:""|json_script:data_id }}
+                          {% endwith %}
+
+                          <div class="uk-margin-small-top">
+                            <a class="uk-button uk-button-text uk-text-small" href="/routines/items/update?id={{ entry.item.id }}">Modifica</a>
+                          </div>
+                      </div>
+                    </article>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="uk-alert-primary uk-padding-small uk-margin-remove" data-routine-empty>Nessuna attivita in questo giorno.</div>
+              {% endif %}
+            </div>
+          </li>
+          {% endwith %}
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="uk-grid-small uk-margin-small-top" uk-grid id="routines-info-grid">
+      <article class="uk-width-1-1 uk-width-2-5@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <h2 class="uk-h4 uk-margin-small-bottom">Stato settimana</h2>
+          <div class="uk-grid-small uk-child-width-1-3" uk-grid>
+            <div>
+              <div class="uk-text-meta">Pianificati</div>
+              <div id="routine-stat-planned" class="uk-text-bold uk-text-large" data-routine-stat="PLANNED">{{ stats.planned }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Completati</div>
+              <div id="routine-stat-done" class="uk-text-bold uk-text-large" data-routine-stat="DONE">{{ stats.done }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Saltati</div>
+              <div id="routine-stat-skipped" class="uk-text-bold uk-text-large" data-routine-stat="SKIPPED">{{ stats.skipped }}</div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="uk-width-1-1 uk-width-expand@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <h2 class="uk-h4 uk-margin-small-bottom">Routine attive</h2>
+          {% if routines %}
+            <ul class="uk-list uk-list-divider uk-margin-remove routine-list">
+              {% for routine in routines %}
+                <li class="routine-list-item">
+                  <div class="uk-flex uk-flex-between uk-flex-top uk-flex-wrap routines-gap-small">
+                    <div>
+                      <div class="uk-text-bold uk-text-small">{{ routine.name }}</div>
+                      <div class="uk-text-meta">{{ routine.description|default:"-" }}</div>
                     </div>
-                  </form>
-                  {% with schema_id="routine-schema-"|add:entry.item.id data_id="routine-data-"|add:entry.item.id %}
-                    {{ entry.schema_fields|default:""|json_script:schema_id }}
-                    {{ entry.data|default:""|json_script:data_id }}
-                  {% endwith %}
-                  <span class="muted">{{ entry.status }}</span>
-                  <div class="actions routine-item-actions">
-                    <a class="btn" href="/routines/items/update?id={{ entry.item.id }}">Modifica</a>
+                    <a class="uk-button uk-button-default uk-button-small" href="/routines/api/update?id={{ routine.id }}">Modifica</a>
                   </div>
                 </li>
               {% endfor %}
             </ul>
           {% else %}
-            <div class="note">Nessuna attivita in questo giorno.</div>
+            <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessuna routine attiva.</div>
           {% endif %}
-        {% endwith %}
-      </details>
-    {% endfor %}
-  </section>
-
-  <section class="grid" id="routines-info-grid">
-    <article class="panel">
-      <h2>Stato settimana</h2>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-label">Pianificati</div>
-          <div class="stat-value">{{ stats.planned }}</div>
         </div>
-        <div class="stat">
-          <div class="stat-label">Completati</div>
-          <div class="stat-value">{{ stats.done }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Saltati</div>
-          <div class="stat-value">{{ stats.skipped }}</div>
-        </div>
-      </div>
-    </article>
-
-    <article class="panel">
-      <h2>Routine attive</h2>
-      {% if routines %}
-        <ul class="list">
-          {% for routine in routines %}
-            <li>
-              <span>{{ routine.name }}</span>
-              <span class="muted">{{ routine.description|default:"-" }}</span>
-              <span>
-                <a class="btn" href="/routines/api/update?id={{ routine.id }}">Modifica</a>
-              </span>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <div class="note">Nessuna routine attiva.</div>
-      {% endif %}
-    </article>
-  </section>
+      </article>
+    </section>
+  </div>
 
   <div class="modal" id="routine-modal" hidden>
     <div class="modal-backdrop" data-modal-close></div>
-    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="routine-modal-title">
+    <div class="modal-card uk-card uk-card-default uk-card-small" role="dialog" aria-modal="true" aria-labelledby="routine-modal-title">
       <div class="modal-head">
         <h3 id="routine-modal-title">Completa routine</h3>
         <button class="modal-close" type="button" data-modal-close aria-label="Chiudi">×</button>
       </div>
-      <form method="post" action="/routines/check" id="routine-modal-form" class="routine-check-form">
+      <form
+        method="post"
+        action="/routines/check"
+        id="routine-modal-form"
+        class="routine-check-form form-compact uk-form-stacked"
+        hx-post="/routines/check"
+        hx-swap="none"
+      >
         {% csrf_token %}
         <input type="hidden" name="item_id" id="routine-modal-item">
         <input type="hidden" name="week" id="routine-modal-week">
         <input type="hidden" name="status" value="DONE">
         <div class="routine-form-grid" id="routine-modal-fields"></div>
-        <div class="actions">
-          <button class="btn" type="button" data-modal-close>Annulla</button>
-          <button class="btn primary" type="submit">Conferma</button>
+        <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
+          <div>
+            <button class="uk-button uk-button-default uk-button-small uk-width-1-1" type="button" data-modal-close>Annulla</button>
+          </div>
+          <div>
+            <button class="uk-button uk-button-primary uk-button-small uk-width-1-1" type="submit">Conferma</button>
+          </div>
         </div>
       </form>
     </div>

@@ -134,6 +134,8 @@ def dashboard(request):
                     owner=request.user,
                     work_date=work_date,
                     defaults={
+                        "time_start": work_form.cleaned_data["time_start"],
+                        "time_end": work_form.cleaned_data["time_end"],
                         "hours": work_form.cleaned_data["hours"],
                         "note": work_form.cleaned_data["note"],
                     },
@@ -304,12 +306,15 @@ def dashboard(request):
     for log in work_logs:
         ensure_day(log.work_date)
         summary_map[log.work_date]["hours"] = log.hours
+        time_text = ""
+        if log.time_start and log.time_end:
+            time_text = f"{log.time_start.strftime('%H:%M')}-{log.time_end.strftime('%H:%M')}"
         events_map[log.work_date].append(
             {
                 "kind": "worklog",
                 "label": "Ore lavoro",
                 "title": "Ore lavorate",
-                "time": "",
+                "time": time_text,
                 "meta": f"{_hours_label(log.hours)}h",
                 "is_agenda_item": False,
             }

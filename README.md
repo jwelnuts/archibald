@@ -1,6 +1,6 @@
 # MIO Master (archibald)
 
-Snapshot documentazione: 19 febbraio 2026
+Snapshot documentazione: 27 febbraio 2026
 
 Monolite Django per organizzazione personale: finanza, progetti, planner/todo/routine, knowledge link, vault cifrato e assistente AI (Archibald), con workspace tecnico (Workbench) per debug e generazione guidata.
 
@@ -23,6 +23,20 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 - cryptography 44.0.1
 - pyotp 2.9.0
 - qrcode 8.2
+
+### Frontend (runtime UI)
+
+- UIKit (static locale in `core/static/core/vendor/uikit`)
+- HTMX (static locale in `core/static/core/vendor/htmx`)
+- Stimulus (bootstrap in `core/static/core/stimulus.js`)
+- LESS (`core/styles.less` compilato client-side via `less.min.js`)
+
+Note Stimulus:
+
+- l'app Stimulus viene avviata globalmente da `core/static/core/app.js`
+- i controller vengono registrati tramite helper in `core/static/core/stimulus.js`
+- il modulo `routines` e gia migrato a controller Stimulus (`data-controller="routines"`)
+- al momento il modulo Stimulus viene importato via ESM URL (`unpkg`) in `core/static/core/stimulus.js`
 
 ## Moduli applicativi
 
@@ -87,6 +101,11 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
   - check settimanali (`RoutineCheck`) con stati planned/done/skipped
   - autoskip dei giorni passati nella settimana corrente
   - schema JSON per campi dinamici per item
+  - dashboard mobile-first con componenti UIKit
+  - interazioni `Fatto/Saltato/Riapri` via HTMX senza reload completo pagina
+  - modal dati dinamici quando l'item ha campi schema, submit diretto quando non ci sono campi aggiuntivi
+  - pannello rapido "Oggi" con contatori (totale, da fare, fatti, saltati)
+  - filtri rapidi: tutte, solo oggi, solo da fare
 
 ### AI e knowledge
 - `archibald` (`/archibald/`):
@@ -255,7 +274,10 @@ Esecuzione:
 python manage.py test
 ```
 
-Ultima esecuzione locale: `20` test, esito `OK`.
+Verifica recente (27 febbraio 2026):
+
+- `python manage.py check` -> `OK`
+- `python manage.py test routines.tests` -> `OK` (`2` test)
 
 ## Struttura repository (essenziale)
 

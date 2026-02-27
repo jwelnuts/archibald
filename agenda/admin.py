@@ -12,6 +12,6 @@ class AgendaItemAdmin(admin.ModelAdmin):
 
 @admin.register(WorkLog)
 class WorkLogAdmin(admin.ModelAdmin):
-    list_display = ("owner", "work_date", "hours")
+    list_display = ("owner", "work_date", "time_start", "time_end", "hours")
     list_filter = ("work_date",)
     search_fields = ("note",)

@@ -19,7 +19,7 @@
     {% endif %}
 
     {% if routine %}
-      <form class="form" method="post" action="">
+      <form class="form form-compact uk-form-stacked" method="post" action="">
         {% csrf_token %}
         <div class="field">
           <label for="id_name">Nome</label>
@@ -40,9 +40,9 @@
       </form>
     {% else %}
       {% if routines %}
-        <ul class="list">
+        <ul class="list routine-list">
           {% for item in routines %}
-            <li>
+            <li class="routine-list-item">
               <span>{{ item.name }}</span>
               <a class="btn" href="/routines/api/update?id={{ item.id }}">Modifica</a>
             </li>

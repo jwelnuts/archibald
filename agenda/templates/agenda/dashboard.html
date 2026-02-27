@@ -136,14 +136,15 @@
 
     <article class="panel" id="agenda-worklog-form">
       <h2>Ore lavorate</h2>
-      <p class="muted">Inserisci le ore del giorno: il totale mensile si aggiorna automaticamente.</p>
+      <p class="muted">Inserisci orario di inizio e fine: le ore del giorno e il totale mensile si aggiornano automaticamente.</p>
       {% if work_form.errors %}
         <div class="warning-box">
           Controlla i campi del worklog.
           <div class="form-errors">
             {{ work_form.non_field_errors }}
             {{ work_form.work_date.errors }}
-            {{ work_form.hours.errors }}
+            {{ work_form.time_start.errors }}
+            {{ work_form.time_end.errors }}
             {{ work_form.note.errors }}
           </div>
         </div>
@@ -156,8 +157,12 @@
           {{ work_form.work_date }}
         </div>
         <div class="field">
-          <label for="id_hours">Ore</label>
-          {{ work_form.hours }}
+          <label for="id_time_start">Orario inizio</label>
+          {{ work_form.time_start }}
+        </div>
+        <div class="field">
+          <label for="id_time_end">Orario fine</label>
+          {{ work_form.time_end }}
         </div>
         <div class="field">
           <label for="id_note">Nota</label>

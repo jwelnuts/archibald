@@ -5,10 +5,34 @@ from .models import Routine, RoutineItem
 WEEKDAY_ALL = "ALL"
 
 
+def _append_class(widget, classes: str):
+    current = (widget.attrs.get("class") or "").strip()
+    widget.attrs["class"] = f"{current} {classes}".strip()
+
+
+def _apply_uikit_compact(fields):
+    for field in fields.values():
+        widget = field.widget
+        if isinstance(widget, forms.CheckboxInput):
+            _append_class(widget, "uk-checkbox")
+            continue
+        if isinstance(widget, forms.Select):
+            _append_class(widget, "uk-select uk-form-small")
+            continue
+        if isinstance(widget, forms.Textarea):
+            _append_class(widget, "uk-textarea uk-form-small")
+            continue
+        _append_class(widget, "uk-input uk-form-small")
+
+
 class RoutineForm(forms.ModelForm):
     class Meta:
         model = Routine
         fields = ("name", "description", "is_active")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _apply_uikit_compact(self.fields)
 
 
 class RoutineItemForm(forms.ModelForm):
@@ -46,6 +70,7 @@ class RoutineItemForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         owner = kwargs.pop("owner", None)
         super().__init__(*args, **kwargs)
+        _apply_uikit_compact(self.fields)
         self._owner = owner
         self._weekday_all = False
         self._routine_qs = Routine.objects.none()

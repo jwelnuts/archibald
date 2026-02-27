@@ -2,6 +2,8 @@ from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count
+from django.http import JsonResponse
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import RoutineForm, RoutineItemForm, WEEKDAY_ALL
@@ -78,6 +80,20 @@ def _extract_schema_data(item, user, data):
             result[field["name"]] = raw.strip() if isinstance(raw, str) else raw
     return result
 
+
+def _week_stats(owner, week_start: date):
+    counts = (
+        RoutineCheck.objects.filter(owner=owner, week_start=week_start)
+        .values("status")
+        .annotate(total=Count("id"))
+    )
+    count_map = {row["status"]: row["total"] for row in counts}
+    return {
+        "planned": count_map.get(RoutineCheck.Status.PLANNED, 0),
+        "done": count_map.get(RoutineCheck.Status.DONE, 0),
+        "skipped": count_map.get(RoutineCheck.Status.SKIPPED, 0),
+    }
+
 @login_required
 def dashboard(request):
     user = request.user
@@ -144,13 +160,24 @@ def dashboard(request):
             "schema_fields": _schema_fields(item, user),
         })
 
-    counts = RoutineCheck.objects.filter(owner=user, week_start=week_start).values("status").annotate(total=Count("id"))
-    count_map = {row["status"]: row["total"] for row in counts}
-    stats = {
-        "planned": count_map.get(RoutineCheck.Status.PLANNED, 0),
-        "done": count_map.get(RoutineCheck.Status.DONE, 0),
-        "skipped": count_map.get(RoutineCheck.Status.SKIPPED, 0),
+    stats = _week_stats(user, week_start)
+    today_stats = {
+        "total": 0,
+        "planned": 0,
+        "done": 0,
+        "skipped": 0,
     }
+    if week_start <= today <= week_end:
+        today_items = grouped.get(today.weekday(), [])
+        today_stats["total"] = len(today_items)
+        for entry in today_items:
+            status = (entry.get("status") or "").upper()
+            if status == RoutineCheck.Status.DONE:
+                today_stats["done"] += 1
+            elif status == RoutineCheck.Status.SKIPPED:
+                today_stats["skipped"] += 1
+            else:
+                today_stats["planned"] += 1
 
     context = {
         "week_start": week_start,
@@ -160,6 +187,7 @@ def dashboard(request):
         "grouped": grouped,
         "routines": routines,
         "stats": stats,
+        "today_stats": today_stats,
         "prev_week": (week_start - timedelta(days=7)).isoformat(),
         "next_week": (week_start + timedelta(days=7)).isoformat(),
     }
@@ -168,11 +196,19 @@ def dashboard(request):
 
 @login_required
 def check_item(request):
+    is_htmx = request.headers.get("HX-Request") == "true"
+    is_ajax = request.headers.get("x-requested-with") == "XMLHttpRequest"
+
     if request.method != "POST":
+        if is_htmx:
+            return HttpResponse(status=405)
+        if is_ajax:
+            return JsonResponse({"ok": False, "error": "method_not_allowed"}, status=405)
         return redirect("/routines/")
+
     item_id = request.POST.get("item_id")
     week_start = _week_start_for(request.POST.get("week"))
-    status = request.POST.get("status")
+    status = (request.POST.get("status") or "").strip()
 
     item = get_object_or_404(RoutineItem, id=item_id, owner=request.user)
     check, _ = RoutineCheck.objects.get_or_create(
@@ -181,10 +217,37 @@ def check_item(request):
         week_start=week_start,
         defaults={"status": RoutineCheck.Status.PLANNED},
     )
-    if status in {RoutineCheck.Status.PLANNED, RoutineCheck.Status.DONE, RoutineCheck.Status.SKIPPED}:
-        check.status = status
-        check.data = _extract_schema_data(item, request.user, request.POST)
-        check.save(update_fields=["status", "data"])
+
+    allowed_statuses = {RoutineCheck.Status.PLANNED, RoutineCheck.Status.DONE, RoutineCheck.Status.SKIPPED}
+    if status not in allowed_statuses:
+        if is_ajax:
+            return JsonResponse({"ok": False, "error": "invalid_status"}, status=400)
+        return redirect(f"/routines/?week={week_start.isoformat()}")
+
+    check.status = status
+    check.data = _extract_schema_data(item, request.user, request.POST)
+    check.save(update_fields=["status", "data"])
+
+    stats = _week_stats(request.user, week_start)
+
+    if is_htmx:
+        context = {
+            "item": item,
+            "status": check.status,
+            "stats": stats,
+        }
+        return render(request, "routines/partials/check_item_oob.html", context)
+
+    if is_ajax:
+        return JsonResponse(
+            {
+                "ok": True,
+                "item_id": item.id,
+                "status": check.status,
+                "stats": stats,
+            }
+        )
+
     return redirect(f"/routines/?week={week_start.isoformat()}")
 
 

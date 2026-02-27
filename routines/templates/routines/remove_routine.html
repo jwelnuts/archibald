@@ -12,16 +12,16 @@
         Stai per rimuovere: <strong>{{ routine.name }}</strong>.
         Questa azione non e reversibile.
       </div>
-      <form class="actions" method="post" action="">
+      <form class="actions uk-flex uk-flex-wrap uk-grid-small" method="post" action="">
         {% csrf_token %}
         <button class="btn danger" type="submit">Conferma rimozione</button>
         <a class="btn" href="/routines/">Annulla</a>
       </form>
     {% else %}
       {% if routines %}
-        <ul class="list">
+        <ul class="list routine-list">
           {% for item in routines %}
-            <li>
+            <li class="routine-list-item">
               <span>{{ item.name }}</span>
               <a class="btn" href="/routines/api/remove?id={{ item.id }}">Rimuovi</a>
             </li>

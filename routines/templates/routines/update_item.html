@@ -19,12 +19,12 @@
     {% endif %}
 
     {% if item %}
-      <form class="form" method="post" action="">
+      <form class="form form-compact uk-form-stacked" method="post" action="">
         {% csrf_token %}
         <div class="field">
           <label for="id_routine_choice">Routine</label>
           {{ form.routine_choice }}
-          <input id="id_routine_name" name="routine_name" type="text" placeholder="Nome nuova routine" value="{{ form.routine_name.value|default:'' }}" style="display:none;">
+          <input id="id_routine_name" name="routine_name" class="uk-input uk-form-small" type="text" placeholder="Nome nuova routine" value="{{ form.routine_name.value|default:'' }}" style="display:none;">
         </div>
         <div class="field">
           <label for="id_project">Progetto</label>
@@ -75,7 +75,7 @@
           <label for="id_is_active">Attiva</label>
           {{ form.is_active }}
         </div>
-        <div class="actions">
+        <div class="actions uk-flex uk-flex-wrap uk-grid-small">
           <button class="btn primary" type="submit">Aggiorna</button>
           <a class="btn" href="/routines/">Annulla</a>
         </div>
@@ -236,9 +236,9 @@
       </script>
     {% else %}
       {% if items %}
-        <ul class="list">
+        <ul class="list routine-list">
           {% for item in items %}
-            <li>
+            <li class="routine-list-item">
               <span>{{ item.title }}</span>
               <span class="muted">{{ item.routine.name }} · {{ item.get_weekday_display }}{% if item.project %} · {{ item.project.name }}{% endif %}</span>
               <a class="btn" href="/routines/items/update?id={{ item.id }}">Modifica</a>

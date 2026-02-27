@@ -1,3 +1,7 @@
+import { startStimulus } from "./stimulus.js";
+
+startStimulus().catch(() => {});
+
 const portal = document.getElementById("portal");
 
 const setupPortalDrag = () => {

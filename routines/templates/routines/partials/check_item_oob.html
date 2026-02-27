@@ -1,0 +1,11 @@
+<div
+  id="routine-status-{{ item.id }}"
+  class="uk-text-meta uk-margin-xsmall-top routine-entry-status"
+  data-routine-status
+  data-routine-status-value="{{ status }}"
+  hx-swap-oob="outerHTML"
+>{{ status }}</div>
+
+<div id="routine-stat-planned" class="uk-text-bold uk-text-large" data-routine-stat="PLANNED" hx-swap-oob="outerHTML">{{ stats.planned }}</div>
+<div id="routine-stat-done" class="uk-text-bold uk-text-large" data-routine-stat="DONE" hx-swap-oob="outerHTML">{{ stats.done }}</div>
+<div id="routine-stat-skipped" class="uk-text-bold uk-text-large" data-routine-stat="SKIPPED" hx-swap-oob="outerHTML">{{ stats.skipped }}</div>

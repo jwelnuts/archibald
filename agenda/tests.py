@@ -94,7 +94,8 @@ class AgendaDashboardTests(TestCase):
             {
                 "action": "log_hours",
                 "work_date": "2026-02-12",
-                "hours": "6.00",
+                "time_start": "09:00",
+                "time_end": "15:00",
                 "note": "Sviluppo",
             },
         )
@@ -104,7 +105,8 @@ class AgendaDashboardTests(TestCase):
             {
                 "action": "log_hours",
                 "work_date": "2026-02-12",
-                "hours": "8.25",
+                "time_start": "09:00",
+                "time_end": "17:15",
                 "note": "Sviluppo + review",
             },
         )
@@ -112,3 +114,5 @@ class AgendaDashboardTests(TestCase):
         self.assertEqual(WorkLog.objects.filter(owner=self.user, work_date="2026-02-12").count(), 1)
         log = WorkLog.objects.get(owner=self.user, work_date="2026-02-12")
         self.assertEqual(log.hours, Decimal("8.25"))
+        self.assertEqual(log.time_start.strftime("%H:%M"), "09:00")
+        self.assertEqual(log.time_end.strftime("%H:%M"), "17:15")
