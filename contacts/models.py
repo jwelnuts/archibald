@@ -72,10 +72,7 @@ class ContactPriceList(OwnedModel, TimeStampedModel):
     toolbox = models.ForeignKey("contacts.ContactToolbox", on_delete=models.CASCADE, related_name="price_lists")
     title = models.CharField(max_length=180)
     currency_code = models.CharField(max_length=3, default="EUR")
-    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("22.00"))
-    subtotal_net = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
-    tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
-    total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    pricing_notes = models.TextField(blank=True)
     note = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
 
@@ -92,22 +89,7 @@ class ContactPriceList(OwnedModel, TimeStampedModel):
     def save(self, *args, **kwargs):
         if self.toolbox_id and self.owner_id != self.toolbox.owner_id:
             self.owner = self.toolbox.owner
-
-        net = _to_decimal(self.subtotal_net)
-        vat = _to_decimal(self.vat_rate)
-        self.subtotal_net = net.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.tax_amount = (net * vat / Decimal("100.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.total_amount = (self.subtotal_net + self.tax_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         super().save(*args, **kwargs)
-
-    def refresh_totals_from_items(self, *, save=True):
-        total_net = Decimal("0.00")
-        for row in self.items.all():
-            total_net += row.line_total_net or Decimal("0.00")
-        self.subtotal_net = total_net.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        if save:
-            self.save(update_fields=["subtotal_net", "tax_amount", "total_amount", "updated_at"])
-        return self.subtotal_net
 
     def __str__(self):
         return self.title
@@ -119,59 +101,55 @@ class ContactPriceListItem(OwnedModel, TimeStampedModel):
     code = models.CharField(max_length=60, blank=True)
     title = models.CharField(max_length=180)
     description = models.CharField(max_length=255, blank=True)
-    quantity = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("1.00"))
-    unit_price_net = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
-    discount = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
-    line_total_net = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    min_quantity = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal("1.00"))
+    max_quantity = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    unit_price = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    is_active = models.BooleanField(default=True)
 
     class Meta:
         indexes = [
             models.Index(fields=["owner", "price_list", "row_order"]),
+            models.Index(fields=["owner", "price_list", "is_active"]),
         ]
         ordering = ["row_order", "id"]
 
-    @property
-    def discount_factor(self):
-        pct = _to_decimal(self.discount)
-        factor = Decimal("1.00") - (pct / Decimal("100.00"))
-        if factor < 0:
-            return Decimal("0.00")
-        return factor
-
     def save(self, *args, **kwargs):
-        refresh_price_list = kwargs.pop("refresh_price_list", True)
         if self.price_list_id and self.owner_id != self.price_list.owner_id:
             self.owner = self.price_list.owner
 
-        quantity = _to_decimal(self.quantity, default="1.00")
-        if quantity < 0:
-            quantity = Decimal("0.00")
-        unit_price = _to_decimal(self.unit_price_net)
+        min_quantity = _to_decimal(self.min_quantity, default="1.00")
+        if min_quantity < 0:
+            min_quantity = Decimal("0.00")
+        unit_price = _to_decimal(self.unit_price)
         if unit_price < 0:
             unit_price = Decimal("0.00")
-        discount = _to_decimal(self.discount)
-        if discount < 0:
-            discount = Decimal("0.00")
-        if discount > 100:
-            discount = Decimal("100.00")
+        max_quantity = _to_decimal(self.max_quantity) if self.max_quantity is not None else None
+        if max_quantity is not None and max_quantity < 0:
+            max_quantity = Decimal("0.00")
+        if max_quantity is not None and max_quantity < min_quantity:
+            max_quantity = min_quantity
 
-        self.quantity = quantity.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.unit_price_net = unit_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.discount = discount.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        self.line_total_net = (
-            self.quantity * self.unit_price_net * (Decimal("1.00") - (self.discount / Decimal("100.00")))
-        ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.min_quantity = min_quantity.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        self.max_quantity = (
+            max_quantity.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if max_quantity is not None else None
+        )
+        self.unit_price = unit_price.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         super().save(*args, **kwargs)
-        if refresh_price_list and self.price_list_id:
-            self.price_list.refresh_totals_from_items(save=True)
 
-    def delete(self, *args, **kwargs):
-        refresh_price_list = kwargs.pop("refresh_price_list", True)
-        price_list = self.price_list if self.price_list_id else None
-        super().delete(*args, **kwargs)
-        if refresh_price_list and price_list is not None:
-            price_list.refresh_totals_from_items(save=True)
+    def matches_quantity(self, quantity):
+        qty = _to_decimal(quantity)
+        if qty < self.min_quantity:
+            return False
+        if self.max_quantity is not None and qty > self.max_quantity:
+            return False
+        return True
+
+    @property
+    def range_label(self):
+        if self.max_quantity is None:
+            return f"{self.min_quantity}+"
+        return f"{self.min_quantity} - {self.max_quantity}"
 
     def __str__(self):
-        return f"{self.title} ({self.quantity} x {self.unit_price_net})"
+        return f"{self.title} [{self.range_label}]"

@@ -40,10 +40,10 @@ class ContactToolboxForm(forms.ModelForm):
 class ContactPriceListForm(forms.ModelForm):
     class Meta:
         model = ContactPriceList
-        fields = ("title", "currency_code", "vat_rate", "is_active", "note")
+        fields = ("title", "currency_code", "pricing_notes", "is_active", "note")
         widgets = {
-            "vat_rate": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
             "currency_code": forms.TextInput(attrs={"maxlength": "3"}),
+            "pricing_notes": forms.Textarea(attrs={"rows": 4}),
             "note": forms.Textarea(attrs={"rows": 4}),
         }
 
@@ -56,25 +56,16 @@ class ContactPriceListForm(forms.ModelForm):
             raise forms.ValidationError("La valuta deve essere un codice di 3 lettere (es. EUR).")
         return value
 
-    def clean_vat_rate(self):
-        vat = self.cleaned_data.get("vat_rate")
-        if vat is None:
-            return vat
-        if vat < 0:
-            raise forms.ValidationError("L'aliquota IVA non puo essere negativa.")
-        return vat
-
-
 class ContactPriceListItemForm(forms.ModelForm):
     class Meta:
         model = ContactPriceListItem
-        fields = ("row_order", "code", "title", "description", "quantity", "unit_price_net", "discount")
+        fields = ("row_order", "code", "title", "description", "min_quantity", "max_quantity", "unit_price", "is_active")
         widgets = {
             "row_order": forms.HiddenInput(),
             "description": forms.TextInput(attrs={"placeholder": "Descrizione articolo"}),
-            "quantity": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
-            "unit_price_net": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
-            "discount": forms.NumberInput(attrs={"step": "0.01", "min": "0", "max": "100"}),
+            "min_quantity": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "max_quantity": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
+            "unit_price": forms.NumberInput(attrs={"step": "0.01", "min": "0"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -86,15 +77,17 @@ class ContactPriceListItemForm(forms.ModelForm):
 
     def clean(self):
         cleaned = super().clean()
-        quantity = cleaned.get("quantity")
-        unit_price = cleaned.get("unit_price_net")
-        discount = cleaned.get("discount")
-        if quantity is not None and quantity < 0:
-            self.add_error("quantity", "La quantita non puo essere negativa.")
+        min_quantity = cleaned.get("min_quantity")
+        max_quantity = cleaned.get("max_quantity")
+        unit_price = cleaned.get("unit_price")
+        if min_quantity is not None and min_quantity < 0:
+            self.add_error("min_quantity", "La quantita minima non puo essere negativa.")
+        if max_quantity is not None and max_quantity < 0:
+            self.add_error("max_quantity", "La quantita massima non puo essere negativa.")
+        if min_quantity is not None and max_quantity is not None and max_quantity < min_quantity:
+            self.add_error("max_quantity", "La quantita massima deve essere maggiore o uguale alla minima.")
         if unit_price is not None and unit_price < 0:
-            self.add_error("unit_price_net", "Il prezzo unitario non puo essere negativo.")
-        if discount is not None and (discount < 0 or discount > 100):
-            self.add_error("discount", "Lo sconto deve essere tra 0 e 100.")
+            self.add_error("unit_price", "Il prezzo unitario non puo essere negativo.")
         return cleaned
 
 

@@ -77,13 +77,13 @@ class ContactToolboxPriceListTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(ContactToolbox.objects.filter(owner=self.user, contact=self.contact).exists())
 
-    def test_add_price_list_calculates_totals(self):
+    def test_add_price_list_stores_moq_rules(self):
         response = self.client.post(
             f"/contacts/price-lists/add?contact_id={self.contact.id}",
             {
                 "title": "Listino Spring",
                 "currency_code": "EUR",
-                "vat_rate": "22.00",
+                "pricing_notes": "MOQ standard 10 pezzi",
                 "is_active": "on",
                 "note": "Listino dedicato",
                 "items-TOTAL_FORMS": "1",
@@ -94,37 +94,40 @@ class ContactToolboxPriceListTests(TestCase):
                 "items-0-code": "A-001",
                 "items-0-title": "Servizio X",
                 "items-0-description": "Dettaglio",
-                "items-0-quantity": "10",
-                "items-0-unit_price_net": "5.00",
-                "items-0-discount": "10.00",
+                "items-0-min_quantity": "10",
+                "items-0-max_quantity": "",
+                "items-0-unit_price": "5.00",
+                "items-0-is_active": "on",
             },
         )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, f"/contacts/toolbox?id={self.contact.id}")
 
         price_list = ContactPriceList.objects.get(owner=self.user, title="Listino Spring")
-        self.assertEqual(price_list.subtotal_net, Decimal("45.00"))
-        self.assertEqual(price_list.tax_amount, Decimal("9.90"))
-        self.assertEqual(price_list.total_amount, Decimal("54.90"))
+        self.assertEqual(price_list.pricing_notes, "MOQ standard 10 pezzi")
         self.assertEqual(price_list.items.count(), 1)
+        item = price_list.items.first()
+        self.assertEqual(item.min_quantity, Decimal("10.00"))
+        self.assertIsNone(item.max_quantity)
+        self.assertEqual(item.unit_price, Decimal("5.00"))
 
-    def test_update_price_list_recalculates_totals(self):
+    def test_update_price_list_updates_quantity_range(self):
         toolbox = ContactToolbox.objects.create(owner=self.user, contact=self.contact)
         price_list = ContactPriceList.objects.create(
             owner=self.user,
             toolbox=toolbox,
             title="Listino Base",
             currency_code="EUR",
-            vat_rate=Decimal("22.00"),
+            pricing_notes="MOQ da definire",
         )
         item = ContactPriceListItem.objects.create(
             owner=self.user,
             price_list=price_list,
             row_order=1,
             title="Voce",
-            quantity=Decimal("2.00"),
-            unit_price_net=Decimal("10.00"),
-            discount=Decimal("0.00"),
+            min_quantity=Decimal("1.00"),
+            max_quantity=Decimal("9.00"),
+            unit_price=Decimal("12.00"),
         )
 
         response = self.client.post(
@@ -132,7 +135,7 @@ class ContactToolboxPriceListTests(TestCase):
             {
                 "title": "Listino Base",
                 "currency_code": "EUR",
-                "vat_rate": "10.00",
+                "pricing_notes": "MOQ da 10 pezzi",
                 "is_active": "on",
                 "note": "",
                 "items-TOTAL_FORMS": "1",
@@ -144,9 +147,10 @@ class ContactToolboxPriceListTests(TestCase):
                 "items-0-code": "",
                 "items-0-title": "Voce",
                 "items-0-description": "",
-                "items-0-quantity": "3.00",
-                "items-0-unit_price_net": "15.00",
-                "items-0-discount": "0.00",
+                "items-0-min_quantity": "10.00",
+                "items-0-max_quantity": "99.00",
+                "items-0-unit_price": "9.50",
+                "items-0-is_active": "on",
             },
         )
 
@@ -154,6 +158,9 @@ class ContactToolboxPriceListTests(TestCase):
         self.assertEqual(response.url, f"/contacts/toolbox?id={self.contact.id}")
 
         price_list.refresh_from_db()
-        self.assertEqual(price_list.subtotal_net, Decimal("45.00"))
-        self.assertEqual(price_list.tax_amount, Decimal("4.50"))
-        self.assertEqual(price_list.total_amount, Decimal("49.50"))
+        item.refresh_from_db()
+        self.assertEqual(price_list.pricing_notes, "MOQ da 10 pezzi")
+        self.assertEqual(item.min_quantity, Decimal("10.00"))
+        self.assertEqual(item.max_quantity, Decimal("99.00"))
+        self.assertEqual(item.unit_price, Decimal("9.50"))
+        self.assertTrue(item.matches_quantity(Decimal("12.00")))

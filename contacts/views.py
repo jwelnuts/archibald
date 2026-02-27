@@ -213,14 +213,13 @@ def add_price_list(request):
                 item_formset.instance = price_list
                 line_items = item_formset.save(commit=False)
                 for deleted in item_formset.deleted_objects:
-                    deleted.delete(refresh_price_list=False)
+                    deleted.delete()
                 for idx, line in enumerate(line_items, start=1):
                     line.owner = request.user
                     line.price_list = price_list
                     if not line.row_order:
                         line.row_order = idx
-                    line.save(refresh_price_list=False)
-                price_list.refresh_totals_from_items(save=True)
+                    line.save()
             return redirect(f"/contacts/toolbox?id={contact.id}")
     else:
         form = ContactPriceListForm()
@@ -265,14 +264,13 @@ def update_price_list(request):
 
                     line_items = item_formset.save(commit=False)
                     for deleted in item_formset.deleted_objects:
-                        deleted.delete(refresh_price_list=False)
+                        deleted.delete()
                     for idx, line in enumerate(line_items, start=1):
                         line.owner = request.user
                         line.price_list = saved_price_list
                         if not line.row_order:
                             line.row_order = idx
-                        line.save(refresh_price_list=False)
-                    saved_price_list.refresh_totals_from_items(save=True)
+                        line.save()
                 return redirect(f"/contacts/toolbox?id={contact.id}")
         else:
             form = ContactPriceListForm(instance=price_list)

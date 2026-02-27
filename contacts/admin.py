@@ -33,7 +33,7 @@ class ContactPriceListItemInline(admin.TabularInline):
 
 @admin.register(ContactPriceList)
 class ContactPriceListAdmin(admin.ModelAdmin):
-    list_display = ("id", "owner", "title", "toolbox", "currency_code", "subtotal_net", "tax_amount", "total_amount", "is_active")
+    list_display = ("id", "owner", "title", "toolbox", "currency_code", "is_active")
     list_filter = ("is_active", "currency_code")
     search_fields = ("title", "toolbox__contact__display_name")
     inlines = [ContactPriceListItemInline]

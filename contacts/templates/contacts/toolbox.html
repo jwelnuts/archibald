@@ -40,9 +40,7 @@
               <th>Titolo</th>
               <th>Articoli</th>
               <th>Valuta</th>
-              <th>Subtotale</th>
-              <th>IVA</th>
-              <th>Totale finale</th>
+              <th>Note pricing</th>
               <th>Stato</th>
               <th class="uk-text-right">Azioni</th>
             </tr>
@@ -56,9 +54,7 @@
                 </td>
                 <td>{{ row.items.count }}</td>
                 <td>{{ row.currency_code }}</td>
-                <td>{{ row.subtotal_net }}</td>
-                <td>{{ row.tax_amount }}</td>
-                <td><strong>{{ row.total_amount }}</strong></td>
+                <td>{{ row.pricing_notes|default:"-" }}</td>
                 <td>
                   {% if row.is_active %}
                     <span class="ct-status-chip ct-status-chip--active">Attivo</span>
