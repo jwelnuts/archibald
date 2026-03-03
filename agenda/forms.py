@@ -4,11 +4,15 @@ from decimal import Decimal, ROUND_HALF_UP
 from django import forms
 
 from projects.models import Project
+from projects.quick_create import create_quick_project
 
 from .models import AgendaItem, WorkLog
 
 
 class AgendaItemForm(forms.ModelForm):
+    project_choice = forms.ChoiceField(label="Progetto", required=False)
+    project_name = forms.CharField(label="Nuovo progetto", max_length=120, required=False)
+
     class Meta:
         model = AgendaItem
         fields = ("title", "item_type", "due_date", "due_time", "status", "project", "note")
@@ -21,11 +25,52 @@ class AgendaItemForm(forms.ModelForm):
         owner = kwargs.pop("owner", None)
         activity_only = kwargs.pop("activity_only", False)
         super().__init__(*args, **kwargs)
+        self._owner = owner
+        self._project_qs = Project.objects.none()
         if owner is not None:
             self.fields["project"].queryset = Project.objects.filter(owner=owner, is_archived=False).order_by("name")
+            self._project_qs = self.fields["project"].queryset
+        self.fields["project_choice"].choices = [("", "Nessuno"), ("__new__", "+Nuovo")] + [
+            (str(project.id), project.name) for project in self._project_qs
+        ]
+        if self.instance and self.instance.pk and self.instance.project_id:
+            self.fields["project_choice"].initial = str(self.instance.project_id)
+        elif not (self.instance and self.instance.pk):
+            initial_project = self.initial.get("project")
+            if initial_project:
+                self.fields["project_choice"].initial = str(getattr(initial_project, "id", initial_project))
         if activity_only:
             self.fields["item_type"].choices = [(AgendaItem.ItemType.ACTIVITY, "Attivita")]
             self.fields["item_type"].initial = AgendaItem.ItemType.ACTIVITY
+
+    def clean(self):
+        cleaned = super().clean()
+        project_choice = (cleaned.get("project_choice") or "").strip()
+        project_name = (cleaned.get("project_name") or "").strip()
+        if project_choice == "__new__" and not project_name:
+            self.add_error("project_name", "Inserisci il nome del nuovo progetto.")
+        elif project_choice and project_choice != "__new__":
+            if not project_choice.isdigit():
+                self.add_error("project_choice", "Progetto non valido.")
+            elif self._owner is not None and not self._project_qs.filter(id=project_choice).exists():
+                self.add_error("project_choice", "Progetto non trovato.")
+        return cleaned
+
+    def _resolve_project(self):
+        project_choice = (self.cleaned_data.get("project_choice") or "").strip()
+        project_name = (self.cleaned_data.get("project_name") or "").strip()
+        if not project_choice or self._owner is None:
+            return None
+        if project_choice == "__new__":
+            return create_quick_project(self._owner, project_name)
+        return self._project_qs.filter(id=project_choice).first()
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.project = self._resolve_project()
+        if commit:
+            instance.save()
+        return instance
 
 
 class WorkLogForm(forms.ModelForm):

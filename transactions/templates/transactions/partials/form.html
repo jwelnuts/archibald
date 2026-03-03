@@ -1,0 +1,129 @@
+<div class="tx-modal-content">
+  <h3 class="uk-h3 uk-margin-small-bottom">{% if tx %}Modifica movimento{% else %}Nuovo movimento{% endif %}</h3>
+  <p class="uk-text-meta uk-margin-small-top">
+    {% if tx %}
+      Aggiorna i dettagli della transazione e salva senza uscire dalla dashboard.
+    {% else %}
+      Inserisci una nuova transazione. Il form adatta i campi in base al tipo scelto.
+    {% endif %}
+  </p>
+
+  {% if form.errors %}
+    <div class="uk-alert-danger uk-padding-small uk-margin-small-top">
+      Correggi i campi evidenziati e riprova.
+      <ul class="uk-margin-small-top uk-margin-remove-bottom">
+        {% for field in form %}
+          {% for error in field.errors %}
+            <li>{{ field.label }}: {{ error }}</li>
+          {% endfor %}
+        {% endfor %}
+        {% for error in form.non_field_errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <form
+    method="post"
+    action="{{ post_url }}"
+    class="uk-form-stacked uk-margin-small-top tx-entry-form"
+    enctype="multipart/form-data"
+    hx-post="{{ post_url }}"
+    hx-target="#transactions-modal-body"
+    hx-swap="innerHTML"
+  >
+    {% csrf_token %}
+
+    <div class="uk-grid-small" uk-grid>
+      <div class="uk-width-1-1 uk-width-1-3@m">
+        <label class="uk-form-label" for="id_tx_type">Tipo</label>
+        <div class="uk-form-controls">{{ form.tx_type }}</div>
+      </div>
+      <div class="uk-width-1-1 uk-width-1-3@m">
+        <label class="uk-form-label" for="id_date">Data</label>
+        <div class="uk-form-controls">{{ form.date }}</div>
+      </div>
+      <div class="uk-width-1-1 uk-width-1-3@m">
+        <label class="uk-form-label" for="id_amount">Importo</label>
+        <div class="uk-form-controls">{{ form.amount }}</div>
+      </div>
+
+      <div class="uk-width-1-1 uk-width-1-2@m">
+        <label class="uk-form-label" for="id_account">Conto</label>
+        <div class="uk-form-controls">{{ form.account }}</div>
+      </div>
+      <div class="uk-width-1-1 uk-width-1-2@m">
+        <label class="uk-form-label" for="id_currency">Valuta</label>
+        <div class="uk-form-controls">{{ form.currency }}</div>
+      </div>
+
+      <div class="uk-width-1-1 uk-width-1-2@m">
+        <label class="uk-form-label" for="id_project_choice">Progetto</label>
+        <div class="uk-form-controls">{{ form.project_choice }}</div>
+      </div>
+      <div class="uk-width-1-1 uk-width-1-2@m">
+        <label class="uk-form-label" for="id_category_choice">Categoria</label>
+        <div class="uk-form-controls">{{ form.category_choice }}</div>
+      </div>
+
+      <div class="uk-width-1-1 tx-hidden" data-project-new-row>
+        <label class="uk-form-label" for="id_project_name">Nuovo progetto</label>
+        <div class="uk-form-controls">{{ form.project_name }}</div>
+        <div class="uk-text-meta">Sara creato con prefisso "Nuovo - ..." e valori di default.</div>
+      </div>
+      <div class="uk-width-1-1 tx-hidden" data-category-new-row>
+        <label class="uk-form-label" for="id_category_name">Nuova categoria</label>
+        <div class="uk-form-controls">{{ form.category_name }}</div>
+        <div class="uk-text-meta">Sara creata con prefisso "Nuovo - ..." e valori di default.</div>
+      </div>
+
+      <div class="uk-width-1-1 uk-width-1-2@m" data-type-visibility="OUT">
+        <label class="uk-form-label" for="id_payee_name">Beneficiario</label>
+        <div class="uk-form-controls">{{ form.payee_name }}</div>
+      </div>
+
+      <div class="uk-width-1-1 uk-width-1-2@m" data-type-visibility="IN">
+        <label class="uk-form-label" for="id_source_choice">Fonte del denaro</label>
+        <div class="uk-form-controls">{{ form.source_choice }}</div>
+      </div>
+
+      <div class="uk-width-1-1" data-type-visibility="IN" data-source-new-row>
+        <label class="uk-form-label" for="id_source_name">Nuova fonte</label>
+        <div class="uk-form-controls">{{ form.source_name }}</div>
+      </div>
+
+      <div class="uk-width-1-1 uk-width-1-2@m">
+        <label class="uk-form-label" for="id_tags">Tag</label>
+        <div class="uk-form-controls">{{ form.tags }}</div>
+      </div>
+
+      <div class="uk-width-1-1 uk-width-1-2@m" data-type-visibility="OUT,IN">
+        <label class="uk-form-label" for="id_attachment">Allegato (immagine o PDF)</label>
+        <div class="uk-form-controls">{{ form.attachment }}</div>
+        <div class="uk-text-meta">Massimo 10 MB.</div>
+        {% if tx and tx.attachment %}
+          <a class="uk-button uk-button-text uk-text-small" href="{{ tx.attachment.url }}" target="_blank" rel="noopener">Apri allegato corrente</a>
+        {% endif %}
+      </div>
+
+      <div class="uk-width-1-1">
+        <label class="uk-form-label" for="id_note">Note</label>
+        <div class="uk-form-controls">{{ form.note }}</div>
+      </div>
+    </div>
+
+    <div class="uk-grid-small uk-child-width-1-2 uk-margin-medium-top" uk-grid>
+      <div>
+        <button class="uk-button uk-button-primary uk-button-small uk-width-1-1" type="submit">
+          {% if tx %}Salva modifiche{% else %}Crea movimento{% endif %}
+        </button>
+      </div>
+      <div>
+        <button class="uk-button uk-button-default uk-button-small uk-width-1-1 uk-modal-close" type="button">
+          Annulla
+        </button>
+      </div>
+    </div>
+  </form>
+</div>

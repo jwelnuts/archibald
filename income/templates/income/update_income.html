@@ -37,12 +37,14 @@
           {{ form.account }}
         </div>
         <div class="field">
-          <label for="id_project">Progetto</label>
-          {{ form.project }}
+          <label for="id_project_choice">Progetto</label>
+          {{ form.project_choice }}
+          <input id="id_project_name" name="project_name" type="text" placeholder="Nome nuovo progetto" value="{{ form.project_name.value|default:'' }}" style="display:none;">
         </div>
         <div class="field">
-          <label for="id_category">Categoria</label>
-          {{ form.category }}
+          <label for="id_category_choice">Categoria</label>
+          {{ form.category_choice }}
+          <input id="id_category_name" name="category_name" type="text" placeholder="Nome nuova categoria" value="{{ form.category_name.value|default:'' }}" style="display:none;">
         </div>
         <div class="field">
           <label for="id_source_choice">Fonte del denaro</label>
@@ -93,6 +95,8 @@
           toggle();
         }
         bindSelect("id_source_choice", "id_source_name");
+        bindSelect("id_project_choice", "id_project_name");
+        bindSelect("id_category_choice", "id_category_name");
       })();
     </script>
   </section>

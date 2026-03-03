@@ -36,7 +36,11 @@
         <div class="field"><label for="id_code">Codice</label>{{ form.code }}</div>
         <div class="field"><label for="id_title">Titolo</label>{{ form.title }}</div>
         <div class="field"><label for="id_customer">Cliente</label>{{ form.customer }}</div>
-        <div class="field"><label for="id_project">Progetto</label>{{ form.project }}</div>
+        <div class="field">
+          <label for="id_project_choice">Progetto</label>
+          {{ form.project_choice }}
+          <input id="id_project_name" name="project_name" type="text" placeholder="Nome nuovo progetto" value="{{ form.project_name.value|default:'' }}" style="display:none;">
+        </div>
         <div class="field"><label for="id_account">Conto</label>{{ form.account }}</div>
         <div class="field"><label for="id_start_date">Data avvio</label>{{ form.start_date }}</div>
         <div class="field"><label for="id_end_date">Data chiusura</label>{{ form.end_date }}</div>
@@ -53,4 +57,20 @@
       </form>
     </section>
   {% endif %}
+  <script>
+    (function () {
+      var select = document.getElementById("id_project_choice");
+      var input = document.getElementById("id_project_name");
+      if (!select || !input) return;
+      function toggle() {
+        var isNew = select.value === "__new__";
+        input.style.display = isNew ? "block" : "none";
+        if (!isNew) {
+          input.value = "";
+        }
+      }
+      select.addEventListener("change", toggle);
+      toggle();
+    })();
+  </script>
 {% endblock %}

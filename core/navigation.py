@@ -6,8 +6,6 @@ DEFAULT_APP_OPTIONS = [
     {"key": "finance_hub", "label": "Finance Hub", "url": "/finance/"},
     {"key": "contacts", "label": "Contacts", "url": "/contacts/"},
     {"key": "transactions", "label": "Transactions", "url": "/transactions/"},
-    {"key": "income", "label": "Income", "url": "/income/"},
-    {"key": "outcome", "label": "Outcome", "url": "/outcome/"},
     {"key": "projects", "label": "Projects", "url": "/projects/"},
     {"key": "categories", "label": "Categories", "url": "/projects/categories/"},
     {"key": "customers", "label": "Customers", "url": "/projects/customers/"},

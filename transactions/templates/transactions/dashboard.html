@@ -1,176 +1,93 @@
 {% extends "transactions/base.html" %}
 
-{% block title %}MIO - Transactions{% endblock %}
+{% block title %}MIO - Transactions Hub{% endblock %}
 
 {% block content %}
-  <section class="hero" id="app-head">
-    <div class="hero-copy" id="app-header">
-      <h1>Transazioni</h1>
-      <p>Vista unificata per entrate, uscite e trasferimenti.</p>
-    </div>
-    <div class="hero-card" id="transactions-upcoming-panel">
-      <div class="card-title" id="upcoming-title">Totali per tipo</div>
-      <ul class="list" id="transactions-upcoming-list">
-        <li><span class="dot dot-green"></span><span>Entrate</span><span class="muted">{{ totals.IN|default:0 }}</span></li>
-        <li><span class="dot dot-red"></span><span>Uscite</span><span class="muted">{{ totals.OUT|default:0 }}</span></li>
-        <li><span class="dot dot-amber"></span><span>Trasferimenti</span><span class="muted">{{ totals.XFER|default:0 }}</span></li>
-      </ul>
-    </div>
-  </section>
+  <div class="transactions-dashboard">
+    <section class="uk-grid-small" uk-grid id="app-head">
+      <article class="uk-width-1-1 uk-width-expand@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body transactions-card">
+          <h1 class="uk-card-title uk-margin-remove-bottom">Transactions Hub</h1>
+          <p class="uk-text-meta uk-margin-small-top">
+            Entrate, uscite e trasferimenti in un unico flusso operativo.
+            Inserisci, modifica e rimuovi movimenti senza uscire dalla dashboard.
+          </p>
+          <div class="uk-flex uk-flex-wrap uk-grid-small uk-margin-small-top hero-actions" data-module="transactions">
+            <button class="uk-button uk-button-primary uk-button-small" type="button" data-tx-open-url="{% url 'transactions-form' %}?tx_type=IN" data-action="add_income">Nuova entrata</button>
+            <button class="uk-button uk-button-danger uk-button-small" type="button" data-tx-open-url="{% url 'transactions-form' %}?tx_type=OUT" data-action="add_expense">Nuova uscita</button>
+            <button class="uk-button uk-button-default uk-button-small" type="button" data-tx-open-url="{% url 'transactions-form' %}?tx_type=XFER" data-action="add_transfer">Nuovo trasferimento</button>
+          </div>
+        </div>
+      </article>
 
-  <section class="panel" id="transactions-filters-panel">
-    <h2 id="transactions-filters-title">Filtri</h2>
-    <form class="form filter-form" method="get" action="" id="transactions-filters-form">
-      <div class="field">
-        <label for="type">Tipo</label>
-        <select id="type" name="type">
-          <option value="">Tutti</option>
-          <option value="IN" {% if filters.type == "IN" %}selected{% endif %}>Entrate</option>
-          <option value="OUT" {% if filters.type == "OUT" %}selected{% endif %}>Uscite</option>
-          <option value="XFER" {% if filters.type == "XFER" %}selected{% endif %}>Trasferimenti</option>
-        </select>
+      <article class="uk-width-1-1 uk-width-2-5@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body transactions-card">
+          <h2 class="uk-h4 uk-margin-small-bottom">Totali globali</h2>
+          <div class="uk-grid-small uk-child-width-1-3" uk-grid>
+            <div>
+              <div class="uk-text-meta">Entrate</div>
+              <div class="uk-text-bold uk-text-large">{{ global_counts.income }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Uscite</div>
+              <div class="uk-text-bold uk-text-large">{{ global_counts.expense }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Trasferimenti</div>
+              <div class="uk-text-bold uk-text-large">{{ global_counts.transfer }}</div>
+            </div>
+          </div>
+          <div class="uk-text-meta uk-margin-small-top">Movimenti registrati: {{ summary.global_total }}</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="uk-card uk-card-default uk-card-small uk-card-body transactions-card uk-margin-small-top">
+      <form
+        id="transactions-filters-form"
+        class="uk-form-stacked"
+        method="get"
+        action="{% url 'transactions-board' %}"
+        hx-get="{% url 'transactions-board' %}"
+        hx-target="#transactions-board"
+        hx-swap="outerHTML"
+      >
+        <div class="uk-grid-small" uk-grid>
+          <div class="uk-width-1-1 uk-width-1-4@m">
+            <label class="uk-form-label" for="id_filter_tx_type">{{ filter_form.tx_type.label }}</label>
+            <div class="uk-form-controls">{{ filter_form.tx_type }}</div>
+          </div>
+          <div class="uk-width-1-1 uk-width-1-5@m">
+            <label class="uk-form-label" for="id_filter_date_from">{{ filter_form.date_from.label }}</label>
+            <div class="uk-form-controls">{{ filter_form.date_from }}</div>
+          </div>
+          <div class="uk-width-1-1 uk-width-1-5@m">
+            <label class="uk-form-label" for="id_filter_date_to">{{ filter_form.date_to.label }}</label>
+            <div class="uk-form-controls">{{ filter_form.date_to }}</div>
+          </div>
+          <div class="uk-width-1-1 uk-width-expand@m">
+            <label class="uk-form-label" for="id_filter_query">{{ filter_form.query.label }}</label>
+            <div class="uk-form-controls">{{ filter_form.query }}</div>
+          </div>
+          <div class="uk-width-1-1 uk-width-auto@m uk-flex uk-flex-bottom uk-flex-wrap uk-grid-small">
+            <button class="uk-button uk-button-primary uk-button-small" type="submit">Applica</button>
+            <a class="uk-button uk-button-default uk-button-small" href="/transactions/">Reset</a>
+          </div>
+        </div>
+      </form>
+
+      <div class="uk-button-group uk-margin-small-top" data-transaction-type-chips>
+        <button class="uk-button uk-button-default uk-button-small" type="button" data-filter-type="">Tutti</button>
+        <button class="uk-button uk-button-default uk-button-small" type="button" data-filter-type="IN">Entrate</button>
+        <button class="uk-button uk-button-default uk-button-small" type="button" data-filter-type="OUT">Uscite</button>
+        <button class="uk-button uk-button-default uk-button-small" type="button" data-filter-type="XFER">Trasferimenti</button>
       </div>
-      <div class="field">
-        <label for="from">Dal</label>
-        <input id="from" name="from" type="text" class="date-field" value="{{ filters.from }}">
-      </div>
-      <div class="field">
-        <label for="to">Al</label>
-        <input id="to" name="to" type="text" class="date-field" value="{{ filters.to }}">
-      </div>
-      <div class="actions">
-        <button class="btn primary" type="submit">Applica</button>
-        <a class="btn" href="/transactions/">Reset</a>
-      </div>
-    </form>
-  </section>
+    </section>
 
-  <section class="panel" id="transactions-list-panel">
-    <h2 id="transactions-list-title">Ultime transazioni</h2>
-    <div class="transactions-grid-shell">
-      <div id="transactions-grid" class="transactions-grid"></div>
-      <div id="transactions-grid-fallback" class="note" hidden>
-        Impossibile caricare la grid. Ricarica la pagina.
-      </div>
-    </div>
-  </section>
-  {{ grid_rows|json_script:"transactions-grid-data" }}
-  <script>
-    (function () {
-      function initGrid() {
-        var payload = document.getElementById("transactions-grid-data");
-        var fallback = document.getElementById("transactions-grid-fallback");
-        var gridTarget = document.getElementById("transactions-grid");
-        if (!payload || !gridTarget) {
-          if (fallback) {
-            fallback.hidden = false;
-          }
-          return;
-        }
+    {% include "transactions/partials/board.html" %}
 
-        var rows = JSON.parse(payload.textContent || "[]");
-        var makeTypeChip = function (row) {
-          if (row.type_code === "IN") {
-            return '<span class="tx-type-chip tx-type-chip--in">Entrata</span>';
-          }
-          if (row.type_code === "OUT") {
-            return '<span class="tx-type-chip tx-type-chip--out">Uscita</span>';
-          }
-          return '<span class="tx-type-chip tx-type-chip--xfer">Trasferimento</span>';
-        };
-        var actionButton = function (label, href, className) {
-          var css = "tx-action " + (className || "");
-          if (!href) {
-            return '<span class="' + css + ' is-muted">' + label + "</span>";
-          }
-          return '<a class="' + css + '" href="' + href + '">' + label + "</a>";
-        };
-        var actionCell = function (row) {
-          return [
-            '<div class="tx-actions">',
-            actionButton("Modifica", row.update_url, "is-primary"),
-            actionButton("Rimuovi", row.remove_url, "is-danger"),
-            actionButton("Allegato", row.attachment_url, ""),
-            actionButton("Tipo", row.filter_type_url, ""),
-            "</div>",
-          ].join("");
-        };
-
-        new window.tui.Grid({
-          el: gridTarget,
-          data: rows,
-          scrollX: true,
-          scrollY: true,
-          bodyHeight: 420,
-          rowHeight: 46,
-          minRowHeight: 44,
-          columnOptions: { resizable: true },
-          columns: [
-            { header: "Data", name: "date", align: "center", width: 110, sortable: true },
-            {
-              header: "Tipo",
-              name: "type_code",
-              align: "center",
-              width: 140,
-              sortable: true,
-              formatter: function (ctx) {
-                return makeTypeChip(ctx.row);
-              },
-              escapeHTML: false,
-            },
-            { header: "Controparte", name: "counterparty", minWidth: 180, sortable: true },
-            { header: "Nota", name: "note", minWidth: 220 },
-            {
-              header: "Importo",
-              name: "amount",
-              align: "right",
-              width: 140,
-              sortable: true,
-              formatter: function (ctx) {
-                return ctx.row.amount + " " + ctx.row.currency;
-              },
-            },
-            { header: "Account", name: "account", minWidth: 180, sortable: true },
-            { header: "Progetto", name: "project", minWidth: 140, sortable: true },
-            { header: "Categoria", name: "category", minWidth: 130, sortable: true },
-            {
-              header: "Azioni rapide",
-              name: "actions",
-              align: "right",
-              minWidth: 280,
-              formatter: function (ctx) {
-                return actionCell(ctx.row);
-              },
-              escapeHTML: false,
-            },
-          ],
-        });
-      }
-
-      function waitForGrid(maxAttempts) {
-        var fallback = document.getElementById("transactions-grid-fallback");
-        if (window.tui && window.tui.Grid) {
-          initGrid();
-          return;
-        }
-        if (maxAttempts <= 0) {
-          if (fallback) {
-            fallback.hidden = false;
-          }
-          return;
-        }
-        window.setTimeout(function () {
-          waitForGrid(maxAttempts - 1);
-        }, 120);
-      }
-
-      if (document.readyState === "complete") {
-        waitForGrid(25);
-      } else {
-        window.addEventListener("load", function () {
-          waitForGrid(25);
-        });
-      }
-    })();
-  </script>
+    {% if modal_open_url %}
+      <div data-autoload-url="{{ modal_open_url }}"></div>
+    {% endif %}
+  </div>
 {% endblock %}

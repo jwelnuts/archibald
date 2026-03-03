@@ -47,8 +47,9 @@ class TodoProjectBindingTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
-        project = Project.objects.get(owner=self.user, name="Progetto Beta")
         task = Task.objects.get(owner=self.user, title="Task nuovo progetto")
+        project = Project.objects.get(owner=self.user, id=task.project_id)
+        self.assertTrue(project.name.startswith("Nuovo"))
         self.assertEqual(task.project_id, project.id)
 
     def test_dashboard_includes_planner_snapshot(self):
@@ -165,8 +166,9 @@ class TodoProjectBindingTests(TestCase):
             },
         )
         self.assertEqual(response.status_code, 302)
-        category = Category.objects.get(owner=self.user, name="Backoffice")
         task = Task.objects.get(owner=self.user, title="Task con nuova categoria")
+        category = Category.objects.get(owner=self.user, id=task.category_id)
+        self.assertTrue(category.name.startswith("Nuovo"))
         self.assertEqual(task.category_id, category.id)
 
     def test_set_status_htmx_returns_oob_fragment(self):

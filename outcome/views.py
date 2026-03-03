@@ -1,5 +1,4 @@
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import OutcomeForm
@@ -9,33 +8,7 @@ from projects.models import Project
 # Create your views here.
 @login_required
 def dashboard(request):
-    user = request.user
-    recent = (
-        Transaction.objects.filter(owner=user, tx_type=Transaction.Type.EXPENSE)
-        .select_related("payee", "currency")
-        .order_by("-date")[:5]
-    )
-    totals = Transaction.objects.filter(owner=user, tx_type=Transaction.Type.EXPENSE).aggregate(
-        total_amount=Sum("amount")
-    )
-    counts = {
-        "total": Transaction.objects.filter(owner=user, tx_type=Transaction.Type.EXPENSE).count(),
-        "with_project": Transaction.objects.filter(
-            owner=user, tx_type=Transaction.Type.EXPENSE, project__isnull=False
-        ).count(),
-        "with_category": Transaction.objects.filter(
-            owner=user, tx_type=Transaction.Type.EXPENSE, category__isnull=False
-        ).count(),
-    }
-    return render(
-        request,
-        "outcome/dashboard.html",
-        {
-            "recent": recent,
-            "totals": totals,
-            "counts": counts,
-        },
-    )
+    return redirect("/transactions/?tx_type=OUT")
 
 
 @login_required

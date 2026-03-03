@@ -1,0 +1,106 @@
+<div id="transactions-board" class="uk-margin-small-top">
+  <section class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m" uk-grid>
+    <article>
+      <div class="uk-card uk-card-default uk-card-small uk-card-body transactions-card">
+        <div class="uk-text-meta">Entrate filtrate</div>
+        <div class="uk-text-bold uk-text-large">{{ summary.income_total|default:0 }}</div>
+        <div class="uk-text-meta">{{ filtered_counts.income }} movimenti</div>
+      </div>
+    </article>
+    <article>
+      <div class="uk-card uk-card-default uk-card-small uk-card-body transactions-card">
+        <div class="uk-text-meta">Uscite filtrate</div>
+        <div class="uk-text-bold uk-text-large">{{ summary.expense_total|default:0 }}</div>
+        <div class="uk-text-meta">{{ filtered_counts.expense }} movimenti</div>
+      </div>
+    </article>
+    <article>
+      <div class="uk-card uk-card-default uk-card-small uk-card-body transactions-card">
+        <div class="uk-text-meta">Netto filtrato</div>
+        <div class="uk-text-bold uk-text-large {% if summary.net_total < 0 %}tx-negative{% else %}tx-positive{% endif %}">{{ summary.net_total|default:0 }}</div>
+        <div class="uk-text-meta">Entrate - Uscite</div>
+      </div>
+    </article>
+    <article>
+      <div class="uk-card uk-card-default uk-card-small uk-card-body transactions-card">
+        <div class="uk-text-meta">Trasferimenti</div>
+        <div class="uk-text-bold uk-text-large">{{ summary.transfer_total|default:0 }}</div>
+        <div class="uk-text-meta">{{ filtered_counts.transfer }} movimenti</div>
+      </div>
+    </article>
+  </section>
+
+  <section class="uk-card uk-card-default uk-card-small uk-card-body transactions-card uk-margin-small-top">
+    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap uk-grid-small">
+      <h2 class="uk-h4 uk-margin-remove">Movimenti</h2>
+      <div class="uk-text-meta">Risultati: {{ summary.filtered_total }} / {{ summary.global_total }}</div>
+    </div>
+
+    {% if transactions %}
+      <div class="uk-overflow-auto uk-margin-small-top">
+        <table class="uk-table uk-table-divider uk-table-small uk-table-hover tx-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Controparte</th>
+              <th>Conto</th>
+              <th>Progetto</th>
+              <th>Categoria</th>
+              <th class="uk-text-right">Importo</th>
+              <th>Note</th>
+              <th class="uk-text-right">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in transactions %}
+              {% with tx=row.object %}
+                <tr class="tx-row tx-row--{{ tx.tx_type|lower }}">
+                  <td>{{ tx.date|date:"Y-m-d" }}</td>
+                  <td>
+                    <span class="uk-label {% if tx.tx_type == 'IN' %}uk-label-success{% elif tx.tx_type == 'OUT' %}uk-label-danger{% else %}uk-label-warning{% endif %}">
+                      {{ tx.get_tx_type_display }}
+                    </span>
+                  </td>
+                  <td>{{ row.counterparty }}</td>
+                  <td>{{ tx.account }}</td>
+                  <td>{% if tx.project %}{{ tx.project.name }}{% else %}<span class="uk-text-muted">-</span>{% endif %}</td>
+                  <td>{% if tx.category %}{{ tx.category.name }}{% else %}<span class="uk-text-muted">-</span>{% endif %}</td>
+                  <td class="uk-text-right tx-amount-cell">
+                    <span class="tx-amount {% if tx.tx_type == 'IN' %}tx-positive{% elif tx.tx_type == 'OUT' %}tx-negative{% endif %}">
+                      {% if tx.tx_type == 'IN' %}+{% elif tx.tx_type == 'OUT' %}-{% endif %}{{ tx.amount }} {{ tx.currency.code }}
+                    </span>
+                  </td>
+                  <td class="tx-note">{{ tx.note|default:"-" }}</td>
+                  <td class="uk-text-right">
+                    <div class="uk-button-group tx-actions-group">
+                      <button
+                        class="uk-button uk-button-default uk-button-small"
+                        type="button"
+                        data-tx-open-url="{% url 'transactions-form' %}?id={{ tx.id }}"
+                      >
+                        Modifica
+                      </button>
+                      <button
+                        class="uk-button uk-button-danger uk-button-small"
+                        type="button"
+                        data-tx-open-url="{% url 'transactions-delete' %}?id={{ tx.id }}"
+                      >
+                        Elimina
+                      </button>
+                      {% if tx.attachment %}
+                        <a class="uk-button uk-button-default uk-button-small" href="{{ tx.attachment.url }}" target="_blank" rel="noopener">Allegato</a>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endwith %}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="uk-alert-primary uk-padding-small uk-margin-small-top">Nessun movimento trovato con i filtri correnti.</div>
+    {% endif %}
+  </section>
+</div>

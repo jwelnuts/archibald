@@ -308,13 +308,14 @@ def add_item(request):
                 if routine is None:
                     form.add_error("routine_choice", "Seleziona una routine valida.")
                     return render(request, "routines/add_item.html", {"form": form})
+                project = form.resolve_project()
                 items = []
                 for value, _label in RoutineItem.Weekday.choices:
                     items.append(
                         RoutineItem(
                             owner=request.user,
                             routine=routine,
-                            project=form.cleaned_data.get("project"),
+                            project=project,
                             title=form.cleaned_data["title"],
                             weekday=value,
                             time_start=form.cleaned_data.get("time_start"),

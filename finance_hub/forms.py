@@ -1,6 +1,8 @@
 from django import forms
 from django.forms import inlineformset_factory
 
+from projects.models import Project
+from projects.quick_create import create_quick_project
 from subscriptions.models import Currency
 
 from .models import Invoice, Quote, QuoteLine, VatCode, WorkOrder
@@ -9,11 +11,13 @@ from .models import Invoice, Quote, QuoteLine, VatCode, WorkOrder
 class _OwnedFinanceFormMixin:
     def _init_common(self, owner):
         self._owner = owner
+        self._project_qs = Project.objects.none()
         if owner is not None:
             if "customer" in self.fields:
                 self.fields["customer"].queryset = self.fields["customer"].queryset.filter(owner=owner).order_by("name")
             if "project" in self.fields:
                 self.fields["project"].queryset = self.fields["project"].queryset.filter(owner=owner).order_by("name")
+                self._project_qs = self.fields["project"].queryset
             if "account" in self.fields:
                 self.fields["account"].queryset = self.fields["account"].queryset.filter(owner=owner).order_by("name")
             if "quote" in self.fields:
@@ -27,6 +31,39 @@ class _OwnedFinanceFormMixin:
             currency, _ = Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
             self.fields["currency"].queryset = Currency.objects.filter(code="EUR")
             self.fields["currency"].initial = currency
+
+        if "project_choice" in self.fields:
+            self.fields["project_choice"].choices = [("", "Nessuno"), ("__new__", "+Nuovo")] + [
+                (str(project.id), project.name) for project in self._project_qs
+            ]
+            if self.instance and self.instance.pk and getattr(self.instance, "project_id", None):
+                self.fields["project_choice"].initial = str(self.instance.project_id)
+            else:
+                initial_project = self.initial.get("project")
+                if initial_project:
+                    self.fields["project_choice"].initial = str(getattr(initial_project, "id", initial_project))
+
+    def _validate_project_choice(self, cleaned):
+        choice = (cleaned.get("project_choice") or "").strip()
+        project_name = (cleaned.get("project_name") or "").strip()
+
+        if choice == "__new__" and not project_name:
+            self.add_error("project_name", "Inserisci il nome del nuovo progetto.")
+        elif choice and choice != "__new__":
+            if not choice.isdigit():
+                self.add_error("project_choice", "Progetto non valido.")
+            elif self._owner is not None and not self._project_qs.filter(id=choice).exists():
+                self.add_error("project_choice", "Progetto non trovato.")
+
+    def _resolve_project(self):
+        choice = (self.cleaned_data.get("project_choice") or "").strip()
+        project_name = (self.cleaned_data.get("project_name") or "").strip()
+
+        if not choice or self._owner is None:
+            return None
+        if choice == "__new__":
+            return create_quick_project(self._owner, project_name)
+        return self._project_qs.filter(id=choice).first()
 
 
 def _append_widget_class(widget, class_name):
@@ -51,6 +88,9 @@ def _apply_uikit_input_styles(form):
 
 
 class QuoteForm(_OwnedFinanceFormMixin, forms.ModelForm):
+    project_choice = forms.ChoiceField(label="Progetto", required=False)
+    project_name = forms.CharField(label="Nuovo progetto", max_length=120, required=False)
+
     class Meta:
         model = Quote
         fields = (
@@ -79,8 +119,23 @@ class QuoteForm(_OwnedFinanceFormMixin, forms.ModelForm):
         self.fields["vat_code"].required = False
         self.fields["vat_code"].empty_label = "Nessuna IVA / Esente (0%)"
 
+    def clean(self):
+        cleaned = super().clean()
+        self._validate_project_choice(cleaned)
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.project = self._resolve_project()
+        if commit:
+            instance.save()
+        return instance
+
 
 class InvoiceForm(_OwnedFinanceFormMixin, forms.ModelForm):
+    project_choice = forms.ChoiceField(label="Progetto", required=False)
+    project_name = forms.CharField(label="Nuovo progetto", max_length=120, required=False)
+
     class Meta:
         model = Invoice
         fields = (
@@ -110,8 +165,23 @@ class InvoiceForm(_OwnedFinanceFormMixin, forms.ModelForm):
         super().__init__(*args, **kwargs)
         self._init_common(owner)
 
+    def clean(self):
+        cleaned = super().clean()
+        self._validate_project_choice(cleaned)
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.project = self._resolve_project()
+        if commit:
+            instance.save()
+        return instance
+
 
 class WorkOrderForm(_OwnedFinanceFormMixin, forms.ModelForm):
+    project_choice = forms.ChoiceField(label="Progetto", required=False)
+    project_name = forms.CharField(label="Nuovo progetto", max_length=120, required=False)
+
     class Meta:
         model = WorkOrder
         fields = (
@@ -138,6 +208,18 @@ class WorkOrderForm(_OwnedFinanceFormMixin, forms.ModelForm):
         owner = kwargs.pop("owner", None)
         super().__init__(*args, **kwargs)
         self._init_common(owner)
+
+    def clean(self):
+        cleaned = super().clean()
+        self._validate_project_choice(cleaned)
+        return cleaned
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.project = self._resolve_project()
+        if commit:
+            instance.save()
+        return instance
 
 
 class QuoteLineForm(forms.ModelForm):

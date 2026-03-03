@@ -1,5 +1,8 @@
 from django import forms
 
+from projects.models import Project
+from projects.quick_create import create_quick_project
+
 from .models import Routine, RoutineItem
 
 WEEKDAY_ALL = "ALL"
@@ -43,6 +46,8 @@ class RoutineItemForm(forms.ModelForm):
         label="Nome nuova routine",
         max_length=160,
     )
+    project_choice = forms.ChoiceField(label="Progetto", required=False)
+    project_name = forms.CharField(label="Nuovo progetto", max_length=120, required=False)
 
     class Meta:
         model = RoutineItem
@@ -74,6 +79,7 @@ class RoutineItemForm(forms.ModelForm):
         self._owner = owner
         self._weekday_all = False
         self._routine_qs = Routine.objects.none()
+        self._project_qs = Project.objects.none()
 
         base_choices = [(str(value), label) for value, label in RoutineItem.Weekday.choices]
         if self.instance and self.instance.pk:
@@ -87,13 +93,23 @@ class RoutineItemForm(forms.ModelForm):
             self.fields["routine_choice"].choices = [("", "Seleziona...")] + [
                 (str(r.id), r.name) for r in routines
             ] + [("__new__", "+ Nuova Routine")]
-            self.fields["project"].queryset = self.fields["project"].queryset.filter(owner=owner)
+            self.fields["project"].queryset = self.fields["project"].queryset.filter(owner=owner).order_by("name")
+            self._project_qs = self.fields["project"].queryset
         else:
             self.fields["routine_choice"].choices = [("", "Seleziona..."), ("__new__", "+ Nuova Routine")]
+        self.fields["project_choice"].choices = [("", "Nessuno"), ("__new__", "+Nuovo")] + [
+            (str(project.id), project.name) for project in self._project_qs
+        ]
 
         if self.instance and self.instance.pk and self.instance.routine_id:
             self.fields["routine_choice"].initial = str(self.instance.routine_id)
             self.fields["routine_name"].initial = self.instance.routine.name
+        if self.instance and self.instance.pk and self.instance.project_id:
+            self.fields["project_choice"].initial = str(self.instance.project_id)
+        elif not (self.instance and self.instance.pk):
+            initial_project = self.initial.get("project")
+            if initial_project:
+                self.fields["project_choice"].initial = str(getattr(initial_project, "id", initial_project))
 
     def clean_weekday(self):
         value = self.cleaned_data.get("weekday")
@@ -110,11 +126,20 @@ class RoutineItemForm(forms.ModelForm):
         cleaned = super().clean()
         routine_choice = (cleaned.get("routine_choice") or "").strip()
         routine_name = (cleaned.get("routine_name") or "").strip()
+        project_choice = (cleaned.get("project_choice") or "").strip()
+        project_name = (cleaned.get("project_name") or "").strip()
         if routine_choice == "__new__":
             if not routine_name:
                 self.add_error("routine_name", "Inserisci il nome della nuova routine.")
         elif not routine_choice:
             self.add_error("routine_choice", "Seleziona una routine.")
+        if project_choice == "__new__" and not project_name:
+            self.add_error("project_name", "Inserisci il nome del nuovo progetto.")
+        elif project_choice and project_choice != "__new__":
+            if not project_choice.isdigit():
+                self.add_error("project_choice", "Progetto non valido.")
+            elif self._owner is not None and not self._project_qs.filter(id=project_choice).exists():
+                self.add_error("project_choice", "Progetto non trovato.")
         return cleaned
 
     def resolve_routine(self):
@@ -133,9 +158,20 @@ class RoutineItemForm(forms.ModelForm):
 
         return None
 
+    def resolve_project(self):
+        project_choice = (self.cleaned_data.get("project_choice") or "").strip()
+        project_name = (self.cleaned_data.get("project_name") or "").strip()
+
+        if not project_choice or self._owner is None:
+            return None
+        if project_choice == "__new__":
+            return create_quick_project(self._owner, project_name)
+        return self._project_qs.filter(id=project_choice).first()
+
     def save(self, commit=True):
         instance = super().save(commit=False)
         instance.routine = self.resolve_routine()
+        instance.project = self.resolve_project()
         if commit:
             instance.save()
         return instance

@@ -60,22 +60,17 @@ Note Stimulus:
   - gestione `fatture` (`Invoice`)
   - gestione `ordini lavoro` (`WorkOrder`)
   - snapshot KPI: pipeline preventivi, fatture aperte/pagate, alert scadenze
-  - collegamento operativo rapido con `income`, `outcome`, `transactions`, `subscriptions`
+  - collegamento operativo rapido con `transactions` e `subscriptions`
 - `subscriptions` (`/subs/`):
   - Subscription + SubscriptionOccurrence
   - status active/paused/canceled
   - interval day/week/month/year
   - legami con account, project, category, payee, tags
-- `income` (`/income/`):
-  - CRUD entrate (salvate in `transactions.Transaction` con `tx_type=IN`)
-  - source dinamica (`IncomeSource`) con selezione o creazione inline
-- `outcome` (`/outcome/`):
-  - CRUD uscite (`tx_type=OUT`)
-  - payee dinamico (`Payee`) con creazione inline
 - `transactions` (`/transactions/`):
-  - vista aggregata movimenti (IN/OUT/XFER)
-  - filtri per tipo e range date
-  - totali per tipo + lista recenti
+  - hub unificato movimenti (IN/OUT/XFER) con CRUD completo in modale
+  - filtri live (tipo, range date, testo) via HTMX
+  - orchestrazione UI via Stimulus (campi dinamici per tipo transazione)
+  - layout e componenti UI basati su UIKit
 
 ### Progetti e operativita
 - `projects` (`/projects/`):

@@ -30,13 +30,14 @@
           <input id="id_payee_name" name="payee_name" type="text" placeholder="Nome nuovo beneficiario" value="{{ form.payee_name.value|default:'' }}" style="display:none;">
         </div>
         <div class="field">
-          <label for="id_category">Categoria</label>
+          <label for="id_category_choice">Categoria</label>
           {{ form.category_choice }}
           <input id="id_category_name" name="category_name" type="text" placeholder="Nome nuova categoria" value="{{ form.category_name.value|default:'' }}" style="display:none;">
         </div>
         <div class="field">
-          <label for="id_project">Progetto</label>
-          {{ form.project }}
+          <label for="id_project_choice">Progetto</label>
+          {{ form.project_choice }}
+          <input id="id_project_name" name="project_name" type="text" placeholder="Nome nuovo progetto" value="{{ form.project_name.value|default:'' }}" style="display:none;">
         </div>
         <div class="field">
           <label for="id_account">Account</label>
@@ -111,6 +112,7 @@
           }
           bindSelect("id_payee_choice", "id_payee_name");
           bindSelect("id_category_choice", "id_category_name");
+          bindSelect("id_project_choice", "id_project_name");
         })();
       </script>
     {% else %}

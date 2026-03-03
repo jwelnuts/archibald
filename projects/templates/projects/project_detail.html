@@ -40,10 +40,10 @@
           <a class="btn primary" href="/projects/api/update?id={{ project.id }}" data-action="edit">Modifica</a>
         {% endif %}
         {% if "expense" in allowed_actions %}
-          <a class="btn" href="/outcome/api/add?project={{ project.id }}" data-action="expense">Inserisci spesa</a>
+          <a class="btn" href="/transactions/?open=new&tx_type=OUT&project={{ project.id }}" data-action="expense">Inserisci spesa</a>
         {% endif %}
         {% if "income" in allowed_actions %}
-          <a class="btn" href="/income/api/add?project={{ project.id }}" data-action="income">Inserisci guadagno</a>
+          <a class="btn" href="/transactions/?open=new&tx_type=IN&project={{ project.id }}" data-action="income">Inserisci guadagno</a>
         {% endif %}
         {% if "planner" in allowed_actions %}
           <a class="btn" href="/planner/add?project={{ project.id }}" data-action="planner">Aggiungi promemoria</a>
@@ -70,9 +70,9 @@
                 {% elif action.key == "edit" %}
                   <a class="btn" href="/projects/api/update?id={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
                 {% elif action.key == "expense" %}
-                  <a class="btn" href="/outcome/api/add?project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                  <a class="btn" href="/transactions/?open=new&tx_type=OUT&project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
                 {% elif action.key == "income" %}
-                  <a class="btn" href="/income/api/add?project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                  <a class="btn" href="/transactions/?open=new&tx_type=IN&project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
                 {% elif action.key == "planner" %}
                   <a class="btn" href="/planner/add?project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
                 {% elif action.key == "routine_item" %}

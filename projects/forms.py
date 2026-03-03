@@ -4,6 +4,7 @@ from contacts.models import Contact
 from contacts.services import ensure_legacy_records_for_contact, sync_contacts_from_legacy, upsert_contact
 
 from .models import Category, Customer, Project
+from .quick_create import create_quick_category
 
 
 class ProjectForm(forms.ModelForm):
@@ -100,10 +101,17 @@ class ProjectForm(forms.ModelForm):
             except Exception:
                 instance.category = None
         elif category_choice == "__new__" and category_name and self._owner is not None:
-            category, _ = Category.objects.get_or_create(owner=self._owner, name=category_name)
-            instance.category = category
+            instance.category = create_quick_category(self._owner, category_name)
         else:
             instance.category = None
         if commit:
             instance.save()
         return instance
+
+    def clean(self):
+        cleaned = super().clean()
+        category_choice = (cleaned.get("category_choice") or "").strip()
+        category_name = (cleaned.get("category_name") or "").strip()
+        if category_choice == "__new__" and not category_name:
+            self.add_error("category_name", "Inserisci il nome della nuova categoria.")
+        return cleaned

@@ -2,6 +2,7 @@ from django import forms
 
 from projects.models import Category
 from projects.models import Project
+from projects.quick_create import create_quick_category, create_quick_project
 
 from .models import Task
 
@@ -77,9 +78,8 @@ class TaskForm(forms.ModelForm):
                 instance.project = self._project_qs.get(id=project_choice)
             except Exception:
                 instance.project = None
-        elif project_name and self._owner is not None:
-            project, _ = Project.objects.get_or_create(owner=self._owner, name=project_name)
-            instance.project = project
+        elif project_choice == "__new__" and project_name and self._owner is not None:
+            instance.project = create_quick_project(self._owner, project_name)
         else:
             instance.project = None
 
@@ -89,8 +89,7 @@ class TaskForm(forms.ModelForm):
             except Exception:
                 instance.category = None
         elif category_choice == "__new__" and category_name and self._owner is not None:
-            category, _ = Category.objects.get_or_create(owner=self._owner, name=category_name)
-            instance.category = category
+            instance.category = create_quick_category(self._owner, category_name)
         else:
             instance.category = None
 

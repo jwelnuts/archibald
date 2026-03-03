@@ -1,0 +1,33 @@
+<div class="tx-modal-content">
+  <h3 class="uk-h3 uk-margin-small-bottom">Conferma eliminazione</h3>
+  <p class="uk-text-meta uk-margin-small-top">
+    Questa azione elimina definitivamente la transazione selezionata.
+  </p>
+
+  <div class="uk-alert-warning uk-padding-small uk-margin-small-top">
+    <div><strong>Data:</strong> {{ tx.date|date:"Y-m-d" }}</div>
+    <div><strong>Tipo:</strong> {{ tx.get_tx_type_display }}</div>
+    <div><strong>Importo:</strong> {{ tx.amount }} {{ tx.currency.code }}</div>
+  </div>
+
+  <form
+    method="post"
+    action="{{ post_url }}"
+    class="uk-form-stacked uk-margin-small-top"
+    hx-post="{{ post_url }}"
+    hx-target="#transactions-modal-body"
+    hx-swap="innerHTML"
+  >
+    {% csrf_token %}
+    <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+      <div>
+        <button class="uk-button uk-button-danger uk-button-small uk-width-1-1" type="submit">Elimina</button>
+      </div>
+      <div>
+        <button class="uk-button uk-button-default uk-button-small uk-width-1-1 uk-modal-close" type="button">
+          Annulla
+        </button>
+      </div>
+    </div>
+  </form>
+</div>

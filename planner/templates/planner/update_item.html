@@ -42,12 +42,14 @@
         </div>
         <div class="form-row">
           <div class="field">
-            <label for="id_category">Categoria</label>
-            {{ form.category }}
+            <label for="id_category_choice">Categoria</label>
+            {{ form.category_choice }}
+            <input id="id_category_name" name="category_name" type="text" placeholder="Nome nuova categoria" value="{{ form.category_name.value|default:'' }}" style="display:none;">
           </div>
           <div class="field">
-            <label for="id_project">Progetto</label>
-            {{ form.project }}
+            <label for="id_project_choice">Progetto</label>
+            {{ form.project_choice }}
+            <input id="id_project_name" name="project_name" type="text" placeholder="Nome nuovo progetto" value="{{ form.project_name.value|default:'' }}" style="display:none;">
           </div>
         </div>
         <div class="field">
@@ -79,5 +81,25 @@
         <div class="note">Nessuna voce disponibile.</div>
       {% endif %}
     {% endif %}
+    <script>
+      (function () {
+        function bindSelect(selectId, inputId) {
+          var select = document.getElementById(selectId);
+          var input = document.getElementById(inputId);
+          if (!select || !input) return;
+          function toggle() {
+            var isNew = select.value === "__new__";
+            input.style.display = isNew ? "block" : "none";
+            if (!isNew) {
+              input.value = "";
+            }
+          }
+          select.addEventListener("change", toggle);
+          toggle();
+        }
+        bindSelect("id_category_choice", "id_category_name");
+        bindSelect("id_project_choice", "id_project_name");
+      })();
+    </script>
   </section>
 {% endblock %}

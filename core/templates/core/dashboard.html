@@ -24,8 +24,6 @@
           </div>
         </div>
         <nav class="shell-nav">
-          <a href="/income/">Income</a>
-          <a href="/outcome/">Outcome</a>
           <a href="/transactions/">Transactions</a>
           <a href="/finance/">Finance Hub</a>
           <a href="/contacts/">Contacts</a>
@@ -148,8 +146,8 @@
           <section class="panel quick-actions">
             <div class="card-title">Azioni rapide</div>
             <div class="quick-grid">
-              <a class="quick-card" href="/income/api/add">Nuova entrata</a>
-              <a class="quick-card" href="/outcome/api/add">Nuova uscita</a>
+              <a class="quick-card" href="/transactions/?open=new&tx_type=IN">Nuova entrata</a>
+              <a class="quick-card" href="/transactions/?open=new&tx_type=OUT">Nuova uscita</a>
               <a class="quick-card" href="/finance/quotes/add">Nuovo preventivo</a>
               <a class="quick-card" href="/finance/invoices/add">Nuova fattura</a>
               <a class="quick-card" href="/todo/api/add">Nuovo task</a>
@@ -195,15 +193,15 @@
           <div class="portal-hint">Drag & drop attivo</div>
         </div>
         <div id="portal" class="portal">
-          <div class="portlet" data-module="income" data-group="money">
-          <div class="portlet-title">Income</div>
-          <p>Entrate del mese, fonti principali e ricorrenze.</p>
-          <a class="portlet-link" href="/income/">Vai al modulo</a>
+        <div class="portlet" data-module="income" data-group="money">
+          <div class="portlet-title">Entrate</div>
+          <p>Vista filtrata delle entrate nel Transactions Hub.</p>
+          <a class="portlet-link" href="/transactions/?tx_type=IN">Apri vista</a>
         </div>
         <div class="portlet" data-module="outcome" data-group="money">
-          <div class="portlet-title">Outcome</div>
-          <p>Uscite, budget e prossimi pagamenti.</p>
-          <a class="portlet-link" href="/outcome/">Vai al modulo</a>
+          <div class="portlet-title">Uscite</div>
+          <p>Vista filtrata delle uscite nel Transactions Hub.</p>
+          <a class="portlet-link" href="/transactions/?tx_type=OUT">Apri vista</a>
         </div>
         <div class="portlet" data-module="subscriptions" data-group="money">
           <div class="portlet-title">Subscriptions</div>

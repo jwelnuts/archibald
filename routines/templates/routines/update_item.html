@@ -27,8 +27,9 @@
           <input id="id_routine_name" name="routine_name" class="uk-input uk-form-small" type="text" placeholder="Nome nuova routine" value="{{ form.routine_name.value|default:'' }}" style="display:none;">
         </div>
         <div class="field">
-          <label for="id_project">Progetto</label>
-          {{ form.project }}
+          <label for="id_project_choice">Progetto</label>
+          {{ form.project_choice }}
+          <input id="id_project_name" name="project_name" class="uk-input uk-form-small" type="text" placeholder="Nome nuovo progetto" value="{{ form.project_name.value|default:'' }}" style="display:none;">
         </div>
         <div class="field">
           <label for="id_title">Titolo</label>
@@ -84,16 +85,31 @@
         (function () {
           var select = document.getElementById("id_routine_choice");
           var input = document.getElementById("id_routine_name");
-          if (!select || !input) return;
-          function toggle() {
+          function toggleRoutine() {
             var isNew = select.value === "__new__";
             input.style.display = isNew ? "block" : "none";
             if (!isNew) {
               input.value = "";
             }
           }
-          select.addEventListener("change", toggle);
-          toggle();
+          if (select && input) {
+            select.addEventListener("change", toggleRoutine);
+            toggleRoutine();
+          }
+
+          var projectSelect = document.getElementById("id_project_choice");
+          var projectInput = document.getElementById("id_project_name");
+          function toggleProject() {
+            var isNewProject = projectSelect.value === "__new__";
+            projectInput.style.display = isNewProject ? "block" : "none";
+            if (!isNewProject) {
+              projectInput.value = "";
+            }
+          }
+          if (projectSelect && projectInput) {
+            projectSelect.addEventListener("change", toggleProject);
+            toggleProject();
+          }
         })();
       </script>
       <script>

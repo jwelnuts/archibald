@@ -8,27 +8,35 @@
     <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
     {% include "core/partials/uikit_head.html" %}
     <link rel="stylesheet" href="{% static 'core/vendor/flatpickr/flatpickr.min.css' %}">
-    <link rel="stylesheet" href="{% static 'core/vendor/toastui-grid/tui-grid.min.css' %}">
-    <link rel="stylesheet" href="{% static 'transactions/grid.css' %}">
+    <link rel="stylesheet" href="{% static 'transactions/styles.css' %}">
+    <script src="{% static 'core/vendor/htmx/htmx.min.js' %}" defer></script>
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
   <body>
-    <div class="page">
-      {% include "core/partials/site_header.html" with module_subtitle="Transactions module" %}
+    <div class="page transactions-page">
+      {% include "core/partials/site_header.html" with module_subtitle="Finance hub · Transactions" %}
 
-      <main class="content">
+      <main class="content" data-controller="transactions">
         {% block content %}{% endblock %}
       </main>
+
+      <footer class="site-footer">
+        <span>Module: transactions</span>
+        <span>Version: unified</span>
+      </footer>
     </div>
+
+    <div id="transactions-modal" uk-modal>
+      <div class="uk-modal-dialog uk-modal-body">
+        <button class="uk-modal-close-default" type="button" uk-close></button>
+        <div id="transactions-modal-body"></div>
+      </div>
+    </div>
+
     <script src="{% static 'core/vendor/flatpickr/flatpickr.min.js' %}"></script>
-    <script src="{% static 'core/vendor/toastui-grid/tui-grid.min.js' %}"></script>
-    <script>
-      document.querySelectorAll(".date-field").forEach(function (el) {
-        window.flatpickr(el, { dateFormat: "Y-m-d" });
-      });
-    </script>
     {{ hero_actions_config|json_script:"hero-actions-config" }}
-        {% include "core/partials/uikit_body.html" %}
+    {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/app.js' %}"></script>
+    <script type="module" src="{% static 'core/transactions.js' %}"></script>
   </body>
 </html>
