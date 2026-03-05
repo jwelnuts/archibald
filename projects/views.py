@@ -8,9 +8,7 @@ from django.utils.dateparse import parse_date
 from django.utils.html import strip_tags
 
 from contacts.models import Contact
-from contacts.services import ensure_legacy_records_for_contact, upsert_contact
 from .category_forms import CategoryForm
-from .customer_forms import CustomerForm
 from .note_forms import ProjectNoteForm
 from .forms import ProjectForm
 from .models import Category, Customer, Project, ProjectNote, ProjectHeroActionsConfig
@@ -369,7 +367,7 @@ def dashboard(request):
         "active": Project.objects.filter(owner=user, is_archived=False).count(),
         "archived": Project.objects.filter(owner=user, is_archived=True).count(),
         "categories": Category.objects.filter(owner=user).count(),
-        "customers": Customer.objects.filter(owner=user).count(),
+        "customers": Contact.objects.filter(owner=user, role_customer=True).count(),
     }
     return render(
         request,
@@ -609,77 +607,6 @@ def project_hero_actions(request):
 def categories(request):
     categories_list = Category.objects.filter(owner=request.user).order_by("name")
     return render(request, "projects/categories.html", {"categories": categories_list})
-
-
-@login_required
-def customers(request):
-    customers_list = Customer.objects.filter(owner=request.user).order_by("name")
-    return render(request, "projects/customers.html", {"customers": customers_list})
-
-
-@login_required
-def add_customer(request):
-    if request.method == "POST":
-        form = CustomerForm(request.POST)
-        if form.is_valid():
-            customer = form.save(commit=False)
-            customer.owner = request.user
-            customer.save()
-            contact = upsert_contact(
-                request.user,
-                customer.name,
-                entity_type=Contact.EntityType.HYBRID,
-                email=customer.email,
-                phone=customer.phone,
-                notes=customer.notes,
-                roles={"role_customer"},
-            )
-            ensure_legacy_records_for_contact(contact)
-            return redirect("/projects/customers/")
-    else:
-        form = CustomerForm()
-    return render(request, "projects/add_customer.html", {"form": form})
-
-
-@login_required
-def update_customer(request):
-    customer_id = request.GET.get("id")
-    customer = None
-    if customer_id:
-        customer = get_object_or_404(Customer, id=customer_id, owner=request.user)
-        if request.method == "POST":
-            form = CustomerForm(request.POST, instance=customer)
-            if form.is_valid():
-                saved = form.save()
-                contact = upsert_contact(
-                    request.user,
-                    saved.name,
-                    entity_type=Contact.EntityType.HYBRID,
-                    email=saved.email,
-                    phone=saved.phone,
-                    notes=saved.notes,
-                    roles={"role_customer"},
-                )
-                ensure_legacy_records_for_contact(contact)
-                return redirect("/projects/customers/")
-        else:
-            form = CustomerForm(instance=customer)
-        return render(request, "projects/update_customer.html", {"form": form, "customer": customer})
-    customers_list = Customer.objects.filter(owner=request.user).order_by("name")[:20]
-    return render(request, "projects/update_customer.html", {"customers": customers_list})
-
-
-@login_required
-def remove_customer(request):
-    customer_id = request.GET.get("id")
-    customer = None
-    if customer_id:
-        customer = get_object_or_404(Customer, id=customer_id, owner=request.user)
-        if request.method == "POST":
-            customer.delete()
-            return redirect("/projects/customers/")
-    customers_list = Customer.objects.filter(owner=request.user).order_by("name")[:20]
-    return render(request, "projects/remove_customer.html", {"customer": customer, "customers": customers_list})
 
 
 @login_required

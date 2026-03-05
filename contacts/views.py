@@ -4,6 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import ContactForm, ContactPriceListForm, ContactPriceListItemFormSet, ContactToolboxForm
 from .models import Contact, ContactPriceList, ContactToolbox
@@ -13,6 +14,19 @@ from .services import ensure_legacy_records_for_contact, sync_contacts_from_lega
 def _ensure_toolbox(contact):
     toolbox, _ = ContactToolbox.objects.get_or_create(owner=contact.owner, contact=contact)
     return toolbox
+
+
+def _safe_next_url(request):
+    next_url = (request.POST.get("next") or request.GET.get("next") or "").strip()
+    if not next_url:
+        return ""
+    if url_has_allowed_host_and_scheme(
+        url=next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return next_url
+    return ""
 
 
 @login_required
@@ -104,6 +118,7 @@ def dashboard(request):
 @login_required
 def add_contact(request):
     sync_contacts_from_legacy(request.user)
+    next_url = _safe_next_url(request)
     if request.method == "POST":
         form = ContactForm(request.POST)
         if form.is_valid():
@@ -112,10 +127,10 @@ def add_contact(request):
             item.save()
             _ensure_toolbox(item)
             ensure_legacy_records_for_contact(item)
-            return redirect("/contacts/")
+            return redirect(next_url or "/contacts/")
     else:
         form = ContactForm()
-    return render(request, "contacts/add_contact.html", {"form": form})
+    return render(request, "contacts/add_contact.html", {"form": form, "next_url": next_url})
 
 
 @login_required

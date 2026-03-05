@@ -16,9 +16,4 @@ urlpatterns = [
     path('categories/add', views.add_category, name='projects-categories-add'),
     path('categories/remove', views.remove_category, name='projects-categories-remove'),
     path('categories/update', views.update_category, name='projects-categories-update'),
-
-    path('customers/', views.customers, name='projects-customers'),
-    path('customers/add', views.add_customer, name='projects-customers-add'),
-    path('customers/remove', views.remove_customer, name='projects-customers-remove'),
-    path('customers/update', views.update_customer, name='projects-customers-update'),
 ]

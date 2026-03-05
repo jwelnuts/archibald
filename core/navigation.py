@@ -8,7 +8,6 @@ DEFAULT_APP_OPTIONS = [
     {"key": "transactions", "label": "Transactions", "url": "/transactions/"},
     {"key": "projects", "label": "Projects", "url": "/projects/"},
     {"key": "categories", "label": "Categories", "url": "/projects/categories/"},
-    {"key": "customers", "label": "Customers", "url": "/projects/customers/"},
     {"key": "todo", "label": "Todo", "url": "/todo/"},
     {"key": "planner", "label": "Planner", "url": "/planner/"},
     {"key": "agenda", "label": "Agenda", "url": "/agenda/"},

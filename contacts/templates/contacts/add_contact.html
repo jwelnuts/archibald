@@ -19,6 +19,9 @@
     {% endif %}
     <form class="form" method="post" action="">
       {% csrf_token %}
+      {% if next_url %}
+        <input type="hidden" name="next" value="{{ next_url }}">
+      {% endif %}
       <div class="field"><label for="id_display_name">Nome visualizzato</label>{{ form.display_name }}</div>
       <div class="field"><label for="id_entity_type">Tipo</label>{{ form.entity_type }}</div>
       <div class="field"><label for="id_person_name">Nome persona</label>{{ form.person_name }}</div>
@@ -35,7 +38,7 @@
       <div class="field"><label for="id_is_active">Attivo</label>{{ form.is_active }}</div>
       <div class="actions">
         <button class="btn primary" type="submit">Salva</button>
-        <a class="btn" href="/contacts/">Annulla</a>
+        <a class="btn" href="{{ next_url|default:'/contacts/' }}">Annulla</a>
       </div>
     </form>
   </section>

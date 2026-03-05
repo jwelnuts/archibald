@@ -47,6 +47,31 @@ class ContactsViewsTests(TestCase):
         self.assertTrue(Customer.objects.filter(owner=self.user, name="Erik - Bar Aurora").exists())
         self.assertTrue(Payee.objects.filter(owner=self.user, name="Erik - Bar Aurora").exists())
 
+    def test_add_contact_redirects_to_safe_next(self):
+        self.client.login(username="contacts_user", password="pwd12345")
+        response = self.client.post(
+            "/contacts/add",
+            {
+                "display_name": "Nuovo Cliente",
+                "entity_type": Contact.EntityType.PERSON,
+                "person_name": "Nuovo Cliente",
+                "business_name": "",
+                "email": "",
+                "phone": "",
+                "website": "",
+                "city": "",
+                "role_customer": "on",
+                "role_supplier": "",
+                "role_payee": "",
+                "role_income_source": "",
+                "notes": "",
+                "is_active": "on",
+                "next": "/projects/api/add",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/projects/api/add")
+
     def test_dashboard_syncs_legacy_records(self):
         Customer.objects.create(owner=self.user, name="Cliente Legacy", email="legacy@example.com")
         Payee.objects.create(owner=self.user, name="Fornitore Legacy")
