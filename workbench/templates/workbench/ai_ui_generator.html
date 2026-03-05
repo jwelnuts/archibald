@@ -3,56 +3,80 @@
 {% block title %}MIO - Workbench UI Generator{% endblock %}
 
 {% block content %}
-  <section class="hero">
+  <section class="hero workbench-hero">
     <div class="hero-copy">
+      <div class="hero-tag">Prompt to JSON</div>
       <h1>UI Generator (Workbench)</h1>
       <p>
         Descrivi i widget desiderati. La richiesta viene trasformata in JSON
         configurabile per costruire dashboard dinamiche.
       </p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/workbench/ai/app-generator">Vai ad AI App Generator</a>
+        <a class="btn" href="/workbench/">Torna alla dashboard</a>
+      </div>
     </div>
-    <div class="hero-card">
-      <div class="card-title">Suggerimento</div>
+    <div class="hero-card workbench-hero-card">
+      <div class="card-title">Template rapidi</div>
+      <div class="workbench-chip-grid">
+        <button class="filter-chip ui-generator-chip" type="button" data-template-prompt="Dashboard con KPI mensili, tabella top categorie, alert scadenze e trend 6 mesi.">Finance board</button>
+        <button class="filter-chip ui-generator-chip" type="button" data-template-prompt="Pannello operations con backlog ticket, SLA a rischio, stati workflow e metriche team.">Ops board</button>
+        <button class="filter-chip ui-generator-chip" type="button" data-template-prompt="Vista project review con milestone, avanzamento percentuale, rischi e prossime azioni.">Project review</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="dashboard-layout">
+    <article class="panel">
+      <div class="card-title">Prompt per GPT</div>
+      <form class="form" method="post">
+        {% csrf_token %}
+        <div class="field">
+          <label for="gpt-prompt">Richiesta</label>
+          <textarea
+            id="gpt-prompt"
+            name="gpt_prompt"
+            rows="7"
+            placeholder="Es: Crea una dashboard con KPI di spese mensili, grafico per categoria e lista scadenze."
+            required
+          >{{ gpt_prompt|default:"" }}</textarea>
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Invia a GPT</button>
+          <button class="btn" type="reset">Reset</button>
+        </div>
+      </form>
+      <div class="note">
+        Suggerimento: includi layout, widget, sorgenti dati, ordinamento e comportamento responsive.
+      </div>
+    </article>
+
+    <article class="panel">
+      <div class="card-title">Debug risposta GPT</div>
       <p class="muted">
-        Usa richieste chiare e strutturate: KPI, tabelle, grafici, liste e vincoli.
+        Qui compare la risposta grezza da analizzare prima di salvarla e trasformarla in widget.
       </p>
-    </div>
+      {% if gpt_error %}
+        <div class="warning-box">{{ gpt_error }}</div>
+      {% endif %}
+      {% if gpt_response %}
+        <pre class="code-block">{{ gpt_response }}</pre>
+      {% else %}
+        <div class="note">Nessuna risposta disponibile. Invia un prompt.</div>
+      {% endif %}
+    </article>
   </section>
 
-  <section class="panel">
-    <div class="card-title">Prompt per GPT</div>
-    <form class="form" method="post">
-      {% csrf_token %}
-      <div class="field">
-        <label for="gpt-prompt">Richiesta</label>
-        <textarea
-          id="gpt-prompt"
-          name="gpt_prompt"
-          rows="5"
-          placeholder="Es: Crea una dashboard con KPI di spese mensili, grafico per categoria e lista scadenze."
-          required
-        >{{ gpt_prompt|default:"" }}</textarea>
-      </div>
-      <div class="actions">
-        <button class="btn primary" type="submit">Invia a GPT</button>
-        <button class="btn" type="reset">Reset</button>
-      </div>
-    </form>
-  </section>
-
-  <section class="panel">
-    <div class="card-title">Debug risposta GPT</div>
-    <p class="muted">
-      Qui compare la risposta grezza da analizzare prima di salvarla e
-      trasformarla in widget.
-    </p>
-    {% if gpt_error %}
-      <div class="warning-box">{{ gpt_error }}</div>
-    {% endif %}
-    {% if gpt_response %}
-      <pre class="code-block">{{ gpt_response }}</pre>
-    {% else %}
-      <div class="note">Nessuna risposta disponibile. Invia un prompt.</div>
-    {% endif %}
-  </section>
+  <script>
+    (function () {
+      var prompt = document.getElementById("gpt-prompt");
+      if (!prompt) return;
+      document.querySelectorAll("[data-template-prompt]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          prompt.value = btn.getAttribute("data-template-prompt") || "";
+          prompt.focus();
+        });
+      });
+    })();
+  </script>
 {% endblock %}

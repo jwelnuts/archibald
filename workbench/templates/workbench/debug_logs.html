@@ -3,10 +3,22 @@
 {% block title %}MIO - Debug Logs{% endblock %}
 
 {% block content %}
-  <section class="panel">
-    <h1>Debug logs</h1>
-    <p class="muted">Ultimi 200 eventi registrati dal middleware debug.</p>
+  <section class="hero workbench-hero">
+    <div class="hero-copy">
+      <div class="hero-tag">Observability</div>
+      <h1>Debug logs</h1>
+      <p>Timeline degli ultimi 200 eventi tecnici registrati dal middleware Workbench.</p>
+    </div>
+    <div class="hero-card workbench-hero-card">
+      <div class="card-title">Filtro rapido</div>
+      <div class="field">
+        <label for="workbench-log-filter">Cerca in azione/modello/note</label>
+        <input id="workbench-log-filter" type="text" placeholder="Es: CUSTOM workbench.ai_app_generator migrate">
+      </div>
+    </div>
+  </section>
 
+  <section class="panel">
     {% if logs %}
       <div class="log-table">
         <div class="log-row log-head">
@@ -18,7 +30,7 @@
           <span>Note</span>
         </div>
         {% for log in logs %}
-          <div class="log-row">
+          <div class="log-row" data-log-entry data-log-text="{{ log.created_at }} {{ log.user|default:'-' }} {{ log.action }} {{ log.app_label }} {{ log.model_name }} {{ log.object_id|default:'-' }} {{ log.note|default:'-' }}">
             <span>{{ log.created_at }}</span>
             <span>{{ log.user|default:"-" }}</span>
             <span>{{ log.action }}</span>
@@ -32,4 +44,19 @@
       <div class="note">Nessun log disponibile.</div>
     {% endif %}
   </section>
+
+  <script>
+    (function () {
+      var filter = document.getElementById("workbench-log-filter");
+      if (!filter) return;
+      var rows = Array.prototype.slice.call(document.querySelectorAll("[data-log-entry]"));
+      filter.addEventListener("input", function () {
+        var query = (filter.value || "").toLowerCase().trim();
+        rows.forEach(function (row) {
+          var text = (row.getAttribute("data-log-text") || "").toLowerCase();
+          row.style.display = !query || text.indexOf(query) !== -1 ? "" : "none";
+        });
+      });
+    })();
+  </script>
 {% endblock %}

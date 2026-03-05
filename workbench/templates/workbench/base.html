@@ -5,15 +5,30 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}MIO - Workbench{% endblock %}</title>
-    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=workbench2">
     {% include "core/partials/uikit_head.html" %}
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
-  <body>
-    <div class="page">
+  <body class="workbench-body">
+    <div class="page workbench-page">
       {% include "core/partials/site_header.html" with module_subtitle="Workbench module" %}
 
       <main class="content">
+        {% with current=request.path %}
+          <section class="workbench-hud">
+            <div class="workbench-hud-head">
+              <div class="workbench-hud-kicker">MIO workbench</div>
+              <div class="workbench-hud-title">AI build room</div>
+            </div>
+            <nav class="workbench-tabs">
+              <a class="workbench-tab{% if current == '/workbench/' %} active{% endif %}" href="/workbench/">Dashboard</a>
+              <a class="workbench-tab{% if '/workbench/ai/ui-generator' in current %} active{% endif %}" href="/workbench/ai/ui-generator">UI Generator</a>
+              <a class="workbench-tab{% if '/workbench/ai/app-generator' in current %} active{% endif %}" href="/workbench/ai/app-generator">App Generator</a>
+              <a class="workbench-tab{% if '/workbench/debug/schema' in current %} active{% endif %}" href="/workbench/debug/schema">Schema DB</a>
+              <a class="workbench-tab{% if '/workbench/debug/logs' in current %} active{% endif %}" href="/workbench/debug/logs">Debug Logs</a>
+            </nav>
+          </section>
+        {% endwith %}
         {% block content %}{% endblock %}
       </main>
 

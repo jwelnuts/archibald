@@ -3,13 +3,32 @@
 {% block title %}MIO - AI App Generator{% endblock %}
 
 {% block content %}
-  <section class="panel narrow">
-    <h1>AI App Generator</h1>
-    <p class="muted">
-      Inserisci il nome tecnico della nuova app e descrivi cosa deve gestire.
-      Il sistema genera struttura Django, template CRUD e collegamento automatico a routing/settings.
-    </p>
+  <section class="hero workbench-hero">
+    <div class="hero-copy">
+      <div class="hero-tag">Prompt to Django app</div>
+      <h1>AI App Generator</h1>
+      <p>
+        Genera scaffold completo, aggiorna routing/settings e opzionalmente applica setup automatico
+        con <code>makemigrations</code> e <code>migrate</code>.
+      </p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/workbench/">Torna alla dashboard</a>
+        <a class="btn" href="/workbench/ai/ui-generator">Apri UI Generator</a>
+      </div>
+    </div>
+    <div class="hero-card workbench-hero-card">
+      <div class="card-title">Checklist prompt</div>
+      <ul class="workbench-checklist">
+        <li>Dominio funzionale e obiettivo.</li>
+        <li>Campi principali e tipi dati attesi.</li>
+        <li>Regole CRUD e vincoli operativi.</li>
+        <li>Eventuali stati o workflow.</li>
+      </ul>
+    </div>
+  </section>
 
+  <section class="panel">
+    <div class="card-title">Generazione</div>
     {% if error %}
       <div class="warning-box">{{ error }}</div>
     {% endif %}
@@ -26,26 +45,27 @@
       </div>
     {% endif %}
 
-    <form class="form" method="post" action="">
+    <form class="form" method="post" action="" autocomplete="off">
       {% csrf_token %}
-      <div class="field">
-        <label for="id_app_name">{{ form.app_name.label }}</label>
-        {{ form.app_name }}
-        <div class="muted">{{ form.app_name.help_text }}</div>
+      <div class="workbench-grid-2">
+        <div class="field">
+          <label for="id_app_name">{{ form.app_name.label }}</label>
+          {{ form.app_name }}
+          <div class="muted">{{ form.app_name.help_text }}</div>
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <label class="toggle workbench-toggle" for="id_auto_setup">
+            {{ form.auto_setup }}
+            <span>{{ form.auto_setup.label }}</span>
+          </label>
+          <div class="muted">{{ form.auto_setup.help_text }}</div>
+        </div>
       </div>
       <div class="field">
         <label for="id_prompt">{{ form.prompt.label }}</label>
         {{ form.prompt }}
         <div class="muted">{{ form.prompt.help_text }}</div>
-      </div>
-      <div class="field">
-        <div class="toggle-list">
-          <label class="toggle" for="id_auto_setup">
-            {{ form.auto_setup }}
-            <span>{{ form.auto_setup.label }}</span>
-          </label>
-        </div>
-        <div class="muted">{{ form.auto_setup.help_text }}</div>
       </div>
       <div class="actions">
         <button class="btn primary" type="submit">Genera app</button>
@@ -57,17 +77,25 @@
   {% if result %}
     <section class="panel">
       <h2>Generazione completata</h2>
-      <div class="note">
-        <strong>App:</strong> {{ result.app_name }}<br>
-        <strong>Model:</strong> {{ result.model_name }}<br>
-        <strong>Spec:</strong> {{ result.summary }}<br>
-        <strong>Origine spec:</strong>
-        {% if result.used_gpt %}
-          GPT
-        {% else %}
-          fallback locale
-        {% endif %}
+      <div class="workbench-metrics-grid">
+        <div class="stat">
+          <div class="stat-label">App</div>
+          <div class="stat-value">{{ result.app_name }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Model</div>
+          <div class="stat-value">{{ result.model_name }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Spec source</div>
+          <div class="stat-value">{% if result.used_gpt %}GPT{% else %}Fallback{% endif %}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Nuovi file</div>
+          <div class="stat-value">{{ result.created_files|length }}</div>
+        </div>
       </div>
+      <div class="note"><strong>Spec:</strong> {{ result.summary }}</div>
 
       {% if result.warnings %}
         <div class="warning-box">
@@ -78,9 +106,9 @@
       {% endif %}
 
       <h3>File creati</h3>
-      <ul class="list">
+      <ul class="workbench-file-list">
         {% for path in result.created_files %}
-          <li>{{ path }}</li>
+          <li><code>{{ path }}</code></li>
         {% endfor %}
       </ul>
 
@@ -111,7 +139,7 @@
         <ul class="command-list">
           {% for step in setup_result.steps %}
             <li>
-              <div>
+              <div class="command-head">
                 <strong>{{ step.command }}</strong>
                 {% if step.ok %}
                   <span class="tag ok">OK</span>

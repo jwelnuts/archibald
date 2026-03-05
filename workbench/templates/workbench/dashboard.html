@@ -3,24 +3,38 @@
 {% block title %}MIO - Workbench Dashboard{% endblock %}
 
 {% block content %}
-  <section class="hero" id="app-head">
+  <section class="hero workbench-hero" id="app-head">
     <div class="hero-copy" id="app-header">
       <div class="hero-tag">AI Build Pipeline</div>
       <h1>Workbench orchestratore</h1>
       <p>
-        Flusso unico per creare nuove app: definisci il brief con Archibald,
-        valida l'output UI in JSON e genera lo scaffold Django dal prompt.
+        Hub operativo per progettare UI, generare nuove app Django e verificare la salute del sistema.
+        Il setup post-generazione puo partire in automatico con migrazioni incluse.
       </p>
+      <div class="workbench-kpi-inline">
+        <span class="workbench-kpi-chip">
+          <strong>{{ counts.generated_ok }}</strong> ok
+        </span>
+        <span class="workbench-kpi-chip">
+          <strong>{{ counts.generated_warn }}</strong> warning
+        </span>
+        <span class="workbench-kpi-chip">
+          <strong>{{ counts.generated_error }}</strong> error
+        </span>
+        <span class="workbench-kpi-chip">
+          <strong>{% if counts.gpt_enabled %}GPT ON{% else %}GPT OFF{% endif %}</strong>
+        </span>
+      </div>
       <div class="hero-actions" id="app-actions" data-module="workbench">
         <a class="btn primary" href="/workbench/ai/ui-generator" data-action="ui-generator">UI Generator</a>
         <a class="btn" href="/workbench/ai/app-generator" data-action="ai-generator">AI App Generator</a>
-        <a class="btn" href="/archibald/" data-action="archibald">Apri Archibald</a>
+        <a class="btn" href="/archibald/" data-action="archibald">Archibald</a>
         <a class="btn" href="/workbench/debug/schema" data-action="schema">Schema DB</a>
-        <a class="btn" href="/workbench/debug/logs" data-action="logs">Log debug</a>
+        <a class="btn" href="/workbench/debug/logs" data-action="logs">Debug Logs</a>
       </div>
     </div>
 
-    <div class="hero-card" id="workbench-upcoming-panel">
+    <div class="hero-card workbench-hero-card" id="workbench-upcoming-panel">
       <div class="card-title">Stato pipeline</div>
       <div class="stat-row" id="workbench-info">
         <div class="stat">
@@ -40,19 +54,56 @@
           <div class="stat-value">{{ counts.generated_error|add:counts.generated_warn }}</div>
         </div>
       </div>
+      <div class="workbench-pulse-grid">
+        <div class="workbench-pulse-card">
+          <div class="pulse-label">Build health</div>
+          <div class="pulse-value">
+            {% if counts.generated_error %}Critical{% elif counts.generated_warn %}Watch{% else %}Stable{% endif %}
+          </div>
+        </div>
+        <div class="workbench-pulse-card">
+          <div class="pulse-label">Session clock</div>
+          <div class="pulse-value" id="workbench-live-clock">--:--:--</div>
+        </div>
+      </div>
       <div class="note">
-        Flusso consigliato: 1) brief con Archibald 2) test in UI Generator 3) generazione app 4) migration e verifica.
+        Sequenza consigliata: brief con Archibald, test UI JSON, generazione app, verifica schema/log.
       </div>
     </div>
   </section>
 
   <section class="dashboard-layout">
     <div class="dashboard-main">
+      <article class="panel pipeline-runway">
+        <div class="card-title">Runway operativo</div>
+        <div class="runway-grid">
+          <div class="runway-step">
+            <div class="runway-index">01</div>
+            <div class="runway-title">Brief</div>
+            <div class="runway-text">Definisci obiettivo, modello e campi con Archibald.</div>
+          </div>
+          <div class="runway-step">
+            <div class="runway-index">02</div>
+            <div class="runway-title">UI JSON</div>
+            <div class="runway-text">Genera layout e widget nel UI Generator.</div>
+          </div>
+          <div class="runway-step">
+            <div class="runway-index">03</div>
+            <div class="runway-title">App Scaffold</div>
+            <div class="runway-text">Crea app, route, template e setup migrazioni.</div>
+          </div>
+          <div class="runway-step">
+            <div class="runway-index">04</div>
+            <div class="runway-title">Health Check</div>
+            <div class="runway-text">Controlla schema, log e allarmi di pipeline.</div>
+          </div>
+        </div>
+      </article>
+
       <article class="panel" id="dashboard-archibald">
-        <div class="card-title">1. Archibald assistant per il brief</div>
+        <div class="card-title">1. Brief assistant</div>
         <p class="muted">
-          Scrivi l'obiettivo della nuova app e fatti restituire una specifica pronta
-          da incollare nei generatori del Workbench.
+          Invia un prompt tecnico e ottieni una specifica pronta per UI/App Generator.
         </p>
 
         <div class="filter-row">
@@ -76,7 +127,7 @@
               id="dashboard-archibald-prompt"
               name="prompt"
               rows="4"
-              placeholder="Es: voglio un'app per gestire ticket interni con priorita, scadenza e owner."
+              placeholder="Es: app per ticket interni con priorita, SLA e owner."
               required
             ></textarea>
           </div>
@@ -97,15 +148,28 @@
             Step B: genera app Django
           </a>
           <a class="quick-card" href="/workbench/debug/schema">
-            Step C: controlla schema DB
+            Step C: verifica schema DB
           </a>
           <a class="quick-card" href="/workbench/debug/logs">
-            Step D: verifica log tecnici
+            Step D: controlla debug logs
           </a>
         </div>
-        <div class="note">
-          Dopo la generazione esegui in shell: <code>python manage.py makemigrations</code>,
-          <code>python manage.py migrate</code>, <code>python manage.py check</code>.
+        <div class="workbench-command-deck">
+          <div class="command-deck-title">Comandi utili</div>
+          <div class="command-deck-list">
+            <div class="command-deck-item">
+              <code>.venv/bin/python manage.py check</code>
+              <button class="btn command-copy" type="button" data-copy-cmd=".venv/bin/python manage.py check">Copia</button>
+            </div>
+            <div class="command-deck-item">
+              <code>.venv/bin/python manage.py test workbench.tests</code>
+              <button class="btn command-copy" type="button" data-copy-cmd=".venv/bin/python manage.py test workbench.tests">Copia</button>
+            </div>
+            <div class="command-deck-item">
+              <code>.venv/bin/python manage.py migrate --noinput</code>
+              <button class="btn command-copy" type="button" data-copy-cmd=".venv/bin/python manage.py migrate --noinput">Copia</button>
+            </div>
+          </div>
         </div>
       </article>
 
@@ -169,8 +233,20 @@
           {% endif %}
         </div>
       </article>
+    </div>
 
-      <article class="panel">
+    <aside class="dashboard-rail">
+      <section class="panel quick-actions">
+        <div class="card-title">Toolbox Workbench</div>
+        <div class="quick-grid">
+          <a class="quick-card" href="/workbench/api/add">Nuova voce</a>
+          <a class="quick-card" href="/workbench/api/update">Aggiorna voce</a>
+          <a class="quick-card" href="/workbench/api/remove">Rimuovi voce</a>
+          <a class="quick-card" href="/archibald/insights?kind=overview">Insight rapidi</a>
+        </div>
+      </section>
+
+      <section class="panel">
         <div class="card-title">Eventi recenti generazione app</div>
         <ul class="list">
           {% if app_build_logs %}
@@ -187,18 +263,6 @@
             <li class="muted">Nessuna generazione app registrata.</li>
           {% endif %}
         </ul>
-      </article>
-    </div>
-
-    <aside class="dashboard-rail">
-      <section class="panel quick-actions">
-        <div class="card-title">Toolbox Workbench</div>
-        <div class="quick-grid">
-          <a class="quick-card" href="/workbench/api/add">Nuova voce workbench</a>
-          <a class="quick-card" href="/workbench/api/update">Aggiorna voce</a>
-          <a class="quick-card" href="/workbench/api/remove">Rimuovi voce</a>
-          <a class="quick-card" href="/archibald/insights?kind=overview">Insight rapidi</a>
-        </div>
       </section>
 
       <section class="panel">
@@ -221,4 +285,33 @@
       </section>
     </aside>
   </section>
+
+  <script>
+    (function () {
+      var clock = document.getElementById("workbench-live-clock");
+      if (clock) {
+        var renderClock = function () {
+          clock.textContent = new Date().toLocaleTimeString("it-IT", { hour12: false });
+        };
+        renderClock();
+        setInterval(renderClock, 1000);
+      }
+
+      document.querySelectorAll("[data-copy-cmd]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var cmd = btn.getAttribute("data-copy-cmd") || "";
+          if (!cmd) return;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(cmd).then(function () {
+              var original = btn.textContent;
+              btn.textContent = "Copiato";
+              setTimeout(function () {
+                btn.textContent = original;
+              }, 1100);
+            });
+          }
+        });
+      });
+    })();
+  </script>
 {% endblock %}

@@ -3,9 +3,19 @@
 {% block title %}MIO - Update Workbench Item{% endblock %}
 
 {% block content %}
+  <section class="hero workbench-hero">
+    <div class="hero-copy">
+      <div class="hero-tag">Workbench item</div>
+      <h1>Aggiorna voce</h1>
+      <p>Modifica una voce esistente oppure seleziona un elemento dalla lista rapida.</p>
+    </div>
+    <div class="hero-card workbench-hero-card">
+      <div class="card-title">Tip</div>
+      <p class="muted">Aggiorna lo status prima del deploy per tenere la pipeline sempre allineata.</p>
+    </div>
+  </section>
+
   <section class="panel narrow">
-    <h1>Aggiorna voce</h1>
-    <p class="muted">Layout base per aggiornare una voce del workbench.</p>
     {% if form and form.errors %}
       <div class="warning-box">
         Controlla i campi evidenziati.
@@ -43,10 +53,10 @@
       </form>
     {% else %}
       {% if items %}
-        <ul class="list">
+        <ul class="list workbench-item-list">
           {% for item in items %}
             <li>
-              <span>{{ item.title }}</span>
+              <span>{{ item.title }} <span class="muted">({{ item.status }})</span></span>
               <a class="btn" href="/workbench/api/update?id={{ item.id }}">Modifica</a>
             </li>
           {% endfor %}

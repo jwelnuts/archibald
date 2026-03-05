@@ -4,10 +4,28 @@
 {% block title %}MIO - DB Schema{% endblock %}
 
 {% block content %}
-  <section class="panel">
-    <h1>Schema DB</h1>
-    <p class="muted">Schema ERD dei modelli registrati nel progetto.</p>
+  <section class="hero workbench-hero">
+    <div class="hero-copy">
+      <div class="hero-tag">Data topology</div>
+      <h1>Schema DB</h1>
+      <p>ERD dei modelli registrati nel progetto, con esplorazione tabelle e relazioni.</p>
+    </div>
+    <div class="hero-card workbench-hero-card">
+      <div class="card-title">Snapshot</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Modelli</div>
+          <div class="stat-value">{{ models|length }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Diagramma</div>
+          <div class="stat-value">{% if mermaid_erd %}OK{% else %}N/A{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
+  <section class="panel">
     {% if mermaid_erd %}
       <div class="schema-diagram">
         <div class="schema-toolbar">
@@ -24,9 +42,11 @@
     {% else %}
       <div class="note">Nessun diagramma disponibile.</div>
     {% endif %}
+  </section>
 
-    {% if models %}
-      <details class="schema-details">
+  {% if models %}
+    <section class="panel">
+      <details class="schema-details" open>
         <summary>Dettagli modelli</summary>
         <div class="schema-grid">
           {% for model in models %}
@@ -61,8 +81,8 @@
           {% endfor %}
         </div>
       </details>
-    {% endif %}
-  </section>
+    </section>
+  {% endif %}
   <script src="{% static 'core/vendor/mermaid/mermaid.min.js' %}"></script>
   <script src="{% static 'core/vendor/svg-pan-zoom/svg-pan-zoom.min.js' %}"></script>
   <script>

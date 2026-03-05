@@ -3,9 +3,19 @@
 {% block title %}MIO - Add Workbench Item{% endblock %}
 
 {% block content %}
+  <section class="hero workbench-hero">
+    <div class="hero-copy">
+      <div class="hero-tag">Workbench item</div>
+      <h1>Nuova voce</h1>
+      <p>Registra un nuovo task operativo per monitorare backlog, debug o attività tecniche.</p>
+    </div>
+    <div class="hero-card workbench-hero-card">
+      <div class="card-title">Suggerimento</div>
+      <p class="muted">Usa titoli brevi e note con contesto tecnico, next step e owner.</p>
+    </div>
+  </section>
+
   <section class="panel narrow">
-    <h1>Nuova voce</h1>
-    <p class="muted">Layout base per creare una voce di workbench.</p>
     {% if form and form.errors %}
       <div class="warning-box">
         Controlla i campi evidenziati.

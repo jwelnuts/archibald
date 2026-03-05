@@ -3,9 +3,19 @@
 {% block title %}MIO - Remove Workbench Item{% endblock %}
 
 {% block content %}
+  <section class="hero workbench-hero">
+    <div class="hero-copy">
+      <div class="hero-tag">Workbench item</div>
+      <h1>Rimuovi voce</h1>
+      <p>Seleziona una voce da eliminare oppure conferma la rimozione dell'elemento corrente.</p>
+    </div>
+    <div class="hero-card workbench-hero-card">
+      <div class="card-title">Attenzione</div>
+      <p class="muted">Le rimozioni non sono reversibili. Verifica prima se serve solo un cambio stato.</p>
+    </div>
+  </section>
+
   <section class="panel narrow">
-    <h1>Rimuovi voce</h1>
-    <p class="muted">Layout base per confermare una rimozione.</p>
     {% if item %}
       <div class="warning-box">
         Stai per rimuovere: <strong>{{ item.title }}</strong>.
@@ -18,10 +28,10 @@
       </form>
     {% else %}
       {% if items %}
-        <ul class="list">
+        <ul class="list workbench-item-list">
           {% for item in items %}
             <li>
-              <span>{{ item.title }}</span>
+              <span>{{ item.title }} <span class="muted">({{ item.status }})</span></span>
               <a class="btn" href="/workbench/api/remove?id={{ item.id }}">Rimuovi</a>
             </li>
           {% endfor %}
