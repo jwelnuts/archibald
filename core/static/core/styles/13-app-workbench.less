@@ -155,6 +155,37 @@
   margin-bottom: 12px;
 }
 
+.workbench-body .workbench-flash-panel {
+  display: grid;
+  gap: 8px;
+}
+
+.workbench-body .workbench-flash {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #f6fbfb;
+}
+
+.workbench-body .workbench-flash.success {
+  border-color: #9ad6c1;
+  background: #ecfaf5;
+  color: #0f4f3f;
+}
+
+.workbench-body .workbench-flash.warning {
+  border-color: #f0cf9a;
+  background: #fff8ed;
+  color: #8b5e16;
+}
+
+.workbench-body .workbench-flash.error {
+  border-color: #e5aea9;
+  background: #fff2f1;
+  color: #84221a;
+}
+
 .workbench-body .stat {
   border: 1px solid rgba(199, 217, 216, 0.9);
   border-radius: 12px;
@@ -246,6 +277,17 @@
   font-size: 13px;
   color: var(--muted);
   line-height: 1.4;
+}
+
+.workbench-body .app-cleanup-form {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.workbench-body .app-cleanup-form .btn {
+  padding: 6px 10px;
+  font-size: 12px;
 }
 
 .workbench-body .quick-card {

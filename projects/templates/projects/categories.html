@@ -3,13 +3,28 @@
 {% block title %}MIO - Categories{% endblock %}
 
 {% block content %}
-  <section class="panel">
-    <h1>Categorie</h1>
-    <p class="muted">Lista delle categorie collegate al tuo profilo.</p>
-    <div class="actions">
-      <a class="btn primary" href="/projects/categories/add">Nuova categoria</a>
+  <section class="hero projects-hero">
+    <div class="hero-copy">
+      <div class="hero-tag">Projects taxonomy</div>
+      <h1>Categorie</h1>
+      <p class="project-desc">Struttura categorie per classificare i progetti in modo coerente.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/projects/categories/add">Nuova categoria</a>
+        <a class="btn" href="/projects/">Torna dashboard</a>
+      </div>
     </div>
+    <div class="hero-card projects-hero-card">
+      <div class="card-title">Totale</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Categorie</div>
+          <div class="stat-value">{{ categories|length }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
+  <section class="panel">
     {% if categories %}
       <ul class="list">
         {% for category in categories %}

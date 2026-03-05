@@ -3,13 +3,28 @@
 {% block title %}MIO - Customers{% endblock %}
 
 {% block content %}
-  <section class="panel">
-    <h1>Clienti</h1>
-    <p class="muted">Lista dei clienti collegati al tuo profilo.</p>
-    <div class="actions">
-      <a class="btn primary" href="/projects/customers/add">Nuovo cliente</a>
+  <section class="hero projects-hero">
+    <div class="hero-copy">
+      <div class="hero-tag">Projects network</div>
+      <h1>Clienti</h1>
+      <p class="project-desc">Anagrafica clienti collegata alle commesse e alle attività operative.</p>
+      <div class="hero-actions">
+        <a class="btn primary" href="/projects/customers/add">Nuovo cliente</a>
+        <a class="btn" href="/projects/">Torna dashboard</a>
+      </div>
     </div>
+    <div class="hero-card projects-hero-card">
+      <div class="card-title">Totale</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">Clienti</div>
+          <div class="stat-value">{{ customers|length }}</div>
+        </div>
+      </div>
+    </div>
+  </section>
 
+  <section class="panel">
     {% if customers %}
       <ul class="list">
         {% for customer in customers %}

@@ -4,10 +4,17 @@
 {% block title %}MIO - Storyboard{% endblock %}
 
 {% block content %}
-  <section class="hero" id="project-storyboard-head">
+  <section class="hero projects-hero" id="project-storyboard-head">
     <div class="hero-copy">
+      <div class="hero-tag">Project storyboard</div>
       <h1>Storyboard · {{ project.name }}</h1>
       <p>Appunti e azioni collegate al progetto.</p>
+      <div class="projects-kpi-inline">
+        <span class="projects-kpi-chip"><strong>{{ activity_counts.note }}</strong> appunti</span>
+        <span class="projects-kpi-chip"><strong>{{ activity_counts.task }}</strong> task</span>
+        <span class="projects-kpi-chip"><strong>{{ activity_counts.planner }}</strong> reminder</span>
+        <span class="projects-kpi-chip"><strong>{{ activity_counts.transaction }}</strong> transazioni</span>
+      </div>
       <div class="hero-actions" data-module="projects_storyboard">
         {% if "back" in allowed_actions %}
           <a class="btn" href="/projects/view?id={{ project.id }}" data-action="back">Torna al progetto</a>
@@ -31,7 +38,7 @@
         </details>
       {% endif %}
     </div>
-    <div class="hero-card">
+    <div class="hero-card projects-hero-card">
       <div class="card-title">Dettagli</div>
       <ul class="list">
         <li>

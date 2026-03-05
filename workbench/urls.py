@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path('', views.dashboard, name='workbench-dashboard'),
+    path('api/cleanup-generated-app', views.cleanup_generated_app_action, name='workbench-cleanup-generated-app'),
     path('api/add', views.add_item, name='workbench-add'),
     path('api/remove', views.remove_item, name='workbench-remove'),
     path('api/update', views.update_item, name='workbench-update'),

@@ -4,10 +4,11 @@
 {% block title %}MIO - {{ project.name }}{% endblock %}
 
 {% block content %}
-  <section class="hero" id="project-head">
+  <section class="hero projects-hero" id="project-head">
     
     <div class="hero-copy project-topbar" id="project-head-topbar">
       <div class="project-topbar-main">
+        <div class="hero-tag">Project cockpit</div>
         <div class="project-title-row">
           <div class="project-title-group">
             <div class="project-breadcrumb">Projects · {{ project.name }}</div>
@@ -30,6 +31,12 @@
             <span class="muted">Nessuna descrizione per questo progetto.</span>
           {% endif %}
         </p>
+        <div class="projects-kpi-inline">
+          <span class="projects-kpi-chip"><strong>{{ counts.transactions }}</strong> transazioni</span>
+          <span class="projects-kpi-chip"><strong>{{ counts.subscriptions }}</strong> abbonamenti</span>
+          <span class="projects-kpi-chip"><strong>{{ counts.planner_items }}</strong> planner</span>
+          <span class="projects-kpi-chip"><strong>{{ counts.routine_items }}</strong> routine</span>
+        </div>
       </div>
       <div class="project-actions">
         <div class="hero-actions" data-module="projects_detail">
@@ -89,7 +96,7 @@
       </div>
     </div>
     
-    <div class="hero-card">
+    <div class="hero-card projects-hero-card">
       <div class="card-title">Dettagli progetto</div>
       <ul class="list">
         <li>
@@ -116,7 +123,7 @@
     </div>
   </section>
 
-  <section class="grid" id="project-stats-grid">
+  <section class="grid projects-detail-grid" id="project-stats-grid">
     <article class="panel">
       <h2>Riepilogo</h2>
       <div class="stat-row">
@@ -172,7 +179,7 @@
     </article>
   </section>
 
-  <section class="grid" id="project-related-grid">
+  <section class="grid projects-detail-grid" id="project-related-grid">
     <article class="panel">
       <h2>Ultime transazioni</h2>
       {% if transactions %}

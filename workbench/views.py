@@ -6,16 +6,20 @@ from importlib.util import find_spec
 
 from django.apps import apps
 from django.conf import settings
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.management.base import CommandError
 from django.db import connection
 from django.db.migrations.loader import MigrationLoader
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import Resolver404, resolve
+from django.views.decorators.http import require_POST
 
 from .app_builder import AppBuilderError, generate_app_from_prompt, run_post_generation_setup
 from .forms import AppGeneratorForm, WorkbenchItemForm
 from .models import DebugChangeLog, WorkbenchItem
+from .orphan_cleanup import cleanup_generated_app
 
 
 def _group_migrations_by_app():
@@ -269,6 +273,63 @@ def dashboard(request):
             "archibald_prompt_suggestions": archibald_prompt_suggestions,
         },
     )
+
+
+@login_required
+@require_POST
+def cleanup_generated_app_action(request):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden("Solo utenti superuser possono pulire app orfane.")
+
+    app_label = (request.POST.get("app_label") or "").strip()
+    mode = (request.POST.get("mode") or "logs").strip().lower()
+
+    if not app_label:
+        messages.error(request, "Nome app mancante.")
+        return redirect("/workbench/")
+
+    try:
+        if mode == "full":
+            result = cleanup_generated_app(
+                app_label=app_label,
+                all_logs=True,
+                remove_dir=True,
+            )
+        else:
+            result = cleanup_generated_app(
+                app_label=app_label,
+                all_logs=True,
+                skip_settings=True,
+                skip_urls=True,
+            )
+    except CommandError as exc:
+        messages.error(request, f"Cleanup non riuscito: {exc}")
+        return redirect("/workbench/")
+    except Exception as exc:
+        messages.error(request, f"Errore inatteso durante cleanup: {exc}")
+        return redirect("/workbench/")
+
+    changed = any(
+        [
+            result.logs_deleted,
+            result.settings_removed,
+            result.urls_removed,
+            result.app_dir_deleted,
+        ]
+    )
+    if changed:
+        messages.success(
+            request,
+            (
+                f"Cleanup '{result.app_label}' completato: "
+                f"log={result.logs_deleted}, settings={result.settings_removed}, "
+                f"urls={result.urls_removed}, cartella={'si' if result.app_dir_deleted else 'no'}."
+            ),
+        )
+    else:
+        messages.warning(request, f"Nessuna modifica per '{result.app_label}'.")
+
+    return redirect("/workbench/")
 
 
 @login_required

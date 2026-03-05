@@ -5,15 +5,29 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}MIO - Projects{% endblock %}</title>
-    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=projects2">
     {% include "core/partials/uikit_head.html" %}
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
-  <body>
-    <div class="page">
+  <body class="projects-body">
+    <div class="page projects-page">
       {% include "core/partials/site_header.html" with module_subtitle="Projects module" %}
 
       <main class="content">
+        {% with current=request.path %}
+          <section class="projects-hud">
+            <div class="projects-hud-head">
+              <div class="projects-hud-kicker">MIO projects</div>
+              <div class="projects-hud-title">Delivery cockpit</div>
+            </div>
+            <nav class="projects-tabs">
+              <a class="projects-tab{% if current == '/projects/' %} active{% endif %}" href="/projects/">Dashboard</a>
+              <a class="projects-tab{% if '/projects/api/add' in current %} active{% endif %}" href="/projects/api/add">Nuovo progetto</a>
+              <a class="projects-tab{% if '/projects/categories' in current %} active{% endif %}" href="/projects/categories/">Categorie</a>
+              <a class="projects-tab{% if '/projects/customers' in current %} active{% endif %}" href="/projects/customers/">Clienti</a>
+            </nav>
+          </section>
+        {% endwith %}
         {% block content %}{% endblock %}
       </main>
 

@@ -3,6 +3,14 @@
 {% block title %}MIO - Workbench Dashboard{% endblock %}
 
 {% block content %}
+  {% if messages %}
+    <section class="panel workbench-flash-panel">
+      {% for message in messages %}
+        <div class="workbench-flash {{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </section>
+  {% endif %}
+
   <section class="hero workbench-hero" id="app-head">
     <div class="hero-copy" id="app-header">
       <div class="hero-tag">AI Build Pipeline</div>
@@ -219,6 +227,14 @@
                   <code>{{ app.url }}</code>
                   <span class="muted">{{ app.action_hint }}</span>
                 </div>
+                {% if request.user.is_superuser and app.severity != "ok" %}
+                  <form class="app-cleanup-form" method="post" action="/workbench/api/cleanup-generated-app">
+                    {% csrf_token %}
+                    <input type="hidden" name="app_label" value="{{ app.app_label }}">
+                    <button class="btn" type="submit" name="mode" value="logs">Pulisci Orfana (log)</button>
+                    <button class="btn danger" type="submit" name="mode" value="full" onclick="return confirm('Confermi cleanup completo per {{ app.app_label }}?');">Cleanup Completo</button>
+                  </form>
+                {% endif %}
                 {% if app.alarms %}
                   <ul class="app-health-issues">
                     {% for alarm in app.alarms %}

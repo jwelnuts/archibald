@@ -3,35 +3,36 @@
 {% block title %}MIO - Projects Dashboard{% endblock %}
 
 {% block content %}
-  <section class="panel projects-dashboard-header-compact">
-    <div class="project-topbar-main">
-      <div class="project-title-row">
-        <div class="project-title-group">
-          <div class="project-breadcrumb">Projects</div>
-          <h1>Projects workspace</h1>
-        </div>
-        <div class="project-meta">
-          <span class="meta-pill">Attivi: {{ counts.active }}</span>
-          <span class="meta-pill">Archiviati: {{ counts.archived }}</span>
-          <span class="meta-pill">Categorie: {{ counts.categories }}</span>
-          <span class="meta-pill">Clienti: {{ counts.customers }}</span>
-        </div>
-      </div>
-
+  <section class="hero projects-hero" id="projects-dashboard-head">
+    <div class="hero-copy project-topbar-main">
+      <div class="hero-tag">Project operations</div>
+      <h1>Projects workspace</h1>
       <p class="project-desc">
-        Vista centrale per monitorare lo stato operativo e finanziario di ogni progetto.
+        Vista centrale per monitorare stato operativo, flussi economici e attività collegate a ogni progetto.
       </p>
-
-      <div class="actions project-actions">
+      <div class="hero-actions project-actions" data-module="projects">
         <a class="btn primary" href="/projects/api/add" data-action="add">Nuovo progetto</a>
+        <a class="btn" href="/projects/api/update" data-action="update">Aggiorna progetto</a>
         <a class="btn" href="/projects/categories/">Categorie</a>
         <a class="btn" href="/projects/customers/">Clienti</a>
       </div>
+      <div class="projects-kpi-inline">
+        <span class="projects-kpi-chip"><strong>{{ counts.active }}</strong> attivi</span>
+        <span class="projects-kpi-chip"><strong>{{ counts.archived }}</strong> archiviati</span>
+        <span class="projects-kpi-chip"><strong>{{ counts.categories }}</strong> categorie</span>
+        <span class="projects-kpi-chip"><strong>{{ counts.customers }}</strong> clienti</span>
+      </div>
+    </div>
 
-      <div class="project-scope">
-        <a class="btn {% if scope == 'active' %}primary{% endif %}" href="/projects/?scope=active">Attivi</a>
-        <a class="btn {% if scope == 'archived' %}primary{% endif %}" href="/projects/?scope=archived">Archiviati</a>
-        <a class="btn {% if scope == 'all' %}primary{% endif %}" href="/projects/?scope=all">Tutti</a>
+    <div class="hero-card projects-hero-card">
+      <div class="card-title">Filtro rapido</div>
+      <div class="projects-scope-grid">
+        <a class="projects-scope-btn {% if scope == 'active' %}active{% endif %}" href="/projects/?scope=active">Attivi</a>
+        <a class="projects-scope-btn {% if scope == 'archived' %}active{% endif %}" href="/projects/?scope=archived">Archiviati</a>
+        <a class="projects-scope-btn {% if scope == 'all' %}active{% endif %}" href="/projects/?scope=all">Tutti</a>
+      </div>
+      <div class="note">
+        Mostrati <strong>{{ project_rows|length }}</strong> progetti per il filtro selezionato.
       </div>
     </div>
   </section>
@@ -61,7 +62,6 @@
                     <span>Cliente: <strong>{{ row.customer_name }}</strong></span>
                     <span>Categoria: <strong>{{ row.category_name }}</strong></span>
                     <span>Saldo: <strong>{{ row.balance }}</strong></span>
-                    <span>Transazioni: <strong>{{ row.tx_total }}</strong></span>
                   </div>
                 </div>
 
@@ -71,40 +71,40 @@
                 </div>
               </div>
 
+              <div class="project-metrics project-metrics-secondary">
+                <div class="metric-chip">
+                  <div class="metric-label">Entrate/Uscite</div>
+                  <div class="metric-value">{{ row.income_total }} / {{ row.expense_total }}</div>
+                </div>
+                <div class="metric-chip">
+                  <div class="metric-label">Transazioni</div>
+                  <div class="metric-value">{{ row.tx_total }}</div>
+                </div>
+                <div class="metric-chip">
+                  <div class="metric-label">Todo aperti/totali</div>
+                  <div class="metric-value">{{ row.todo_open }}/{{ row.todo_total }}</div>
+                </div>
+                <div class="metric-chip">
+                  <div class="metric-label">Planner planned/totali</div>
+                  <div class="metric-value">{{ row.planner_planned }}/{{ row.planner_total }}</div>
+                </div>
+                <div class="metric-chip">
+                  <div class="metric-label">Subs attivi/totali</div>
+                  <div class="metric-value">{{ row.subscriptions_active }}/{{ row.subscriptions_total }}</div>
+                </div>
+                <div class="metric-chip">
+                  <div class="metric-label">Routine attive</div>
+                  <div class="metric-value">{{ row.routines_active }}</div>
+                </div>
+              </div>
+
               <ul class="uk-accordion project-row-accordion" uk-accordion="active: false; collapsible: true">
                 <li>
                   <a class="uk-accordion-title project-row-accordion-title" href="#">Dettagli secondari</a>
                   <div class="uk-accordion-content project-row-accordion-content">
                     <div class="project-row-meta project-row-meta-secondary">
                       <span>Ultima transazione: <strong>{{ row.last_tx_date|date:"d/m/Y"|default:"-" }}</strong></span>
-                      <span>Prossima scadenza: <strong>{{ row.next_subscription_due|date:"d/m/Y"|default:"-" }}</strong></span>
-                    </div>
-
-                    <div class="project-metrics project-metrics-secondary">
-                      <div class="metric-chip">
-                        <div class="metric-label">Entrate</div>
-                        <div class="metric-value">{{ row.income_total }}</div>
-                      </div>
-                      <div class="metric-chip">
-                        <div class="metric-label">Uscite</div>
-                        <div class="metric-value">{{ row.expense_total }}</div>
-                      </div>
-                      <div class="metric-chip">
-                        <div class="metric-label">Abbonamenti attivi/totali</div>
-                        <div class="metric-value">{{ row.subscriptions_active }}/{{ row.subscriptions_total }}</div>
-                      </div>
-                      <div class="metric-chip">
-                        <div class="metric-label">Todo aperti/totali</div>
-                        <div class="metric-value">{{ row.todo_open }}/{{ row.todo_total }}</div>
-                      </div>
-                      <div class="metric-chip">
-                        <div class="metric-label">Reminder planned/totali</div>
-                        <div class="metric-value">{{ row.planner_planned }}/{{ row.planner_total }}</div>
-                      </div>
-                      <div class="metric-chip">
-                        <div class="metric-label">Routine attive</div>
-                        <div class="metric-value">{{ row.routines_active }}</div>
-                      </div>
+                      <span>Prossima scadenza subs: <strong>{{ row.next_subscription_due|date:"d/m/Y"|default:"-" }}</strong></span>
                     </div>
 
                     <div class="project-actions project-row-actions project-row-actions-secondary">
