@@ -1,0 +1,123 @@
+<div
+  id="storyboard-log-region"
+  class="storyboard-log-region"
+  data-controller="projects-storyboard"
+>
+  <form
+    class="storyboard-filter-form form form-compact"
+    method="get"
+    action="/projects/storyboard/log"
+    hx-get="/projects/storyboard/log"
+    hx-target="#storyboard-log-region"
+    hx-swap="outerHTML"
+    hx-push-url="false"
+    hx-indicator="#storyboard-log-loading"
+    data-projects-storyboard-target="filterForm"
+    data-action="change->projects-storyboard#submitFilters"
+  >
+    <input type="hidden" name="id" value="{{ project.id }}">
+
+    <div class="storyboard-filter-chips">
+      {% for choice in activity_kind_choices %}
+        <button
+          type="button"
+          class="uk-button uk-button-small {% if activity_filters.kind == choice.key %}uk-button-primary{% else %}uk-button-default{% endif %}"
+          data-kind="{{ choice.key }}"
+          data-action="click->projects-storyboard#setKind"
+        >
+          {{ choice.label }} ({{ choice.total }})
+        </button>
+      {% endfor %}
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="storyboard-kind">Tipo</label>
+        <select
+          id="storyboard-kind"
+          name="kind"
+          data-projects-storyboard-target="kindSelect"
+        >
+          {% for choice in activity_kind_choices %}
+            <option value="{{ choice.key }}" {% if activity_filters.kind == choice.key %}selected{% endif %}>
+              {{ choice.label }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="storyboard-date-from">Da data</label>
+        <input id="storyboard-date-from" type="date" name="date_from" value="{{ activity_filters.date_from_raw }}">
+      </div>
+      <div class="field">
+        <label for="storyboard-date-to">A data</label>
+        <input id="storyboard-date-to" type="date" name="date_to" value="{{ activity_filters.date_to_raw }}">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label for="storyboard-q">Cerca nel log</label>
+        <input
+          id="storyboard-q"
+          type="search"
+          name="q"
+          placeholder="Es. cliente, nota, task..."
+          value="{{ activity_filters.q }}"
+          data-action="input->projects-storyboard#queueSearch"
+        >
+      </div>
+      <div class="actions storyboard-filter-actions">
+        <button class="btn" type="button" data-action="click->projects-storyboard#resetFilters">Reset</button>
+        <button class="btn primary" type="submit">Filtra</button>
+      </div>
+    </div>
+  </form>
+
+  <div class="storyboard-log-summary">
+    <span class="muted">
+      Risultati: {{ activity_result_count }}
+      {% if activity_total_count > activity_result_count %}
+        / {{ activity_total_count }}
+      {% endif %}
+    </span>
+    <span id="storyboard-log-loading" class="htmx-indicator">
+      <span uk-spinner="ratio: .55"></span>
+    </span>
+  </div>
+
+  {% if activity_items %}
+    <ul class="storyboard-log-list">
+      {% for item in activity_items %}
+        <li class="storyboard-log-item kind-{{ item.kind }}">
+          <div class="storyboard-log-head">
+            <span class="uk-label">{{ item.kind_label }}</span>
+            <span class="muted">
+              {% if item.display_has_time %}
+                {{ item.display_at|date:"d/m/Y H:i" }}
+              {% else %}
+                {{ item.display_at|date:"d/m/Y" }}
+              {% endif %}
+            </span>
+          </div>
+          <div class="storyboard-log-title">{{ item.title }}</div>
+          {% if item.subtitle %}
+            <div class="storyboard-log-subtitle">{{ item.subtitle }}</div>
+          {% endif %}
+          {% if item.description_html %}
+            <div class="storyboard-log-body is-html">{{ item.description_html|safe }}</div>
+          {% elif item.description_text %}
+            <div class="storyboard-log-body">{{ item.description_text }}</div>
+          {% endif %}
+          {% if item.attachment_url %}
+            <a class="uk-button uk-button-text" href="{{ item.attachment_url }}" target="_blank" rel="noopener">
+              {{ item.attachment_label }}
+            </a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <div class="note">Nessuna voce trovata con i filtri selezionati.</div>
+  {% endif %}
+</div>

@@ -38,6 +38,15 @@
         {{ form.prompt }}
         <div class="muted">{{ form.prompt.help_text }}</div>
       </div>
+      <div class="field">
+        <div class="toggle-list">
+          <label class="toggle" for="id_auto_setup">
+            {{ form.auto_setup }}
+            <span>{{ form.auto_setup.label }}</span>
+          </label>
+        </div>
+        <div class="muted">{{ form.auto_setup.help_text }}</div>
+      </div>
       <div class="actions">
         <button class="btn primary" type="submit">Genera app</button>
         <a class="btn" href="/workbench/">Annulla</a>
@@ -87,6 +96,39 @@
           urls.py gia aggiornato.
         {% endif %}
       </div>
+
+      {% if setup_result %}
+        <h3>Setup automatico</h3>
+        {% if setup_result.ok %}
+          <div class="success-box">
+            Setup completato: migrazioni create e applicate.
+          </div>
+        {% else %}
+          <div class="warning-box">
+            Setup automatico non completato. L'app e stata creata, ma alcuni comandi sono falliti.
+          </div>
+        {% endif %}
+        <ul class="command-list">
+          {% for step in setup_result.steps %}
+            <li>
+              <div>
+                <strong>{{ step.command }}</strong>
+                {% if step.ok %}
+                  <span class="tag ok">OK</span>
+                {% else %}
+                  <span class="tag err">KO</span>
+                {% endif %}
+              </div>
+              <pre class="command-output">{{ step.output }}</pre>
+            </li>
+          {% endfor %}
+        </ul>
+      {% elif not auto_setup_requested %}
+        <div class="note">
+          Setup automatico disattivato. Esegui manualmente:
+          <code>python manage.py makemigrations {{ result.app_name }} && python manage.py migrate</code>
+        </div>
+      {% endif %}
 
       <div class="actions">
         <a class="btn primary" href="/{{ result.app_name }}/">Apri nuova app</a>

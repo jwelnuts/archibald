@@ -13,7 +13,7 @@ from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import Resolver404, resolve
 
-from .app_builder import AppBuilderError, generate_app_from_prompt
+from .app_builder import AppBuilderError, generate_app_from_prompt, run_post_generation_setup
 from .forms import AppGeneratorForm, WorkbenchItemForm
 from .models import DebugChangeLog, WorkbenchItem
 
@@ -337,15 +337,20 @@ def ai_app_generator(request):
         return HttpResponseForbidden("Solo utenti superuser possono generare nuove app.")
 
     result = None
+    setup_result = None
+    auto_setup_requested = True
     error = None
     if request.method == "POST":
         form = AppGeneratorForm(request.POST)
         if form.is_valid():
+            auto_setup_requested = bool(form.cleaned_data.get("auto_setup"))
             try:
                 result = generate_app_from_prompt(
                     app_name=form.cleaned_data["app_name"],
                     prompt=form.cleaned_data["prompt"],
                 )
+                if auto_setup_requested:
+                    setup_result = run_post_generation_setup(result.app_name)
                 DebugChangeLog.objects.create(
                     user=request.user,
                     source="workbench.ai_app_generator",
@@ -355,7 +360,16 @@ def ai_app_generator(request):
                     object_id="-",
                     note=(
                         f"Created app at {result.app_path}. "
-                        f"Files: {', '.join(result.created_files)}"
+                        f"Files: {', '.join(result.created_files)}. "
+                        + (
+                            (
+                                "Auto setup: ok."
+                                if setup_result and setup_result.ok
+                                else "Auto setup: failed."
+                            )
+                            if auto_setup_requested
+                            else "Auto setup: skipped."
+                        )
                     )[:2000],
                 )
             except AppBuilderError as exc:
@@ -369,6 +383,8 @@ def ai_app_generator(request):
         {
             "form": form,
             "result": result,
+            "setup_result": setup_result,
+            "auto_setup_requested": auto_setup_requested,
             "error": error,
         },
     )

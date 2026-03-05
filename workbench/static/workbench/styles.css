@@ -539,6 +539,46 @@ body {
   color: #7b1d16;
 }
 
+.success-box {
+  border: 1px solid #98d5c4;
+  background: #edfbf6;
+  padding: 14px;
+  border-radius: 12px;
+  margin: 18px 0;
+  color: #0f4f3f;
+}
+
+.command-list {
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.command-list li {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f7fbfa;
+  padding: 12px;
+}
+
+.command-output {
+  margin: 8px 0 0;
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #163030;
+  background: #0d1f1f;
+  color: #e6f4f1;
+  font-family: "Source Code Pro", "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  max-height: 260px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
 .site-footer {
   display: flex;
   justify-content: space-between;

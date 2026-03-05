@@ -64,12 +64,54 @@
   flex-wrap: wrap;
 }
 
+.projects-dashboard-header-compact {
+  padding: 14px;
+}
+
+.projects-dashboard-header-compact .project-title-group h1 {
+  margin: 0;
+}
+
+.projects-dashboard-header-compact .project-desc {
+  margin-top: -2px;
+  font-size: 14px;
+}
+
+.projects-dashboard-list-section {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.project-list-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-list-head h2 {
+  margin: 0;
+}
+
+.project-list-count {
+  color: var(--muted);
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
 .project-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   gap: 14px;
+}
+
+.projects-dashboard-list {
+  gap: 10px;
 }
 
 .project-row {
@@ -83,6 +125,11 @@
 
 .project-row.is-archived {
   background: #efeae0;
+}
+
+.projects-dashboard-row {
+  padding: 10px;
+  gap: 8px;
 }
 
 .project-head {
@@ -128,13 +175,54 @@
   font-size: 13px;
 }
 
+.project-row-meta-primary {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.project-row-meta-secondary {
+  margin-top: 0;
+  font-size: 12px;
+}
+
 .project-row-actions {
   justify-content: flex-end;
 }
 
 .project-row-actions .btn {
-  padding: 7px 10px;
+  padding: 6px 9px;
+  font-size: 11px;
+}
+
+.project-row-accordion {
+  margin: 0;
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+}
+
+.project-row-accordion .uk-accordion-title::before {
+  margin-left: 8px;
+}
+
+.project-row-accordion-title {
   font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+
+.project-row-accordion-content {
+  margin-top: 6px;
+  display: grid;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.project-row-actions-secondary {
+  justify-content: flex-start;
 }
 
 .project-metrics {
@@ -143,11 +231,31 @@
   gap: 10px;
 }
 
+.project-metrics-secondary {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+}
+
 .metric-chip {
   border: 2px solid var(--border);
   border-radius: 6px;
   padding: 10px;
   background: #fbf7ef;
+}
+
+.project-metrics-secondary .metric-chip {
+  padding: 8px;
+}
+
+@media (max-width: 640px) {
+  .project-list-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .projects-dashboard-header-compact .project-meta {
+    justify-content: flex-start;
+  }
 }
 
 .metric-label {
@@ -161,3 +269,194 @@
   font-weight: 700;
 }
 
+.project-metrics-secondary .metric-value {
+  font-size: 14px;
+}
+
+.storyboard-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.95fr) minmax(0, 1.25fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.storyboard-panel {
+  padding: 14px;
+}
+
+.storyboard-panel h2 {
+  margin: 0 0 10px;
+  font-size: 18px;
+}
+
+.storyboard-panel-forms {
+  position: sticky;
+  top: 12px;
+}
+
+.storyboard-accordion {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.storyboard-accordion .uk-accordion-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.storyboard-accordion .uk-accordion-content {
+  margin-top: 8px;
+}
+
+.storyboard-panel .form {
+  margin-top: 0;
+  gap: 10px;
+}
+
+.storyboard-panel .field label {
+  font-size: 12px;
+}
+
+.storyboard-panel .field input,
+.storyboard-panel .field select,
+.storyboard-panel .field textarea {
+  padding: 7px 8px;
+  font-size: 13px;
+}
+
+.storyboard-panel .actions .btn {
+  padding: 6px 10px;
+  font-size: 11px;
+}
+
+.storyboard-log-region {
+  display: grid;
+  gap: 10px;
+}
+
+.storyboard-filter-form {
+  margin-top: 0;
+  gap: 10px;
+}
+
+.storyboard-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.storyboard-filter-chips .uk-button {
+  min-height: 28px;
+  box-shadow: none;
+  border-width: 1px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.storyboard-filter-actions {
+  align-items: end;
+  margin-top: auto;
+}
+
+.storyboard-log-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+}
+
+.storyboard-log-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 72vh;
+  overflow: auto;
+}
+
+.storyboard-log-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 5px;
+}
+
+.storyboard-log-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.storyboard-log-head .uk-label {
+  font-size: 10px;
+  line-height: 1.1;
+  padding: 2px 8px;
+}
+
+.kind-note .uk-label {
+  background: #1e87f0;
+}
+
+.kind-task .uk-label {
+  background: #f59e0b;
+}
+
+.kind-planner .uk-label {
+  background: #14b8a6;
+}
+
+.kind-transaction .uk-label {
+  background: #334155;
+}
+
+.storyboard-log-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.storyboard-log-subtitle {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.storyboard-log-body {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.storyboard-log-body.is-html > * {
+  margin-top: 0;
+  margin-bottom: 4px;
+}
+
+.storyboard-log-body.is-html > *:last-child {
+  margin-bottom: 0;
+}
+
+.storyboard-log-item .uk-button-text {
+  font-size: 12px;
+}
+
+@media (max-width: 1120px) {
+  .storyboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .storyboard-panel-forms {
+    position: static;
+  }
+
+  .storyboard-log-list {
+    max-height: none;
+  }
+}

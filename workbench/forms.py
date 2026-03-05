@@ -29,3 +29,9 @@ class AppGeneratorForm(forms.Form):
             }
         ),
     )
+    auto_setup = forms.BooleanField(
+        required=False,
+        initial=True,
+        label="Esegui setup automatico",
+        help_text="Dopo la generazione avvia makemigrations + migrate in automatico.",
+    )

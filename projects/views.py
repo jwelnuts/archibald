@@ -1,6 +1,11 @@
+from datetime import date, datetime, time
+
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Max, Min, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.utils.dateparse import parse_date
+from django.utils.html import strip_tags
 
 from contacts.models import Contact
 from contacts.services import ensure_legacy_records_for_contact, upsert_contact
@@ -12,6 +17,16 @@ from .models import Category, Customer, Project, ProjectNote, ProjectHeroActions
 from .storyboard_forms import StoryboardPlannerForm, StoryboardTaskForm
 from core.hero_actions import HERO_ACTIONS
 from core.models import UserHeroActionsConfig
+
+
+STORYBOARD_ACTIVITY_KINDS = {
+    "all": "Tutto",
+    "note": "Appunti",
+    "task": "Task",
+    "planner": "Reminder",
+    "transaction": "Transazioni",
+}
+
 
 # Helpers
 def _choice_counts(queryset, field_name, enum_class):
@@ -37,6 +52,205 @@ def _resolve_hero_actions(user, module, override_config=None):
             return set(allowed)
     defaults = HERO_ACTIONS.get(module, [])
     return {action["key"] for action in defaults if action.get("default")}
+
+
+def _as_sort_datetime(value):
+    if isinstance(value, datetime):
+        if timezone.is_naive(value):
+            return timezone.make_aware(value, timezone.get_current_timezone())
+        return value
+    if isinstance(value, date):
+        return timezone.make_aware(datetime.combine(value, time.min), timezone.get_current_timezone())
+    return timezone.now()
+
+
+def _storyboard_filters_from_request(request):
+    kind = (request.GET.get("kind") or "all").strip().lower()
+    if kind not in STORYBOARD_ACTIVITY_KINDS:
+        kind = "all"
+    query = (request.GET.get("q") or "").strip()
+    date_from_raw = (request.GET.get("date_from") or "").strip()
+    date_to_raw = (request.GET.get("date_to") or "").strip()
+    date_from = parse_date(date_from_raw) if date_from_raw else None
+    date_to = parse_date(date_to_raw) if date_to_raw else None
+    if date_from and date_to and date_from > date_to:
+        date_from, date_to = date_to, date_from
+        date_from_raw, date_to_raw = date_from.isoformat(), date_to.isoformat()
+    return {
+        "kind": kind,
+        "q": query,
+        "date_from": date_from,
+        "date_to": date_to,
+        "date_from_raw": date_from_raw if date_from else "",
+        "date_to_raw": date_to_raw if date_to else "",
+    }
+
+
+def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80, result_limit=120):
+    from planner.models import PlannerItem
+    from todo.models import Task
+    from transactions.models import Transaction
+
+    query = filters["q"]
+    date_from = filters["date_from"]
+    date_to = filters["date_to"]
+    selected_kind = filters["kind"]
+
+    notes_qs = ProjectNote.objects.filter(owner=user, project=project)
+    if query:
+        notes_qs = notes_qs.filter(content__icontains=query)
+    if date_from:
+        notes_qs = notes_qs.filter(created_at__date__gte=date_from)
+    if date_to:
+        notes_qs = notes_qs.filter(created_at__date__lte=date_to)
+
+    tasks_qs = Task.objects.filter(owner=user, project=project)
+    if query:
+        tasks_qs = tasks_qs.filter(Q(title__icontains=query) | Q(note__icontains=query))
+    if date_from:
+        tasks_qs = tasks_qs.filter(Q(due_date__gte=date_from) | Q(due_date__isnull=True, created_at__date__gte=date_from))
+    if date_to:
+        tasks_qs = tasks_qs.filter(Q(due_date__lte=date_to) | Q(due_date__isnull=True, created_at__date__lte=date_to))
+
+    planner_qs = PlannerItem.objects.filter(owner=user, project=project)
+    if query:
+        planner_qs = planner_qs.filter(Q(title__icontains=query) | Q(note__icontains=query))
+    if date_from:
+        planner_qs = planner_qs.filter(
+            Q(due_date__gte=date_from) | Q(due_date__isnull=True, created_at__date__gte=date_from)
+        )
+    if date_to:
+        planner_qs = planner_qs.filter(
+            Q(due_date__lte=date_to) | Q(due_date__isnull=True, created_at__date__lte=date_to)
+        )
+
+    transactions_qs = Transaction.objects.filter(owner=user, project=project).select_related(
+        "currency", "payee", "income_source"
+    )
+    if query:
+        transactions_qs = transactions_qs.filter(
+            Q(note__icontains=query) | Q(payee__name__icontains=query) | Q(income_source__name__icontains=query)
+        )
+    if date_from:
+        transactions_qs = transactions_qs.filter(date__gte=date_from)
+    if date_to:
+        transactions_qs = transactions_qs.filter(date__lte=date_to)
+
+    counts = {
+        "note": notes_qs.count(),
+        "task": tasks_qs.count(),
+        "planner": planner_qs.count(),
+        "transaction": transactions_qs.count(),
+    }
+
+    items_by_kind = {
+        "note": [],
+        "task": [],
+        "planner": [],
+        "transaction": [],
+    }
+
+    for note in notes_qs.order_by("-created_at", "-id")[:per_kind_limit]:
+        items_by_kind["note"].append(
+            {
+                "kind": "note",
+                "kind_label": "Appunto",
+                "sort_at": _as_sort_datetime(note.created_at),
+                "display_at": note.created_at,
+                "display_has_time": True,
+                "title": "Appunto progetto",
+                "subtitle": note.created_at.strftime("%d/%m/%Y %H:%M"),
+                "description_html": note.content,
+                "description_text": strip_tags(note.content).strip(),
+                "attachment_url": note.attachment.url if note.attachment else "",
+                "attachment_label": "Apri allegato",
+            }
+        )
+
+    for task in tasks_qs.order_by("-due_date", "-created_at", "-id")[:per_kind_limit]:
+        due_or_created = task.due_date or task.created_at.date()
+        items_by_kind["task"].append(
+            {
+                "kind": "task",
+                "kind_label": "Task",
+                "sort_at": _as_sort_datetime(due_or_created),
+                "display_at": due_or_created,
+                "display_has_time": False,
+                "title": task.title,
+                "subtitle": f"{task.get_status_display()} · Priorita {task.get_priority_display()}",
+                "description_text": task.note,
+                "description_html": "",
+                "attachment_url": "",
+                "attachment_label": "",
+            }
+        )
+
+    for item in planner_qs.order_by("-due_date", "-created_at", "-id")[:per_kind_limit]:
+        due_or_created = item.due_date or item.created_at.date()
+        items_by_kind["planner"].append(
+            {
+                "kind": "planner",
+                "kind_label": "Reminder",
+                "sort_at": _as_sort_datetime(due_or_created),
+                "display_at": due_or_created,
+                "display_has_time": False,
+                "title": item.title,
+                "subtitle": item.get_status_display(),
+                "description_text": item.note,
+                "description_html": "",
+                "attachment_url": "",
+                "attachment_label": "",
+            }
+        )
+
+    for tx in transactions_qs.order_by("-date", "-id")[:per_kind_limit]:
+        actor = tx.payee.name if tx.payee else tx.income_source.name if tx.income_source else ""
+        subtitle = f"{tx.get_tx_type_display()} · {tx.amount} {tx.currency.code}"
+        if actor:
+            subtitle = f"{subtitle} · {actor}"
+        items_by_kind["transaction"].append(
+            {
+                "kind": "transaction",
+                "kind_label": "Transazione",
+                "sort_at": _as_sort_datetime(tx.date),
+                "display_at": tx.date,
+                "display_has_time": False,
+                "title": subtitle,
+                "subtitle": tx.date.strftime("%d/%m/%Y"),
+                "description_text": tx.note,
+                "description_html": "",
+                "attachment_url": tx.attachment.url if tx.attachment else "",
+                "attachment_label": "Apri ricevuta",
+            }
+        )
+
+    if selected_kind == "all":
+        selected_items = []
+        for kind in ("transaction", "note", "task", "planner"):
+            selected_items.extend(items_by_kind[kind])
+    else:
+        selected_items = list(items_by_kind[selected_kind])
+
+    selected_items.sort(key=lambda item: item["sort_at"], reverse=True)
+    selected_items = selected_items[:result_limit]
+
+    total_count = counts.get(selected_kind, 0) if selected_kind != "all" else sum(counts.values())
+    result_count = len(selected_items)
+    return {
+        "activity_filters": filters,
+        "activity_kind_choices": [
+            {
+                "key": key,
+                "label": label,
+                "total": (sum(counts.values()) if key == "all" else counts.get(key, 0)),
+            }
+            for key, label in STORYBOARD_ACTIVITY_KINDS.items()
+        ],
+        "activity_counts": counts,
+        "activity_items": selected_items,
+        "activity_result_count": result_count,
+        "activity_total_count": total_count,
+    }
 
 
 # Create your views here.
@@ -310,63 +524,8 @@ def project_storyboard(request):
         note_form = ProjectNoteForm()
         task_form = StoryboardTaskForm(prefix="task")
         planner_form = StoryboardPlannerForm(prefix="planner")
-
-    from planner.models import PlannerItem
-    from todo.models import Task
-    from transactions.models import Transaction
-
-    transactions = (
-        Transaction.objects.filter(owner=request.user, project=project)
-        .select_related("currency", "payee", "income_source")
-        .order_by("-date", "-id")[:50]
-    )
-    planner_items = (
-        PlannerItem.objects.filter(owner=request.user, project=project)
-        .order_by("-due_date", "-created_at", "-id")[:50]
-    )
-    tasks = (
-        Task.objects.filter(owner=request.user, project=project)
-        .order_by("-due_date", "-created_at", "-id")[:50]
-    )
-
-    actions = []
-    for tx in transactions:
-        label = f"{tx.get_tx_type_display()} · {tx.amount} {tx.currency.code}"
-        if tx.payee:
-            label = f"{label} · {tx.payee.name}"
-        elif tx.income_source:
-            label = f"{label} · {tx.income_source.name}"
-        actions.append({
-            "date": tx.date,
-            "title": "Transazione",
-            "label": label,
-            "note": tx.note,
-        })
-
-    for item in planner_items:
-        date = item.due_date or item.created_at.date()
-        actions.append({
-            "date": date,
-            "title": "Planner",
-            "label": f"{item.title} · {item.get_status_display()}",
-            "note": item.note,
-        })
-
-    for task in tasks:
-        date = task.due_date or task.created_at.date()
-        actions.append({
-            "date": date,
-            "title": "Task",
-            "label": f"{task.title} · {task.get_status_display()}",
-            "note": task.note,
-        })
-
-    actions.sort(key=lambda row: row["date"], reverse=True)
-
-    notes = (
-        ProjectNote.objects.filter(owner=request.user, project=project)
-        .order_by("-created_at")
-    )
+    activity_filters = _storyboard_filters_from_request(request)
+    activity_context = _build_storyboard_activity_context(request.user, project, activity_filters)
     override = ProjectHeroActionsConfig.objects.filter(user=request.user, project=project).first()
     override_config = override.config if override else {}
     module_key = "projects_storyboard"
@@ -383,13 +542,25 @@ def project_storyboard(request):
         "task_form": task_form,
         "planner_form": planner_form,
         "active_form": active_form,
-        "notes": notes,
-        "actions": actions,
         "hero_actions_override": override_config,
         "allowed_actions": allowed_actions,
         "hidden_actions": hidden_actions,
     }
+    context.update(activity_context)
     return render(request, "projects/storyboard.html", context)
+
+
+@login_required
+def project_storyboard_log(request):
+    project_id = request.GET.get("id")
+    if not project_id:
+        return redirect("/projects/")
+
+    project = get_object_or_404(Project, id=project_id, owner=request.user)
+    activity_filters = _storyboard_filters_from_request(request)
+    context = {"project": project}
+    context.update(_build_storyboard_activity_context(request.user, project, activity_filters))
+    return render(request, "projects/partials/storyboard_log.html", context)
 
 
 @login_required

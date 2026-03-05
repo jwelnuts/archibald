@@ -4,6 +4,8 @@ import json
 import keyword
 import os
 import re
+import subprocess
+import sys
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
@@ -52,6 +54,20 @@ class AppBuildResult:
     urls_updated: bool
 
 
+@dataclass
+class SetupCommandResult:
+    command: str
+    ok: bool
+    output: str
+    return_code: int
+
+
+@dataclass
+class PostGenerationSetupResult:
+    ok: bool
+    steps: list[SetupCommandResult]
+
+
 def generate_app_from_prompt(app_name: str, prompt: str) -> AppBuildResult:
     normalized_name = normalize_app_name(app_name)
     target_dir = settings.BASE_DIR / normalized_name
@@ -76,6 +92,64 @@ def generate_app_from_prompt(app_name: str, prompt: str) -> AppBuildResult:
         settings_updated=settings_updated,
         urls_updated=urls_updated,
     )
+
+
+def run_post_generation_setup(app_name: str) -> PostGenerationSetupResult:
+    commands = [
+        ["makemigrations", app_name, "--noinput"],
+        ["migrate", "--noinput"],
+    ]
+    steps: list[SetupCommandResult] = []
+
+    for args in commands:
+        step = _run_manage_command(args)
+        steps.append(step)
+        if not step.ok:
+            break
+
+    expected_steps = len(commands)
+    overall_ok = len(steps) == expected_steps and all(step.ok for step in steps)
+    return PostGenerationSetupResult(ok=overall_ok, steps=steps)
+
+
+def _run_manage_command(args: list[str], timeout_seconds: int = 180) -> SetupCommandResult:
+    manage_path = settings.BASE_DIR / "manage.py"
+    display = f"{Path(sys.executable).name} manage.py {' '.join(args)}"
+    command = [sys.executable, str(manage_path), *args]
+
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=settings.BASE_DIR,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=timeout_seconds,
+            check=False,
+        )
+        output = (completed.stdout or "").strip() or "(nessun output)"
+        return SetupCommandResult(
+            command=display,
+            ok=completed.returncode == 0,
+            output=output,
+            return_code=completed.returncode,
+        )
+    except subprocess.TimeoutExpired as exc:
+        timeout_output = (exc.stdout or "").strip() if isinstance(exc.stdout, str) else ""
+        output = (timeout_output + "\nTimeout durante l'esecuzione del comando.").strip()
+        return SetupCommandResult(
+            command=display,
+            ok=False,
+            output=output or "Timeout durante l'esecuzione del comando.",
+            return_code=124,
+        )
+    except OSError as exc:
+        return SetupCommandResult(
+            command=display,
+            ok=False,
+            output=f"Errore esecuzione comando: {exc}",
+            return_code=127,
+        )
 
 
 def normalize_app_name(raw_name: str) -> str:

@@ -62,6 +62,50 @@ class ProjectStoryboardFormsTests(TestCase):
         self.assertEqual(planner_item.project_id, self.project.id)
 
 
+class ProjectStoryboardLogTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="storyboard_log_user", password="test1234")
+        self.client.login(username="storyboard_log_user", password="test1234")
+        self.project = Project.objects.create(owner=self.user, name="Project Log")
+        self.currency, _ = Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
+        self.account = Account.objects.create(
+            owner=self.user,
+            name="Conto Storyboard",
+            kind=Account.Kind.BANK,
+            currency=self.currency,
+            opening_balance=Decimal("0.00"),
+            is_active=True,
+        )
+        ProjectNote.objects.create(owner=self.user, project=self.project, content="<p>Nota storyboard</p>")
+        Task.objects.create(owner=self.user, project=self.project, title="Task storyboard", status=Task.Status.OPEN)
+        PlannerItem.objects.create(
+            owner=self.user, project=self.project, title="Reminder storyboard", status=PlannerItem.Status.PLANNED
+        )
+        Transaction.objects.create(
+            owner=self.user,
+            tx_type=Transaction.Type.EXPENSE,
+            date=date(2026, 2, 10),
+            amount=Decimal("12.50"),
+            currency=self.currency,
+            account=self.account,
+            project=self.project,
+            note="Spesa storyboard",
+        )
+
+    def test_storyboard_log_kind_filter(self):
+        response = self.client.get(f"/projects/storyboard/log?id={self.project.id}&kind=note")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Appunto progetto")
+        self.assertNotContains(response, "Task storyboard")
+        self.assertNotContains(response, "Reminder storyboard")
+
+    def test_storyboard_log_search_filter(self):
+        response = self.client.get(f"/projects/storyboard/log?id={self.project.id}&q=Spesa")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Spesa storyboard")
+        self.assertNotContains(response, "Nessuna voce trovata")
+
+
 class ProjectDashboardContextTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="proj_dash_user", password="test1234")
