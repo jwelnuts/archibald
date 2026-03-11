@@ -1,7 +1,7 @@
 from datetime import date, timedelta
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -93,6 +93,12 @@ def _week_stats(owner, week_start: date):
         "done": count_map.get(RoutineCheck.Status.DONE, 0),
         "skipped": count_map.get(RoutineCheck.Status.SKIPPED, 0),
     }
+
+
+def _completion_rate(done: int, total: int):
+    if total <= 0:
+        return 0.0
+    return round((done * 100.0) / total, 1)
 
 @login_required
 def dashboard(request):
@@ -235,6 +241,7 @@ def check_item(request):
             "item": item,
             "status": check.status,
             "stats": stats,
+            "data": check.data,
         }
         return render(request, "routines/partials/check_item_oob.html", context)
 
@@ -249,6 +256,110 @@ def check_item(request):
         )
 
     return redirect(f"/routines/?week={week_start.isoformat()}")
+
+
+@login_required
+def stats(request):
+    user = request.user
+    week_start = _week_start_for(request.GET.get("week"))
+    week_end = week_start + timedelta(days=6)
+
+    checks_qs = RoutineCheck.objects.filter(owner=user).select_related("item__routine")
+    stats_agg = {
+        "total": Count("id"),
+        "done": Count("id", filter=Q(status=RoutineCheck.Status.DONE)),
+        "planned": Count("id", filter=Q(status=RoutineCheck.Status.PLANNED)),
+        "skipped": Count("id", filter=Q(status=RoutineCheck.Status.SKIPPED)),
+    }
+
+    overall_raw = checks_qs.aggregate(**stats_agg)
+    overall_total = overall_raw.get("total") or 0
+    overall_done = overall_raw.get("done") or 0
+    overall_planned = overall_raw.get("planned") or 0
+    overall_skipped = overall_raw.get("skipped") or 0
+    overall_stats = {
+        "total": overall_total,
+        "done": overall_done,
+        "planned": overall_planned,
+        "skipped": overall_skipped,
+        "completion_rate": _completion_rate(overall_done, overall_total),
+    }
+
+    week_raw = checks_qs.filter(week_start=week_start).aggregate(**stats_agg)
+    week_total = week_raw.get("total") or 0
+    week_done = week_raw.get("done") or 0
+    week_planned = week_raw.get("planned") or 0
+    week_skipped = week_raw.get("skipped") or 0
+    week_stats = {
+        "total": week_total,
+        "done": week_done,
+        "planned": week_planned,
+        "skipped": week_skipped,
+        "completion_rate": _completion_rate(week_done, week_total),
+    }
+
+    trend_weeks = 8
+    trend_start = week_start - timedelta(days=7 * (trend_weeks - 1))
+    weekly_rows = (
+        checks_qs.filter(week_start__range=(trend_start, week_start))
+        .values("week_start")
+        .annotate(**stats_agg)
+        .order_by("week_start")
+    )
+    weekly_map = {row["week_start"]: row for row in weekly_rows}
+    trend = []
+    for idx in range(trend_weeks):
+        current_week = trend_start + timedelta(days=7 * idx)
+        row = weekly_map.get(current_week) or {}
+        total = row.get("total") or 0
+        done = row.get("done") or 0
+        planned = row.get("planned") or 0
+        skipped = row.get("skipped") or 0
+        trend.append(
+            {
+                "week_start": current_week,
+                "week_end": current_week + timedelta(days=6),
+                "total": total,
+                "done": done,
+                "planned": planned,
+                "skipped": skipped,
+                "completion_rate": _completion_rate(done, total),
+            }
+        )
+
+    routine_rows = (
+        checks_qs.values("item__routine__name")
+        .annotate(**stats_agg)
+        .order_by("-done", "-total", "item__routine__name")
+    )
+    routine_stats = []
+    for row in routine_rows:
+        total = row.get("total") or 0
+        done = row.get("done") or 0
+        routine_stats.append(
+            {
+                "name": row.get("item__routine__name") or "Routine",
+                "total": total,
+                "done": done,
+                "planned": row.get("planned") or 0,
+                "skipped": row.get("skipped") or 0,
+                "completion_rate": _completion_rate(done, total),
+            }
+        )
+
+    context = {
+        "week_start": week_start,
+        "week_end": week_end,
+        "prev_week": (week_start - timedelta(days=7)).isoformat(),
+        "next_week": (week_start + timedelta(days=7)).isoformat(),
+        "overall_stats": overall_stats,
+        "week_stats": week_stats,
+        "trend": trend,
+        "routine_stats": routine_stats,
+        "active_routines": Routine.objects.filter(owner=user, is_active=True).count(),
+        "active_items": RoutineItem.objects.filter(owner=user, is_active=True).count(),
+    }
+    return render(request, "routines/stats.html", context)
 
 
 @login_required
@@ -321,6 +432,7 @@ def add_item(request):
                             time_start=form.cleaned_data.get("time_start"),
                             time_end=form.cleaned_data.get("time_end"),
                             note=form.cleaned_data.get("note", ""),
+                            schema=form.cleaned_data.get("schema") or {},
                             is_active=form.cleaned_data.get("is_active", True),
                         )
                     )

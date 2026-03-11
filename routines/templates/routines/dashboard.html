@@ -13,6 +13,7 @@
           <div class="uk-flex uk-flex-wrap routines-gap-small uk-margin-small-top" id="app-actions" data-module="routines">
             <a class="uk-button uk-button-primary uk-button-small" href="/routines/api/add" data-action="add_routine">Nuova routine</a>
             <a class="uk-button uk-button-default uk-button-small" href="/routines/items/add" data-action="add_item">Nuova attivita</a>
+            <a class="uk-button uk-button-default uk-button-small" href="/routines/stats">Statistiche</a>
           </div>
         </div>
       </article>
@@ -129,9 +130,13 @@
                             </div>
                           </form>
 
-                          {% with schema_id="routine-schema-"|add:entry.item.id data_id="routine-data-"|add:entry.item.id %}
-                            {{ entry.schema_fields|default:""|json_script:schema_id }}
-                            {{ entry.data|default:""|json_script:data_id }}
+                          {% with item_id=entry.item.id|stringformat:"s" %}
+                            {% with schema_id="routine-schema-"|add:item_id data_id="routine-data-"|add:item_id data_container_id="routine-data-container-"|add:item_id %}
+                              {{ entry.schema_fields|default:""|json_script:schema_id }}
+                              <div id="{{ data_container_id }}" hidden>
+                                {{ entry.data|default:""|json_script:data_id }}
+                              </div>
+                            {% endwith %}
                           {% endwith %}
 
                           <div class="uk-margin-small-top">

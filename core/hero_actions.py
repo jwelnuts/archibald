@@ -39,6 +39,7 @@ HERO_ACTIONS = {
     "routines": [
         {"key": "add_routine", "label": "Nuova routine", "default": True},
         {"key": "add_item", "label": "Nuova attivita", "default": True},
+        {"key": "stats", "label": "Statistiche", "default": True},
     ],
     "workbench": [
         {"key": "add", "label": "Nuova voce", "default": True},

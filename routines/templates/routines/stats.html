@@ -1,0 +1,187 @@
+{% extends "routines/base.html" %}
+
+{% block title %}MIO - Statistiche Routines{% endblock %}
+
+{% block content %}
+  <div class="routines-stats-page">
+    <section class="uk-grid-small" uk-grid id="app-head">
+      <article class="uk-width-1-1 uk-width-expand@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <h1 class="uk-card-title uk-margin-remove-bottom">Statistiche routine</h1>
+          <p class="uk-text-meta uk-margin-small-top">Panoramica globale, dettaglio settimana selezionata e trend delle ultime settimane.</p>
+          <div class="uk-flex uk-flex-wrap routines-gap-small uk-margin-small-top" id="app-actions" data-module="routines">
+            <a class="uk-button uk-button-default uk-button-small" href="/routines/">Dashboard routine</a>
+            <a class="uk-button uk-button-primary uk-button-small" href="/routines/items/add" data-action="add_item">Nuova attivita</a>
+          </div>
+        </div>
+      </article>
+
+      <article class="uk-width-1-1 uk-width-2-5@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <h2 class="uk-h4 uk-margin-remove-bottom">Settimana analizzata</h2>
+          <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
+            <div>
+              <div class="uk-text-meta">Inizio</div>
+              <div class="uk-text-bold">{{ week_start|date:"d/m/Y" }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Fine</div>
+              <div class="uk-text-bold">{{ week_end|date:"d/m/Y" }}</div>
+            </div>
+          </div>
+          <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
+            <div>
+              <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/routines/stats?week={{ prev_week }}">Precedente</a>
+            </div>
+            <div>
+              <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/routines/stats?week={{ next_week }}">Successiva</a>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="uk-grid-small uk-margin-small-top routines-stats-grid" uk-grid>
+      <article class="uk-width-1-1 uk-width-1-4@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <div class="uk-text-meta">Check totali</div>
+          <div class="uk-text-bold uk-text-large">{{ overall_stats.total }}</div>
+        </div>
+      </article>
+      <article class="uk-width-1-1 uk-width-1-4@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <div class="uk-text-meta">Completamento globale</div>
+          <div class="uk-text-bold uk-text-large">{{ overall_stats.completion_rate }}%</div>
+        </div>
+      </article>
+      <article class="uk-width-1-1 uk-width-1-4@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <div class="uk-text-meta">Routine attive</div>
+          <div class="uk-text-bold uk-text-large">{{ active_routines }}</div>
+        </div>
+      </article>
+      <article class="uk-width-1-1 uk-width-1-4@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <div class="uk-text-meta">Attivita attive</div>
+          <div class="uk-text-bold uk-text-large">{{ active_items }}</div>
+        </div>
+      </article>
+    </section>
+
+    <section class="uk-grid-small uk-margin-small-top" uk-grid>
+      <article class="uk-width-1-1 uk-width-1-2@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <h2 class="uk-h4 uk-margin-small-bottom">Dettaglio settimana</h2>
+          <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+            <div>
+              <div class="uk-text-meta">Totale</div>
+              <div class="uk-text-bold">{{ week_stats.total }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Completamento</div>
+              <div class="uk-text-bold">{{ week_stats.completion_rate }}%</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Completati</div>
+              <div class="uk-text-bold">{{ week_stats.done }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Pianificati</div>
+              <div class="uk-text-bold">{{ week_stats.planned }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Saltati</div>
+              <div class="uk-text-bold">{{ week_stats.skipped }}</div>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="uk-width-1-1 uk-width-1-2@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <h2 class="uk-h4 uk-margin-small-bottom">Stato globale</h2>
+          <div class="uk-grid-small uk-child-width-1-3" uk-grid>
+            <div>
+              <div class="uk-text-meta">Completati</div>
+              <div class="uk-text-bold">{{ overall_stats.done }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Pianificati</div>
+              <div class="uk-text-bold">{{ overall_stats.planned }}</div>
+            </div>
+            <div>
+              <div class="uk-text-meta">Saltati</div>
+              <div class="uk-text-bold">{{ overall_stats.skipped }}</div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="uk-grid-small uk-margin-small-top" uk-grid>
+      <article class="uk-width-1-1 uk-width-3-5@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <h2 class="uk-h4 uk-margin-small-bottom">Trend ultime 8 settimane</h2>
+          <div class="routines-stats-table-wrap">
+            <table class="uk-table uk-table-small uk-table-divider routines-stats-table">
+              <thead>
+                <tr>
+                  <th>Settimana</th>
+                  <th class="uk-text-center">Totale</th>
+                  <th class="uk-text-center">Done</th>
+                  <th class="uk-text-center">Planned</th>
+                  <th class="uk-text-center">Skipped</th>
+                  <th class="uk-text-right">Completion</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in trend %}
+                  <tr>
+                    <td>{{ row.week_start|date:"d/m" }} - {{ row.week_end|date:"d/m" }}</td>
+                    <td class="uk-text-center">{{ row.total }}</td>
+                    <td class="uk-text-center">{{ row.done }}</td>
+                    <td class="uk-text-center">{{ row.planned }}</td>
+                    <td class="uk-text-center">{{ row.skipped }}</td>
+                    <td class="uk-text-right">{{ row.completion_rate }}%</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </article>
+
+      <article class="uk-width-1-1 uk-width-2-5@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body routines-card">
+          <h2 class="uk-h4 uk-margin-small-bottom">Rendimento per routine</h2>
+          {% if routine_stats %}
+            <div class="routines-stats-table-wrap">
+              <table class="uk-table uk-table-small uk-table-divider routines-stats-table">
+                <thead>
+                  <tr>
+                    <th>Routine</th>
+                    <th class="uk-text-center">Done</th>
+                    <th class="uk-text-center">Totale</th>
+                    <th class="uk-text-right">Completion</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in routine_stats %}
+                    <tr>
+                      <td>{{ row.name }}</td>
+                      <td class="uk-text-center">{{ row.done }}</td>
+                      <td class="uk-text-center">{{ row.total }}</td>
+                      <td class="uk-text-right">{{ row.completion_rate }}%</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessun check registrato finora.</div>
+          {% endif %}
+        </div>
+      </article>
+    </section>
+  </div>
+{% endblock %}
