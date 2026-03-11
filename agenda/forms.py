@@ -74,19 +74,27 @@ class AgendaItemForm(forms.ModelForm):
 
 
 class WorkLogForm(forms.ModelForm):
+    lunch_break_minutes = forms.IntegerField(required=False, min_value=0, max_value=480, initial=0)
+
     class Meta:
         model = WorkLog
-        fields = ("work_date", "time_start", "time_end", "note")
+        fields = ("work_date", "time_start", "time_end", "lunch_break_minutes", "note")
         widgets = {
             "work_date": forms.DateInput(attrs={"class": "date-field", "placeholder": "Seleziona data"}),
             "time_start": forms.TimeInput(attrs={"type": "time", "step": "300"}),
             "time_end": forms.TimeInput(attrs={"type": "time", "step": "300"}),
+            "lunch_break_minutes": forms.NumberInput(attrs={"min": "0", "max": "480", "step": "5"}),
+        }
+        labels = {
+            "lunch_break_minutes": "Pausa pranzo (minuti)",
         }
 
     def clean(self):
         cleaned_data = super().clean()
         time_start = cleaned_data.get("time_start")
         time_end = cleaned_data.get("time_end")
+        lunch_break_minutes = cleaned_data.get("lunch_break_minutes") or 0
+        cleaned_data["lunch_break_minutes"] = int(lunch_break_minutes)
 
         if not time_start:
             self.add_error("time_start", "Inserisci l'orario di inizio.")
@@ -102,7 +110,18 @@ class WorkLogForm(forms.ModelForm):
         start_dt = datetime.combine(datetime.min.date(), time_start)
         end_dt = datetime.combine(datetime.min.date(), time_end)
         total_minutes = int((end_dt - start_dt).total_seconds() // 60)
-        hours = (Decimal(total_minutes) / Decimal("60")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if lunch_break_minutes < 0:
+            self.add_error("lunch_break_minutes", "La pausa non puo essere negativa.")
+            return cleaned_data
+        if lunch_break_minutes > 480:
+            self.add_error("lunch_break_minutes", "La pausa non puo superare 480 minuti.")
+            return cleaned_data
+        if lunch_break_minutes >= total_minutes:
+            self.add_error("lunch_break_minutes", "La pausa deve essere inferiore all'intervallo lavorato.")
+            return cleaned_data
+
+        worked_minutes = total_minutes - int(lunch_break_minutes)
+        hours = (Decimal(worked_minutes) / Decimal("60")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
         if hours <= Decimal("0"):
             self.add_error("time_end", "Inserisci un intervallo orario valido.")

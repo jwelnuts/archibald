@@ -41,6 +41,7 @@ class WorkLog(OwnedModel, TimeStampedModel):
     work_date = models.DateField()
     time_start = models.TimeField(null=True, blank=True)
     time_end = models.TimeField(null=True, blank=True)
+    lunch_break_minutes = models.PositiveSmallIntegerField(default=0)
     hours = models.DecimalField(max_digits=5, decimal_places=2)
     note = models.TextField(blank=True)
 

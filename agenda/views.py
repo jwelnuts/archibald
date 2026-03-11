@@ -136,6 +136,7 @@ def dashboard(request):
                     defaults={
                         "time_start": work_form.cleaned_data["time_start"],
                         "time_end": work_form.cleaned_data["time_end"],
+                        "lunch_break_minutes": work_form.cleaned_data["lunch_break_minutes"],
                         "hours": work_form.cleaned_data["hours"],
                         "note": work_form.cleaned_data["note"],
                     },
@@ -309,13 +310,16 @@ def dashboard(request):
         time_text = ""
         if log.time_start and log.time_end:
             time_text = f"{log.time_start.strftime('%H:%M')}-{log.time_end.strftime('%H:%M')}"
+        meta = f"{_hours_label(log.hours)}h"
+        if log.lunch_break_minutes:
+            meta = f"{meta} · pausa {log.lunch_break_minutes}m"
         events_map[log.work_date].append(
             {
                 "kind": "worklog",
                 "label": "Ore lavoro",
                 "title": "Ore lavorate",
                 "time": time_text,
-                "meta": f"{_hours_label(log.hours)}h",
+                "meta": meta,
                 "is_agenda_item": False,
             }
         )

@@ -4,8 +4,13 @@ from common.models import OwnedModel, TimeStampedModel
 
 
 class ArchibaldThread(OwnedModel, TimeStampedModel):
+    class Kind(models.TextChoices):
+        DIARY = "DIARY", "Diario"
+        TEMPORARY = "TEMPORARY", "Temporanea"
+
     title = models.CharField(max_length=120, default="Archibald")
     is_active = models.BooleanField(default=True)
+    kind = models.CharField(max_length=12, choices=Kind.choices, default=Kind.DIARY)
 
     def __str__(self):
         return self.title

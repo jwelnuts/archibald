@@ -136,7 +136,7 @@
 
     <article class="panel" id="agenda-worklog-form">
       <h2>Ore lavorate</h2>
-      <p class="muted">Inserisci orario di inizio e fine: le ore del giorno e il totale mensile si aggiornano automaticamente.</p>
+      <p class="muted">Inserisci orario di inizio/fine e, se serve, la pausa pranzo in minuti: le ore nette del giorno e il totale mensile si aggiornano automaticamente.</p>
       {% if work_form.errors %}
         <div class="warning-box">
           Controlla i campi del worklog.
@@ -145,6 +145,7 @@
             {{ work_form.work_date.errors }}
             {{ work_form.time_start.errors }}
             {{ work_form.time_end.errors }}
+            {{ work_form.lunch_break_minutes.errors }}
             {{ work_form.note.errors }}
           </div>
         </div>
@@ -163,6 +164,10 @@
         <div class="field">
           <label for="id_time_end">Orario fine</label>
           {{ work_form.time_end }}
+        </div>
+        <div class="field">
+          <label for="id_lunch_break_minutes">Pausa pranzo (minuti)</label>
+          {{ work_form.lunch_break_minutes }}
         </div>
         <div class="field">
           <label for="id_note">Nota</label>

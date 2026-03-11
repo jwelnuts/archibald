@@ -96,6 +96,7 @@ class AgendaDashboardTests(TestCase):
                 "work_date": "2026-02-12",
                 "time_start": "09:00",
                 "time_end": "15:00",
+                "lunch_break_minutes": "0",
                 "note": "Sviluppo",
             },
         )
@@ -107,6 +108,7 @@ class AgendaDashboardTests(TestCase):
                 "work_date": "2026-02-12",
                 "time_start": "09:00",
                 "time_end": "17:15",
+                "lunch_break_minutes": "0",
                 "note": "Sviluppo + review",
             },
         )
@@ -116,3 +118,38 @@ class AgendaDashboardTests(TestCase):
         self.assertEqual(log.hours, Decimal("8.25"))
         self.assertEqual(log.time_start.strftime("%H:%M"), "09:00")
         self.assertEqual(log.time_end.strftime("%H:%M"), "17:15")
+
+    def test_log_hours_subtracts_lunch_break(self):
+        self.client.login(username="agenda_user", password="test1234")
+        response = self.client.post(
+            "/agenda/?month=2026-02&selected=2026-02-13",
+            {
+                "action": "log_hours",
+                "work_date": "2026-02-13",
+                "time_start": "09:00",
+                "time_end": "18:00",
+                "lunch_break_minutes": "60",
+                "note": "Giornata completa",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        log = WorkLog.objects.get(owner=self.user, work_date="2026-02-13")
+        self.assertEqual(log.hours, Decimal("8.00"))
+        self.assertEqual(log.lunch_break_minutes, 60)
+
+    def test_log_hours_keeps_zero_break_when_field_missing(self):
+        self.client.login(username="agenda_user", password="test1234")
+        response = self.client.post(
+            "/agenda/?month=2026-02&selected=2026-02-14",
+            {
+                "action": "log_hours",
+                "work_date": "2026-02-14",
+                "time_start": "08:00",
+                "time_end": "18:00",
+                "note": "Senza pausa esplicita",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        log = WorkLog.objects.get(owner=self.user, work_date="2026-02-14")
+        self.assertEqual(log.hours, Decimal("10.00"))
+        self.assertEqual(log.lunch_break_minutes, 0)
