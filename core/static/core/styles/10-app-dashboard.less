@@ -106,11 +106,54 @@
   margin: 0;
 }
 
+.portal-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
 .portal-hint {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--muted);
+}
+
+.widget-hidden-panel {
+  border: 1px dashed rgba(165, 156, 138, 0.7);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.widget-hidden-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.widget-hidden-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.widget-restore-btn {
+  border: 1px solid rgba(165, 156, 138, 0.7);
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+
+.widget-restore-btn:hover {
+  border-color: rgba(30, 106, 91, 0.5);
+  color: var(--accent);
 }
 
 .portal {
@@ -121,6 +164,7 @@
 }
 
 .portlet {
+  position: relative;
   background: var(--panel);
   border-radius: var(--radius);
   border: 1px solid var(--border);
@@ -142,6 +186,59 @@
 .portlet.is-dragging {
   opacity: 0.6;
   cursor: grabbing;
+}
+
+.portlet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.widget-head-actions {
+  display: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.widget-move-btn {
+  border: 1px solid rgba(165, 156, 138, 0.7);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.widget-move-btn:hover {
+  border-color: rgba(30, 106, 91, 0.65);
+  color: var(--accent);
+}
+
+.widget-hide-btn {
+  border: 1px solid rgba(185, 28, 28, 0.4);
+  color: #9f1239;
+  background: rgba(254, 242, 242, 0.9);
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.widget-hide-btn:hover {
+  border-color: rgba(185, 28, 28, 0.65);
+  background: rgba(254, 226, 226, 0.95);
+}
+
+[data-dashboard-widgets].is-editing .widget-head-actions {
+  display: inline-flex;
+}
+
+[data-dashboard-widgets].is-editing .portlet {
+  border-style: dashed;
 }
 
 .portal.is-dragging .portlet {

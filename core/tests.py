@@ -1,8 +1,11 @@
+import json
+
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
 from .models import UserNavConfig
+from .views import DEFAULT_DASHBOARD_WIDGET_IDS
 
 
 class ProfileArchibaldInstructionsTests(TestCase):
@@ -132,3 +135,57 @@ class NavSettingsTests(TestCase):
         self.assertContains(page, "Wiki Team")
         self.assertContains(page, '<option value="/todo/" selected>', html=False)
         self.assertNotContains(page, '<option value="/planner/"', html=False)
+
+
+class DashboardWidgetsTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="dash_user", password="test12345")
+
+    def test_dashboard_widgets_endpoint_requires_login(self):
+        response = self.client.post(
+            "/dashboard/widgets",
+            data=json.dumps({"order": [], "hidden": []}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_dashboard_widgets_endpoint_saves_normalized_payload(self):
+        self.client.login(username="dash_user", password="test12345")
+        response = self.client.post(
+            "/dashboard/widgets",
+            data=json.dumps(
+                {
+                    "order": ["todo", "planner", "invalid_widget"],
+                    "hidden": ["planner", "invalid_widget"],
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        nav_cfg = UserNavConfig.objects.get(user=self.user)
+        dashboard_cfg = nav_cfg.config.get("dashboard_widgets", {})
+        self.assertEqual(dashboard_cfg.get("order", [])[0], "todo")
+        self.assertEqual(dashboard_cfg.get("order", [])[1], "planner")
+        self.assertIn("planner", dashboard_cfg.get("hidden", []))
+        self.assertNotIn("invalid_widget", dashboard_cfg.get("order", []))
+        self.assertNotIn("invalid_widget", dashboard_cfg.get("hidden", []))
+        self.assertGreaterEqual(len(dashboard_cfg.get("order", [])), len(DEFAULT_DASHBOARD_WIDGET_IDS))
+
+    def test_dashboard_context_uses_saved_widget_layout(self):
+        self.client.login(username="dash_user", password="test12345")
+        UserNavConfig.objects.create(
+            user=self.user,
+            config={
+                "dashboard_widgets": {
+                    "order": ["vault", "todo"],
+                    "hidden": ["todo"],
+                }
+            },
+        )
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        widgets = response.context["dashboard_widgets"]
+        self.assertEqual(widgets[0]["id"], "vault")
+        todo_widget = next(row for row in widgets if row["id"] == "todo")
+        self.assertTrue(todo_widget["hidden"])

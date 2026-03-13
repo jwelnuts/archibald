@@ -2,11 +2,33 @@ import { startStimulus } from "./stimulus.js";
 
 startStimulus().catch(() => {});
 
-const portal = document.getElementById("portal");
+const getCsrfToken = () => {
+  const match = document.cookie.match(/csrftoken=([^;]+)/);
+  return match ? match[1] : "";
+};
 
-const setupPortalDrag = () => {
-  if (!portal) return;
+const portal = document.getElementById("portal");
+const dashboardWidgetsRoot = document.querySelector("[data-dashboard-widgets]");
+
+const setupDashboardWidgets = () => {
+  if (!portal || !dashboardWidgetsRoot) return;
+
+  const saveUrl = dashboardWidgetsRoot.getAttribute("data-save-url") || "";
+  const filterWrap = document.querySelector("[data-portal-filter]");
+  const chips = filterWrap ? filterWrap.querySelectorAll(".filter-chip") : [];
+  const editToggle = dashboardWidgetsRoot.querySelector("[data-widget-edit-toggle]");
+  const resetButton = dashboardWidgetsRoot.querySelector("[data-widget-reset]");
+  const statusLabel = dashboardWidgetsRoot.querySelector("[data-widget-status]");
+  const hiddenPanel = dashboardWidgetsRoot.querySelector("[data-widget-hidden-panel]");
+  const hiddenList = dashboardWidgetsRoot.querySelector("[data-widget-hidden-list]");
+
   let dragging = null;
+  let activeFilter = "all";
+  let editMode = false;
+  let saveTimer = null;
+
+  const cards = () => Array.from(portal.querySelectorAll("[data-widget-card]"));
+  const initialOrder = cards().map((card) => card.getAttribute("data-widget-id"));
 
   const getDragAfterElement = (container, y) => {
     const elements = [...container.querySelectorAll(".portlet:not(.is-dragging):not(.is-hidden)")];
@@ -23,26 +45,191 @@ const setupPortalDrag = () => {
     ).element;
   };
 
-  portal.querySelectorAll(".portlet").forEach((card) => {
-    card.setAttribute("draggable", "true");
-    card.addEventListener("dragstart", (event) => {
-      dragging = card;
-      card.classList.add("is-dragging");
-      portal.classList.add("is-dragging");
-      if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = "move";
-        event.dataTransfer.setData("text/plain", "");
-      }
+  const refreshStatus = () => {
+    if (!statusLabel) return;
+    const hiddenCount = cards().filter((card) => card.classList.contains("is-user-hidden")).length;
+    statusLabel.textContent = editMode
+      ? `Personalizzazione attiva · ${hiddenCount} nascosti`
+      : "Drag & drop attivo";
+  };
+
+  const refreshHiddenPanel = () => {
+    if (!hiddenPanel || !hiddenList) return;
+    const hiddenCards = cards().filter((card) => card.classList.contains("is-user-hidden"));
+    hiddenList.innerHTML = "";
+    if (!hiddenCards.length) {
+      hiddenPanel.hidden = true;
+      return;
+    }
+    hiddenPanel.hidden = false;
+    hiddenCards.forEach((card) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "widget-restore-btn";
+      button.setAttribute("data-widget-restore", card.getAttribute("data-widget-id") || "");
+      const title = card.querySelector(".portlet-title");
+      button.textContent = title ? `Ripristina ${title.textContent.trim()}` : "Ripristina widget";
+      hiddenList.appendChild(button);
     });
-    card.addEventListener("dragend", () => {
-      card.classList.remove("is-dragging");
-      portal.classList.remove("is-dragging");
-      dragging = null;
+  };
+
+  const refreshVisibility = () => {
+    cards().forEach((card) => {
+      const group = card.getAttribute("data-group");
+      const filtered = activeFilter !== "all" && group !== activeFilter;
+      card.classList.toggle("is-filter-hidden", filtered);
+      const isHidden = card.classList.contains("is-user-hidden") || filtered;
+      card.classList.toggle("is-hidden", isHidden);
+      card.setAttribute("draggable", editMode && !isHidden ? "true" : "false");
+    });
+    refreshHiddenPanel();
+    refreshStatus();
+  };
+
+  const persistWidgets = async () => {
+    if (!saveUrl) return;
+    const payload = {
+      order: cards().map((card) => card.getAttribute("data-widget-id")).filter(Boolean),
+      hidden: cards()
+        .filter((card) => card.classList.contains("is-user-hidden"))
+        .map((card) => card.getAttribute("data-widget-id"))
+        .filter(Boolean),
+    };
+
+    try {
+      await fetch(saveUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCsrfToken(),
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (_err) {
+      // ignore: UI resta utilizzabile anche offline/errore rete.
+    }
+  };
+
+  const queuePersist = () => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(persistWidgets, 220);
+  };
+
+  const setFilter = (filter) => {
+    activeFilter = filter;
+    chips.forEach((chip) => {
+      chip.classList.toggle("active", (chip.getAttribute("data-filter") || "all") === filter);
+    });
+    refreshVisibility();
+  };
+
+  const restoreWidget = (widgetId) => {
+    const target = cards().find((card) => card.getAttribute("data-widget-id") === widgetId);
+    if (!target) return;
+    target.classList.remove("is-user-hidden");
+    refreshVisibility();
+    queuePersist();
+  };
+
+  const moveWidget = (card, direction) => {
+    if (!card) return;
+    if (direction === "up") {
+      const prev = card.previousElementSibling;
+      if (prev) {
+        portal.insertBefore(card, prev);
+      }
+    } else if (direction === "down") {
+      const next = card.nextElementSibling;
+      if (next) {
+        portal.insertBefore(next, card);
+      }
+    }
+    refreshVisibility();
+    queuePersist();
+  };
+
+  chips.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      setFilter(chip.getAttribute("data-filter") || "all");
     });
   });
 
+  if (editToggle) {
+    editToggle.addEventListener("click", () => {
+      editMode = !editMode;
+      dashboardWidgetsRoot.classList.toggle("is-editing", editMode);
+      editToggle.textContent = editMode ? "Fine personalizzazione" : "Personalizza";
+      refreshVisibility();
+    });
+  }
+
+  if (resetButton) {
+    resetButton.addEventListener("click", () => {
+      initialOrder.forEach((widgetId) => {
+        const card = cards().find((row) => row.getAttribute("data-widget-id") === widgetId);
+        if (card) {
+          portal.appendChild(card);
+        }
+      });
+      cards().forEach((card) => card.classList.remove("is-user-hidden", "is-filter-hidden"));
+      setFilter("all");
+      queuePersist();
+    });
+  }
+
+  if (hiddenList) {
+    hiddenList.addEventListener("click", (event) => {
+      const btn = event.target.closest("[data-widget-restore]");
+      if (!btn) return;
+      restoreWidget(btn.getAttribute("data-widget-restore") || "");
+    });
+  }
+
+  portal.addEventListener("click", (event) => {
+    const moveButton = event.target.closest("[data-widget-move]");
+    if (moveButton && editMode) {
+      const card = moveButton.closest("[data-widget-card]");
+      moveWidget(card, moveButton.getAttribute("data-widget-move"));
+      return;
+    }
+
+    const hideButton = event.target.closest("[data-widget-hide]");
+    if (!hideButton || !editMode) return;
+    const card = hideButton.closest("[data-widget-card]");
+    if (!card) return;
+    card.classList.add("is-user-hidden");
+    refreshVisibility();
+    queuePersist();
+  });
+
+  portal.addEventListener("dragstart", (event) => {
+    if (!editMode) return;
+    const card = event.target.closest("[data-widget-card]");
+    if (!card || card.classList.contains("is-hidden")) return;
+    dragging = card;
+    card.classList.add("is-dragging");
+    portal.classList.add("is-dragging");
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", "");
+    }
+  });
+
+  portal.addEventListener("dragend", (event) => {
+    const card = event.target.closest("[data-widget-card]");
+    if (!card) return;
+    card.classList.remove("is-dragging");
+    portal.classList.remove("is-dragging");
+    if (dragging) {
+      queuePersist();
+    }
+    dragging = null;
+  });
+
   portal.addEventListener("dragover", (event) => {
-    if (!dragging) return;
+    if (!dragging || !editMode) return;
     event.preventDefault();
     const after = getDragAfterElement(portal, event.clientY);
     if (!after) {
@@ -51,34 +238,11 @@ const setupPortalDrag = () => {
       portal.insertBefore(dragging, after);
     }
   });
+
+  setFilter("all");
 };
 
-const setupPortalFilter = () => {
-  if (!portal) return;
-  const filterWrap = document.querySelector("[data-portal-filter]");
-  if (!filterWrap) return;
-
-  const chips = filterWrap.querySelectorAll(".filter-chip");
-  const applyFilter = (filter) => {
-    portal.querySelectorAll(".portlet").forEach((card) => {
-      const group = card.getAttribute("data-group");
-      const visible = filter === "all" || group === filter;
-      card.classList.toggle("is-hidden", !visible);
-    });
-  };
-
-  chips.forEach((chip) => {
-    chip.addEventListener("click", () => {
-      chips.forEach((btn) => btn.classList.remove("active"));
-      chip.classList.add("active");
-      const filter = chip.getAttribute("data-filter") || "all";
-      applyFilter(filter);
-    });
-  });
-};
-
-setupPortalDrag();
-setupPortalFilter();
+setupDashboardWidgets();
 
 const configEl = document.getElementById("hero-actions-config");
 if (configEl) {
@@ -153,11 +317,6 @@ if (dashForm && dashChat && dashPrompt && dashThread) {
     wrapper.appendChild(bubble);
     dashChat.appendChild(wrapper);
     dashChat.scrollTop = dashChat.scrollHeight;
-  };
-
-  const getCsrfToken = () => {
-    const match = document.cookie.match(/csrftoken=([^;]+)/);
-    return match ? match[1] : "";
   };
 
   dashForm.addEventListener("submit", async (event) => {

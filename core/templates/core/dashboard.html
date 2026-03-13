@@ -184,85 +184,44 @@
         </aside>
       </section>
 
-      <section class="portal-block">
+      <section class="portal-block" data-dashboard-widgets data-save-url="/dashboard/widgets">
         <div class="portal-head">
           <div>
             <h2>Moduli operativi</h2>
-            <p class="muted">Trascina per riordinare. Usa i filtri per ridurre la vista.</p>
+            <p class="muted">Layout personale: trascina per riordinare, nascondi i widget inutili e ripristinali quando vuoi.</p>
           </div>
-          <div class="portal-hint">Drag & drop attivo</div>
+          <div class="portal-controls">
+            <button class="btn" type="button" data-widget-edit-toggle>Personalizza</button>
+            <button class="btn" type="button" data-widget-reset>Reset layout</button>
+          </div>
         </div>
+        <div class="portal-hint" data-widget-status>Drag & drop attivo</div>
+
+        <div class="widget-hidden-panel" data-widget-hidden-panel hidden>
+          <div class="widget-hidden-title">Widget nascosti</div>
+          <div class="widget-hidden-list" data-widget-hidden-list></div>
+        </div>
+
         <div id="portal" class="portal">
-        <div class="portlet" data-module="income" data-group="money">
-          <div class="portlet-title">Entrate</div>
-          <p>Vista filtrata delle entrate nel Transactions Hub.</p>
-          <a class="portlet-link" href="/transactions/?tx_type=IN">Apri vista</a>
-        </div>
-        <div class="portlet" data-module="outcome" data-group="money">
-          <div class="portlet-title">Uscite</div>
-          <p>Vista filtrata delle uscite nel Transactions Hub.</p>
-          <a class="portlet-link" href="/transactions/?tx_type=OUT">Apri vista</a>
-        </div>
-        <div class="portlet" data-module="subscriptions" data-group="money">
-          <div class="portlet-title">Subscriptions</div>
-          <p>Abbonamenti attivi e scadenze chiave.</p>
-          <a class="portlet-link" href="/subs/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="finance-hub" data-group="money">
-          <div class="portlet-title">Finance Hub</div>
-          <p>Preventivi, fatture e ordini lavoro in un unico punto.</p>
-          <a class="portlet-link" href="/finance/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="contacts" data-group="ops">
-          <div class="portlet-title">Contacts</div>
-          <p>Rubrica multidimensionale di persone, clienti e fornitori.</p>
-          <a class="portlet-link" href="/contacts/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="projects" data-group="ops">
-          <div class="portlet-title">Projects</div>
-          <p>Componenti e categorie condivise.</p>
-          <a class="portlet-link" href="/projects/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="todo" data-group="planning">
-          <div class="portlet-title">Todo</div>
-          <p>Task operativi e reminder.</p>
-          <a class="portlet-link" href="/todo/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="workbench" data-group="ops">
-          <div class="portlet-title">Workbench</div>
-          <p>Strumenti di supporto e import.</p>
-          <a class="portlet-link" href="/workbench/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="ai-lab" data-group="ops">
-          <div class="portlet-title">AI Lab</div>
-          <p>Area protetta per studio e test di AI/ML.</p>
-          <a class="portlet-link" href="/ai-lab/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="vault" data-group="ops">
-          <div class="portlet-title">Vault</div>
-          <p>Dati privati con blocco TOTP dedicato.</p>
-          <a class="portlet-link" href="/vault/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="planner" data-group="planning">
-          <div class="portlet-title">Planner</div>
-          <p>Pianifica obiettivi e budget della settimana.</p>
-          <a class="portlet-link" href="/planner/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="agenda" data-group="planning">
-          <div class="portlet-title">Agenda</div>
-          <p>Calendario operativo giornaliero e ore lavorate.</p>
-          <a class="portlet-link" href="/agenda/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="routines" data-group="planning">
-          <div class="portlet-title">Routines</div>
-          <p>Ritmi operativi, check e discipline.</p>
-          <a class="portlet-link" href="/routines/">Vai al modulo</a>
-        </div>
-        <div class="portlet" data-module="transactions" data-group="money">
-          <div class="portlet-title">Transactions</div>
-          <p>Movimenti completi e dettagliati.</p>
-          <a class="portlet-link" href="/transactions/">Vai al modulo</a>
-        </div>
+          {% for widget in dashboard_widgets %}
+            <div
+              class="portlet{% if widget.hidden %} is-user-hidden is-hidden{% endif %}"
+              data-widget-card
+              data-widget-id="{{ widget.id }}"
+              data-group="{{ widget.group }}"
+            >
+              <div class="portlet-head">
+                <div class="portlet-title">{{ widget.title }}</div>
+                <div class="widget-head-actions">
+                  <button class="widget-move-btn" type="button" data-widget-move="up" title="Sposta su">Su</button>
+                  <button class="widget-move-btn" type="button" data-widget-move="down" title="Sposta giu">Giu</button>
+                  <button class="widget-hide-btn" type="button" data-widget-hide title="Nascondi widget">Nascondi</button>
+                </div>
+              </div>
+              <p>{{ widget.description }}</p>
+              <a class="portlet-link" href="{{ widget.url }}">Vai al modulo</a>
+            </div>
+          {% endfor %}
         </div>
       </section>
     </div>

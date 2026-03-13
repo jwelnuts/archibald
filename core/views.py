@@ -22,6 +22,154 @@ from todo.models import Task
 from transactions.models import Transaction
 
 
+DEFAULT_DASHBOARD_WIDGETS = [
+    {
+        "id": "transactions",
+        "title": "Transactions",
+        "description": "Movimenti completi e filtri operativi.",
+        "url": "/transactions/",
+        "group": "money",
+    },
+    {
+        "id": "finance_hub",
+        "title": "Finance Hub",
+        "description": "Preventivi, fatture e ordini lavoro.",
+        "url": "/finance/",
+        "group": "money",
+    },
+    {
+        "id": "subscriptions",
+        "title": "Subscriptions",
+        "description": "Scadenze ricorrenti e rinnovi.",
+        "url": "/subs/",
+        "group": "money",
+    },
+    {
+        "id": "accounts",
+        "title": "Accounts",
+        "description": "Conti e saldi principali.",
+        "url": "/core/accounts/",
+        "group": "money",
+    },
+    {
+        "id": "projects",
+        "title": "Projects",
+        "description": "Progetti e stato operativo.",
+        "url": "/projects/",
+        "group": "ops",
+    },
+    {
+        "id": "contacts",
+        "title": "Contacts",
+        "description": "Clienti, partner e rubriche.",
+        "url": "/contacts/",
+        "group": "ops",
+    },
+    {
+        "id": "todo",
+        "title": "Todo",
+        "description": "Task giornalieri e backlog.",
+        "url": "/todo/",
+        "group": "planning",
+    },
+    {
+        "id": "planner",
+        "title": "Planner",
+        "description": "Pianificazione settimanale.",
+        "url": "/planner/",
+        "group": "planning",
+    },
+    {
+        "id": "agenda",
+        "title": "Agenda",
+        "description": "Agenda eventi e attività.",
+        "url": "/agenda/",
+        "group": "planning",
+    },
+    {
+        "id": "routines",
+        "title": "Routines",
+        "description": "Routine e statistiche disciplina.",
+        "url": "/routines/",
+        "group": "planning",
+    },
+    {
+        "id": "archibald",
+        "title": "Archibald",
+        "description": "Assistente AI contestuale.",
+        "url": "/archibald/",
+        "group": "ops",
+    },
+    {
+        "id": "ai_lab",
+        "title": "AI Lab",
+        "description": "Esperimenti e appunti AI.",
+        "url": "/ai-lab/",
+        "group": "ops",
+    },
+    {
+        "id": "vault",
+        "title": "Vault",
+        "description": "Credenziali e note cifrate.",
+        "url": "/vault/",
+        "group": "ops",
+    },
+    {
+        "id": "workbench",
+        "title": "Workbench",
+        "description": "Tooling tecnico e generatori.",
+        "url": "/workbench/",
+        "group": "ops",
+    },
+]
+
+DEFAULT_DASHBOARD_WIDGET_IDS = [item["id"] for item in DEFAULT_DASHBOARD_WIDGETS]
+DASHBOARD_WIDGETS_BY_ID = {item["id"]: item for item in DEFAULT_DASHBOARD_WIDGETS}
+
+
+def _normalize_dashboard_widgets(raw_config):
+    if not isinstance(raw_config, dict):
+        raw_config = {}
+    raw_order = raw_config.get("order", [])
+    raw_hidden = raw_config.get("hidden", [])
+
+    order = []
+    for widget_id in raw_order:
+        if widget_id in DASHBOARD_WIDGETS_BY_ID and widget_id not in order:
+            order.append(widget_id)
+    for widget_id in DEFAULT_DASHBOARD_WIDGET_IDS:
+        if widget_id not in order:
+            order.append(widget_id)
+
+    hidden = []
+    for widget_id in raw_hidden:
+        if widget_id in DASHBOARD_WIDGETS_BY_ID and widget_id not in hidden:
+            hidden.append(widget_id)
+
+    return {"order": order, "hidden": hidden}
+
+
+def _dashboard_widgets_for_user(user):
+    nav_config, _ = UserNavConfig.objects.get_or_create(user=user)
+    raw = nav_config.config or {}
+    normalized = _normalize_dashboard_widgets(raw.get("dashboard_widgets", {}))
+    hidden_set = set(normalized["hidden"])
+    widgets = []
+    for widget_id in normalized["order"]:
+        base = DASHBOARD_WIDGETS_BY_ID[widget_id]
+        widgets.append(
+            {
+                "id": base["id"],
+                "title": base["title"],
+                "description": base["description"],
+                "url": base["url"],
+                "group": base["group"],
+                "hidden": widget_id in hidden_set,
+            }
+        )
+    return widgets
+
+
 def _calendar_events_for_range(user, start: date, end: date):
     events = {}
 
@@ -119,7 +267,32 @@ def _calendar_events_for_range(user, start: date, end: date):
 
 @login_required
 def dashboard(request):
-    return render(request, "core/dashboard.html")
+    context = {
+        "dashboard_widgets": _dashboard_widgets_for_user(request.user),
+    }
+    return render(request, "core/dashboard.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def dashboard_widgets(request):
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
+
+    order_raw = payload.get("order", [])
+    hidden_raw = payload.get("hidden", [])
+    if not isinstance(order_raw, list) or not isinstance(hidden_raw, list):
+        return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
+
+    normalized = _normalize_dashboard_widgets({"order": order_raw, "hidden": hidden_raw})
+    nav_config, _ = UserNavConfig.objects.get_or_create(user=request.user)
+    config = nav_config.config if isinstance(nav_config.config, dict) else {}
+    config["dashboard_widgets"] = normalized
+    nav_config.config = config
+    nav_config.save(update_fields=["config"])
+    return JsonResponse({"ok": True, "dashboard_widgets": normalized})
 
 
 @login_required
