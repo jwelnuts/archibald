@@ -228,6 +228,12 @@ body.routines-skin {
   gap: 14px;
 }
 
+.routines-hero-main > *,
+.routines-overview-grid > *,
+.routines-main-grid > * {
+  min-width: 0;
+}
+
 .routines-panel-head {
   display: flex;
   align-items: start;
@@ -405,6 +411,17 @@ body.routines-skin {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.routines-accordion-main {
+  min-width: 0;
+}
+
+.routines-accordion-main > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .routines-day-badge,
@@ -786,6 +803,45 @@ body.routines-skin {
 
   .routine-entry-status {
     align-self: start;
+  }
+}
+
+@media (max-width: 520px) {
+  .routines-page {
+    border-radius: 14px;
+  }
+
+  .routines-panel {
+    padding: 12px;
+  }
+
+  .routines-hero {
+    padding: 14px;
+  }
+
+  .routines-hero-title {
+    font-size: clamp(22px, 8.2vw, 30px);
+  }
+
+  .routines-week-range {
+    justify-items: start;
+  }
+
+  .routines-day-strip {
+    grid-auto-columns: minmax(78px, 1fr);
+    gap: 8px;
+  }
+
+  .routine-filter-group .uk-button {
+    flex: 1 1 100%;
+  }
+
+  .routine-action-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .routine-entry-links {
+    gap: 6px;
   }
 }
 
