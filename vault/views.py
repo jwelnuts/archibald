@@ -2,6 +2,7 @@ from datetime import timedelta
 from urllib.parse import quote
 
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -9,7 +10,7 @@ from .forms import VaultItemForm, VaultSetupForm, VaultUnlockForm
 from .models import VaultItem, VaultProfile
 from .qr import otpauth_qr_data_uri
 from .session import clear_verified, is_verified, mark_verified
-from .totp import generate_secret, provisioning_uri, verify_code
+from .totp import generate_secret, is_valid_secret, provisioning_uri, verify_code
 
 MAX_FAILED_ATTEMPTS = 5
 LOCK_MINUTES = 5
@@ -35,6 +36,27 @@ def _safe_read(value_getter):
         return value_getter()
     except ValueError:
         return "[contenuto non leggibile]"
+
+
+def _has_valid_totp_secret(profile: VaultProfile) -> bool:
+    secret = _safe_read(profile.get_totp_secret)
+    return bool(secret) and not secret.startswith("[") and is_valid_secret(secret)
+
+
+def _reset_vault_profile(profile: VaultProfile) -> None:
+    profile.totp_secret_encrypted = ""
+    profile.totp_enabled_at = None
+    profile.failed_attempts = 0
+    profile.locked_until = None
+    profile.save(
+        update_fields=[
+            "totp_secret_encrypted",
+            "totp_enabled_at",
+            "failed_attempts",
+            "locked_until",
+            "updated_at",
+        ]
+    )
 
 
 @login_required
@@ -85,7 +107,7 @@ def setup_totp(request):
     secret = ""
     if profile.totp_secret_encrypted:
         secret = _safe_read(profile.get_totp_secret)
-    if not secret or secret.startswith("["):
+    if not secret or secret.startswith("[") or not is_valid_secret(secret):
         secret = generate_secret()
         profile.set_totp_secret(secret)
         profile.save(update_fields=["totp_secret_encrypted", "updated_at"])
@@ -131,18 +153,24 @@ def unlock(request):
             form.add_error("code", f"Vault bloccato temporaneamente. Riprova tra {lock_seconds} secondi.")
         else:
             secret = _safe_read(profile.get_totp_secret)
-            if verify_code(secret, form.cleaned_data["code"]):
+            if not _has_valid_totp_secret(profile):
+                form.add_error(
+                    "code",
+                    "Configurazione TOTP non valida. Reimposta il Vault da /vault/setup.",
+                )
+            elif verify_code(secret, form.cleaned_data["code"]):
                 profile.failed_attempts = 0
                 profile.locked_until = None
                 profile.save(update_fields=["failed_attempts", "locked_until", "updated_at"])
                 mark_verified(request)
                 return redirect(request.GET.get("next") or "/vault/")
-            profile.failed_attempts = (profile.failed_attempts or 0) + 1
-            if profile.failed_attempts >= MAX_FAILED_ATTEMPTS:
-                profile.failed_attempts = 0
-                profile.locked_until = now + timedelta(minutes=LOCK_MINUTES)
-            profile.save(update_fields=["failed_attempts", "locked_until", "updated_at"])
-            form.add_error("code", "Codice non valido.")
+            else:
+                profile.failed_attempts = (profile.failed_attempts or 0) + 1
+                if profile.failed_attempts >= MAX_FAILED_ATTEMPTS:
+                    profile.failed_attempts = 0
+                    profile.locked_until = now + timedelta(minutes=LOCK_MINUTES)
+                profile.save(update_fields=["failed_attempts", "locked_until", "updated_at"])
+                form.add_error("code", "Codice non valido.")
 
     return render(
         request,
@@ -158,6 +186,26 @@ def unlock(request):
 def lock(request):
     clear_verified(request)
     return redirect("/vault/unlock")
+
+
+@login_required
+def reset_totp(request):
+    profile = _profile_for(request.user)
+    item_count = VaultItem.objects.filter(owner=request.user).count()
+    if request.method == "POST":
+        with transaction.atomic():
+            VaultItem.objects.filter(owner=request.user).delete()
+            _reset_vault_profile(profile)
+        clear_verified(request)
+        return redirect("/vault/setup")
+    return render(
+        request,
+        "vault/reset_totp.html",
+        {
+            "item_count": item_count,
+            "has_totp": bool(profile.totp_enabled_at),
+        },
+    )
 
 
 @login_required

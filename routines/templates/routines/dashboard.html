@@ -139,8 +139,9 @@
                             {% endwith %}
                           {% endwith %}
 
-                          <div class="uk-margin-small-top">
+                          <div class="uk-margin-small-top uk-flex uk-flex-wrap routines-gap-small">
                             <a class="uk-button uk-button-text uk-text-small" href="/routines/items/update?id={{ entry.item.id }}">Modifica</a>
+                            <a class="uk-button uk-button-text uk-text-small uk-text-danger" href="/routines/items/remove?id={{ entry.item.id }}">Elimina</a>
                           </div>
                       </div>
                     </article>
@@ -189,7 +190,10 @@
                       <div class="uk-text-bold uk-text-small">{{ routine.name }}</div>
                       <div class="uk-text-meta">{{ routine.description|default:"-" }}</div>
                     </div>
-                    <a class="uk-button uk-button-default uk-button-small" href="/routines/api/update?id={{ routine.id }}">Modifica</a>
+                    <div class="uk-flex uk-flex-wrap routines-gap-small">
+                      <a class="uk-button uk-button-default uk-button-small" href="/routines/api/update?id={{ routine.id }}">Modifica</a>
+                      <a class="uk-button uk-button-danger uk-button-small" href="/routines/api/remove?id={{ routine.id }}">Elimina</a>
+                    </div>
                   </div>
                 </li>
               {% endfor %}

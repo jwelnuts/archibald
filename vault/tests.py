@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from .crypto import decrypt_text, encrypt_text
 from .models import VaultItem, VaultProfile
+from .totp import is_valid_secret
 
 
 class VaultCryptoTests(TestCase):
@@ -83,3 +84,56 @@ class VaultFlowTests(TestCase):
         response = self.client.get("/vault/setup")
         self.assertEqual(response.status_code, 302)
         self.assertIn("/vault/unlock", response.url)
+
+    def test_unlock_with_invalid_totp_secret_shows_error_instead_of_crashing(self):
+        profile = VaultProfile.objects.create(owner=self.user, totp_enabled_at=timezone.now())
+        profile.set_totp_secret("secret-not-base32")
+        profile.save(update_fields=["totp_secret_encrypted", "updated_at"])
+
+        response = self.client.post("/vault/unlock", {"code": "123456"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Configurazione TOTP non valida")
+        profile.refresh_from_db()
+        self.assertEqual(profile.failed_attempts, 0)
+        self.assertIsNone(profile.locked_until)
+
+    def test_setup_regenerates_invalid_secret_before_render(self):
+        profile = VaultProfile.objects.create(owner=self.user)
+        profile.set_totp_secret("secret-not-base32")
+        profile.save(update_fields=["totp_secret_encrypted", "updated_at"])
+
+        response = self.client.get("/vault/setup")
+
+        self.assertEqual(response.status_code, 200)
+        profile.refresh_from_db()
+        self.assertTrue(is_valid_secret(profile.get_totp_secret()))
+
+    def test_unlock_page_offers_destructive_reset_link(self):
+        self._create_enabled_profile()
+
+        response = self.client.get("/vault/unlock")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '/vault/reset')
+
+    def test_reset_totp_deletes_vault_data_and_restarts_setup(self):
+        profile = self._create_enabled_profile()
+        VaultItem.objects.create(
+            owner=self.user,
+            title="Server root",
+            kind=VaultItem.Kind.PASSWORD,
+            secret_encrypted=encrypt_text("super-secret"),
+            notes_encrypted=encrypt_text("note private"),
+        )
+
+        response = self.client.post("/vault/reset")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/vault/setup")
+        self.assertEqual(VaultItem.objects.filter(owner=self.user).count(), 0)
+        profile.refresh_from_db()
+        self.assertEqual(profile.totp_secret_encrypted, "")
+        self.assertIsNone(profile.totp_enabled_at)
+        self.assertEqual(profile.failed_attempts, 0)
+        self.assertIsNone(profile.locked_until)

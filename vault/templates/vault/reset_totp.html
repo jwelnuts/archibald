@@ -1,0 +1,29 @@
+{% extends 'vault/base.html' %}
+
+{% block title %}MIO - Reset TOTP Vault{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h2>Reset TOTP</h2>
+    <p>
+      Questa operazione elimina definitivamente il contenuto del Vault e rimuove la configurazione TOTP attuale.
+    </p>
+    <div class="warning">
+      {% if item_count %}
+        Verranno cancellati {{ item_count }} record cifrati.
+      {% else %}
+        Il Vault e gia vuoto, ma la configurazione TOTP corrente verra rimossa.
+      {% endif %}
+      {% if has_totp %}
+        Dopo il reset dovrai configurare di nuovo l'Authenticator sul telefono.
+      {% endif %}
+    </div>
+    <form method="post" class="form">
+      {% csrf_token %}
+      <div class="actions">
+        <button class="btn danger" type="submit">Conferma reset totale</button>
+        <a class="btn" href="/vault/unlock">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

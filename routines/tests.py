@@ -108,6 +108,57 @@ class RoutineItemCreationTests(TestCase):
             self.assertEqual(item.schema.get("fields", [{}])[0].get("name"), "energia")
 
 
+class RoutineCrudTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="routine_crud", password="test12345")
+        self.routine = Routine.objects.create(
+            owner=self.user,
+            name="Routine iniziale",
+            description="Da aggiornare",
+            is_active=True,
+        )
+        self.item = RoutineItem.objects.create(
+            owner=self.user,
+            routine=self.routine,
+            title="Attivita iniziale",
+            weekday=0,
+            is_active=True,
+        )
+        self.client.login(username="routine_crud", password="test12345")
+
+    def test_update_routine_updates_fields(self):
+        response = self.client.post(
+            f"/routines/api/update?id={self.routine.id}",
+            {
+                "name": "Routine aggiornata",
+                "description": "Descrizione nuova",
+                "is_active": "on",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.routine.refresh_from_db()
+        self.assertEqual(self.routine.name, "Routine aggiornata")
+        self.assertEqual(self.routine.description, "Descrizione nuova")
+        self.assertTrue(self.routine.is_active)
+
+    def test_remove_routine_deletes_routine_and_items(self):
+        response = self.client.post(f"/routines/api/remove?id={self.routine.id}")
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(Routine.objects.filter(id=self.routine.id).exists())
+        self.assertFalse(RoutineItem.objects.filter(id=self.item.id).exists())
+
+    def test_dashboard_shows_edit_and_remove_links(self):
+        response = self.client.get("/routines/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f'/routines/api/update?id={self.routine.id}')
+        self.assertContains(response, f'/routines/api/remove?id={self.routine.id}')
+        self.assertContains(response, f'/routines/items/update?id={self.item.id}')
+        self.assertContains(response, f'/routines/items/remove?id={self.item.id}')
+
+
 class RoutineStatsPageTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="routine_stats", password="test12345")

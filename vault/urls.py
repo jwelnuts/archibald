@@ -7,6 +7,7 @@ urlpatterns = [
     path("setup", views.setup_totp, name="vault-setup"),
     path("unlock", views.unlock, name="vault-unlock"),
     path("lock", views.lock, name="vault-lock"),
+    path("reset", views.reset_totp, name="vault-reset"),
     path("api/add", views.add_item, name="vault-add"),
     path("api/update", views.update_item, name="vault-update"),
     path("api/remove", views.remove_item, name="vault-remove"),
