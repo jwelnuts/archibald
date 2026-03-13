@@ -117,6 +117,7 @@ def personal_lab(request):
             "sandbox_debug_text": sandbox_debug_text,
             "system_preview": system_preview,
             "psychological_field_names": ArchibaldPersonaConfigForm.PSYCHOLOGICAL_BOOLEAN_FIELDS,
+            "bias_field_names": ArchibaldPersonaConfigForm.BIAS_BOOLEAN_FIELDS,
         },
     )
 

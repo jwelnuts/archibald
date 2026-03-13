@@ -40,6 +40,14 @@ class ArchibaldPersonaConfigForm(forms.ModelForm):
         "psych_decision_simplify",
         "psych_non_judgmental_tone",
     )
+    BIAS_BOOLEAN_FIELDS = (
+        "bias_catastrophizing",
+        "bias_all_or_nothing",
+        "bias_overgeneralization",
+        "bias_mind_reading",
+        "bias_negative_filtering",
+        "bias_confirmation_bias",
+    )
 
     class Meta:
         model = ArchibaldPersonaConfig
@@ -61,6 +69,12 @@ class ArchibaldPersonaConfigForm(forms.ModelForm):
             "psych_accountability_nudge",
             "psych_decision_simplify",
             "psych_non_judgmental_tone",
+            "bias_catastrophizing",
+            "bias_all_or_nothing",
+            "bias_overgeneralization",
+            "bias_mind_reading",
+            "bias_negative_filtering",
+            "bias_confirmation_bias",
         )
         widgets = {
             "custom_instructions": forms.Textarea(

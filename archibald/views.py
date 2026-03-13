@@ -1,3 +1,4 @@
+import os
 from datetime import date, datetime
 
 from django.contrib.auth.decorators import login_required
@@ -8,17 +9,46 @@ from django.shortcuts import get_object_or_404, redirect, render
 
 from .forms import ArchibaldPromptForm
 from .models import ArchibaldMessage, ArchibaldThread
-from .openai_client import request_openai_response
-from .prompting import build_archibald_system_for_user
+from .openai_client import (
+    create_openai_conversation_with_debug,
+    request_openai_response_with_state,
+)
+from .prompting import build_archibald_system_for_user, build_cognitive_context_for_prompt
 from .services import build_context_messages, build_insight_cards
 
 MODE_DIARY = "diary"
 MODE_TEMP = "temp"
 
 
-def _openai_response(user, messages):
+def _use_conversations_api() -> bool:
+    raw = os.getenv("ARCHIBALD_USE_CONVERSATIONS", "true").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _openai_response_with_state(user, messages, thread):
     instructions = build_archibald_system_for_user(user)
-    return request_openai_response(messages, instructions)
+    conversation_id = ""
+    previous_response_id = ""
+
+    if thread is not None:
+        conversation_id = (thread.openai_conversation_id or "").strip()
+        if not conversation_id and _use_conversations_api():
+            conversation_id, _ = create_openai_conversation_with_debug()
+        if not conversation_id:
+            previous_response_id = (thread.openai_last_response_id or "").strip()
+
+    response_text, debug, state = request_openai_response_with_state(
+        messages,
+        instructions,
+        conversation_id=conversation_id,
+        previous_response_id=previous_response_id,
+        metadata={
+            "app": "archibald",
+            "thread_id": str(thread.id) if thread else "",
+            "thread_kind": thread.kind if thread else "",
+        },
+    )
+    return response_text, state, debug
 
 
 def _build_messages(history, user_text):
@@ -40,6 +70,16 @@ def _build_messages(history, user_text):
     return messages
 
 
+def _build_model_messages(user, thread, history, user_text):
+    context = build_context_messages(user, user_text)
+    cognitive_context = build_cognitive_context_for_prompt(user, user_text)
+    if cognitive_context:
+        context = [{"role": "system", "content": cognitive_context}] + context
+    if thread and (thread.openai_conversation_id or thread.openai_last_response_id):
+        return context + [{"role": "user", "content": user_text}]
+    return context + _build_messages(history, user_text)
+
+
 def _resolve_mode(raw_mode):
     mode = (raw_mode or "").strip().lower()
     if mode in {MODE_DIARY, MODE_TEMP}:
@@ -59,6 +99,7 @@ def _message_payload(msg):
         "day": msg.created_at.date().isoformat(),
         "time": msg.created_at.strftime("%H:%M"),
         "is_favorite": msg.is_favorite,
+        "openai_response_id": msg.openai_response_id,
         "created_at": msg.created_at.isoformat(),
     }
 
@@ -197,9 +238,8 @@ def dashboard(request):
                     ArchibaldMessage.objects.filter(owner=user, thread=active_thread).order_by("-created_at")[:10]
                 )
                 history.reverse()
-                messages = _build_messages(history, prompt)
-                messages = build_context_messages(user, prompt) + messages
-                response_text = _openai_response(user, messages)
+                messages = _build_model_messages(user, active_thread, history, prompt)
+                response_text, openai_state, _ = _openai_response_with_state(user, messages, active_thread)
 
                 with transaction.atomic():
                     user_msg = ArchibaldMessage.objects.create(
@@ -213,7 +253,23 @@ def dashboard(request):
                         thread=active_thread,
                         role=ArchibaldMessage.Role.ASSISTANT,
                         content=response_text,
+                        openai_response_id=(openai_state.get("response_id") or ""),
                     )
+                    updated = []
+                    response_id = (openai_state.get("response_id") or "").strip()
+                    if response_id and active_thread.openai_last_response_id != response_id:
+                        active_thread.openai_last_response_id = response_id
+                        updated.append("openai_last_response_id")
+                    conversation_id = (openai_state.get("conversation_id") or "").strip()
+                    if conversation_id and active_thread.openai_conversation_id != conversation_id:
+                        active_thread.openai_conversation_id = conversation_id
+                        updated.append("openai_conversation_id")
+                    model_name = (openai_state.get("model") or "").strip()
+                    if model_name and active_thread.openai_model != model_name:
+                        active_thread.openai_model = model_name
+                        updated.append("openai_model")
+                    if updated:
+                        active_thread.save(update_fields=updated + ["updated_at"])
 
                 if _is_ajax(request):
                     return JsonResponse(
@@ -370,8 +426,8 @@ def quick_chat(request):
 
     history = list(ArchibaldMessage.objects.filter(owner=request.user, thread=thread).order_by("-created_at")[:10])
     history.reverse()
-    messages = build_context_messages(request.user, prompt) + _build_messages(history, prompt)
-    response_text = _openai_response(request.user, messages)
+    messages = _build_model_messages(request.user, thread, history, prompt)
+    response_text, openai_state, _ = _openai_response_with_state(request.user, messages, thread)
 
     with transaction.atomic():
         user_msg = ArchibaldMessage.objects.create(
@@ -385,7 +441,23 @@ def quick_chat(request):
             thread=thread,
             role=ArchibaldMessage.Role.ASSISTANT,
             content=response_text,
+            openai_response_id=(openai_state.get("response_id") or ""),
         )
+        updated = []
+        response_id = (openai_state.get("response_id") or "").strip()
+        if response_id and thread.openai_last_response_id != response_id:
+            thread.openai_last_response_id = response_id
+            updated.append("openai_last_response_id")
+        conversation_id = (openai_state.get("conversation_id") or "").strip()
+        if conversation_id and thread.openai_conversation_id != conversation_id:
+            thread.openai_conversation_id = conversation_id
+            updated.append("openai_conversation_id")
+        model_name = (openai_state.get("model") or "").strip()
+        if model_name and thread.openai_model != model_name:
+            thread.openai_model = model_name
+            updated.append("openai_model")
+        if updated:
+            thread.save(update_fields=updated + ["updated_at"])
 
     return JsonResponse(
         {

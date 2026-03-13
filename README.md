@@ -105,6 +105,7 @@ Note Stimulus:
 ### AI e knowledge
 - `archibald` (`/archibald/`):
   - chat persistente per thread con storico giornaliero
+  - conversation state OpenAI per thread (conversation/response id persistiti)
   - favorite toggle messaggi
   - insight cards per dominio (overview, tasks, expenses, subscriptions, planner, routines, projects)
   - arricchimento contesto automatico dai dati utente (`archibald/services.py`)
@@ -186,6 +187,9 @@ Opzionali (feature specifiche):
 - `DJANGO_CSRF_TRUSTED_ORIGINS`
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL` (default: `gpt-4o-mini`)
+- `OPENAI_MODEL_ARCHIBALD` (override modello solo per Archibald, default: `gpt-5.4`)
+- `ARCHIBALD_REASONING_EFFORT` (es. `low|medium|high|xhigh`; default auto `high` su GPT-5)
+- `ARCHIBALD_USE_CONVERSATIONS` (`true|false`, default: `true`)
 - `VAULT_ENCRYPTION_KEY` (consigliata in prod)
 - `VAULT_TOTP_ISSUER` (default: `MIO Vault`)
 - `VAULT_SESSION_TIMEOUT_SECONDS` (default: `600`)

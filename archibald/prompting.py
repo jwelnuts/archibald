@@ -1,7 +1,9 @@
 ARCHIBALD_BASE_SYSTEM = (
-    "Sei Archibald, il maggiordomo personale dell'utente. "
-    "Parla in modo caldo, elegante e amichevole, come un maggiordomo fidato. "
-    "Sii chiaro e concreto, ma con un tocco di discrezione. "
+    "Sei Archibald, il maggiordomo strategico personale dell'utente, con stile ispirato ad Alfred Pennyworth. "
+    "Parla in modo elegante, riservato, lucido e affidabile: mai servile, sempre impeccabile. "
+    "Sii chiaro, concreto e proattivo, mantenendo discrezione assoluta. "
+    "Quando opportuno, anticipa rischi e colli di bottiglia e proponi piano A/piano B. "
+    "Se l'utente e' sotto pressione, priorita' prima: cosa fare ora, cosa delegare, cosa rinviare. "
     "Rimani centrato esclusivamente sulle funzionalita' di questo progetto (MIO) "
     "e sui dati disponibili nell'app; non proporre app o servizi esterni "
     "a meno che l'utente lo richieda esplicitamente. "
@@ -12,6 +14,87 @@ ARCHIBALD_BASE_SYSTEM = (
     "obiettivo, blocchi, KPI, filtri, azioni rapide e passi di implementazione. "
     "Quando richiesto esplicitamente, prepara anche JSON pronto per UI Generator."
 )
+
+
+def _enabled_bias_labels(config) -> list[str]:
+    labels = []
+    if config.bias_catastrophizing:
+        labels.append("catastrofismo")
+    if config.bias_all_or_nothing:
+        labels.append("pensiero tutto-o-nulla")
+    if config.bias_overgeneralization:
+        labels.append("sovrageneralizzazione")
+    if config.bias_mind_reading:
+        labels.append("lettura del pensiero")
+    if config.bias_negative_filtering:
+        labels.append("filtro negativo")
+    if config.bias_confirmation_bias:
+        labels.append("bias di conferma")
+    return labels
+
+
+def _detect_bias_signals(text: str) -> list[str]:
+    low = (text or "").lower()
+    if not low:
+        return []
+
+    rules = {
+        "catastrofismo": (
+            "disastro",
+            "catastrof",
+            "e finita",
+            "non ne usciro",
+            "andra mal",
+        ),
+        "pensiero tutto-o-nulla": (
+            "sempre",
+            "mai",
+            "tutto",
+            "niente",
+            "o perfetto o",
+            "o bianco o nero",
+        ),
+        "sovrageneralizzazione": (
+            "ogni volta",
+            "mi succede sempre",
+            "va sempre cosi",
+            "tutti fanno",
+        ),
+        "lettura del pensiero": (
+            "pensano che",
+            "so che lui pensa",
+            "so che lei pensa",
+            "vogliono fregarmi",
+            "sono sicuro che credono",
+        ),
+        "filtro negativo": (
+            "vedo solo problemi",
+            "non c e niente di buono",
+            "fa tutto schifo",
+            "niente funziona",
+        ),
+        "bias di conferma": (
+            "dimmi che ho ragione",
+            "conferma che",
+            "cerca prove che",
+        ),
+    }
+
+    found = []
+    for label, keywords in rules.items():
+        if any(word in low for word in keywords):
+            found.append(label)
+    return found
+
+
+def _get_persona_config(user):
+    if user is None or not getattr(user, "is_authenticated", False):
+        return None
+    try:
+        from ai_lab.models import ArchibaldPersonaConfig
+    except Exception:
+        return None
+    return ArchibaldPersonaConfig.objects.filter(owner=user).first()
 
 
 def _persona_lines(config):
@@ -64,19 +147,11 @@ def _persona_lines(config):
         lines.append("- Offri una riformulazione cognitiva utile se emergono blocchi mentali.")
     if config.psych_bias_check:
         lines.append("- Evidenzia bias cognitivi o conclusioni non supportate dai dati.")
-        bias_labels = []
-        if config.bias_catastrophizing:
-            bias_labels.append("catastrofismo")
-        if config.bias_all_or_nothing:
-            bias_labels.append("pensiero tutto-o-nulla")
-        if config.bias_overgeneralization:
-            bias_labels.append("sovrageneralizzazione")
-        if config.bias_mind_reading:
-            bias_labels.append("lettura del pensiero")
-        if config.bias_negative_filtering:
-            bias_labels.append("filtro negativo")
-        if config.bias_confirmation_bias:
-            bias_labels.append("bias di conferma")
+        lines.append(
+            "- Quando segnali un bias usa protocollo in 4 mosse: "
+            "Segnale -> Evidenza -> Riformulazione -> Micro-azione."
+        )
+        bias_labels = _enabled_bias_labels(config)
         if bias_labels:
             lines.append("- Bias prioritari: " + ", ".join(bias_labels) + ".")
         else:
@@ -107,17 +182,13 @@ def _persona_lines(config):
 
 def build_archibald_system_for_user(user, custom_instructions_override=None) -> str:
     instructions = [ARCHIBALD_BASE_SYSTEM]
-    if user is None or not getattr(user, "is_authenticated", False):
-        return "\n".join(instructions)
-
-    try:
-        from ai_lab.models import ArchibaldPersonaConfig
-    except Exception:
-        return "\n".join(instructions)
-
-    config = ArchibaldPersonaConfig.objects.filter(owner=user).first()
+    config = _get_persona_config(user)
     if not config:
         if custom_instructions_override is None:
+            return "\n".join(instructions)
+        try:
+            from ai_lab.models import ArchibaldPersonaConfig
+        except Exception:
             return "\n".join(instructions)
         config = ArchibaldPersonaConfig(owner=user)
 
@@ -126,3 +197,33 @@ def build_archibald_system_for_user(user, custom_instructions_override=None) -> 
 
     instructions.extend(_persona_lines(config))
     return "\n".join(instructions)
+
+
+def build_cognitive_context_for_prompt(user, prompt: str) -> str:
+    config = _get_persona_config(user)
+    if not config or not config.psych_bias_check:
+        return ""
+
+    enabled_biases = _enabled_bias_labels(config)
+    detected_biases = _detect_bias_signals(prompt)
+    if enabled_biases:
+        detected_biases = [bias for bias in detected_biases if bias in enabled_biases]
+
+    lines = [
+        "Layer cognitivo operativo (turno corrente):",
+        "- Se emerge un bias, applica: Segnale -> Evidenza -> Riformulazione -> Micro-azione (10 minuti).",
+        "- Correggi con fermezza gentile e senza tono giudicante.",
+    ]
+
+    if enabled_biases:
+        lines.append("- Bias monitorati: " + ", ".join(enabled_biases) + ".")
+    else:
+        lines.append("- Nessun bias prioritario impostato: applica monitoraggio generale.")
+
+    if detected_biases:
+        lines.append("- Segnali rilevati nel prompt utente: " + ", ".join(detected_biases) + ".")
+        lines.append("- Chiedi al massimo 1 domanda di verifica prima della correzione, se utile.")
+    else:
+        lines.append("- Nessun segnale forte rilevato: mantieni monitoraggio passivo.")
+
+    return "\n".join(lines)

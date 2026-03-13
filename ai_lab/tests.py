@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from archibald.prompting import build_archibald_system_for_user
+from archibald.prompting import build_archibald_system_for_user, build_cognitive_context_for_prompt
 
 from .models import ArchibaldPersonaConfig, LabEntry
 
@@ -60,6 +60,11 @@ class AiLabViewsTests(TestCase):
                 "psych_accountability_nudge": "on",
                 "psych_decision_simplify": "on",
                 "psych_non_judgmental_tone": "on",
+                "bias_catastrophizing": "on",
+                "bias_all_or_nothing": "on",
+                "bias_overgeneralization": "on",
+                "bias_mind_reading": "on",
+                "bias_negative_filtering": "on",
                 "custom_instructions": "Vai dritto al punto.",
             },
         )
@@ -70,6 +75,8 @@ class AiLabViewsTests(TestCase):
         self.assertEqual(cfg.challenge_level, ArchibaldPersonaConfig.ChallengeLevel.HIGH)
         self.assertTrue(cfg.avoid_pandering)
         self.assertTrue(cfg.psych_socratic_questions)
+        self.assertTrue(cfg.bias_catastrophizing)
+        self.assertFalse(cfg.bias_confirmation_bias)
 
     @patch("ai_lab.views.request_openai_response", return_value="Risposta sandbox")
     def test_sandbox_prompt_returns_preview(self, mocked_openai):
@@ -125,3 +132,31 @@ class AiLabViewsTests(TestCase):
         )
         self.assertIn("Rispondi in polacco.", system)
         self.assertIn("Regola prioritaria", system)
+
+    def test_build_cognitive_context_reflects_enabled_biases(self):
+        ArchibaldPersonaConfig.objects.update_or_create(
+            owner=self.user,
+            defaults={
+                "psych_bias_check": True,
+                "bias_catastrophizing": True,
+                "bias_all_or_nothing": False,
+                "bias_overgeneralization": False,
+                "bias_mind_reading": False,
+                "bias_negative_filtering": False,
+                "bias_confirmation_bias": False,
+            },
+        )
+        context = build_cognitive_context_for_prompt(self.user, "E un disastro, e finita.")
+        self.assertIn("Layer cognitivo operativo", context)
+        self.assertIn("catastrofismo", context)
+        self.assertNotIn("bias di conferma", context)
+
+    def test_build_cognitive_context_disabled_when_bias_check_off(self):
+        ArchibaldPersonaConfig.objects.update_or_create(
+            owner=self.user,
+            defaults={
+                "psych_bias_check": False,
+            },
+        )
+        context = build_cognitive_context_for_prompt(self.user, "e un disastro")
+        self.assertEqual(context, "")

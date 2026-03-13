@@ -11,7 +11,10 @@ class ArchibaldModesTests(TestCase):
         self.user = get_user_model().objects.create_user(username="archi_user", password="pwd12345")
         self.client.login(username="archi_user", password="pwd12345")
 
-    @patch("archibald.views._openai_response", return_value="Risposta assistente")
+    @patch(
+        "archibald.views._openai_response_with_state",
+        return_value=("Risposta assistente", {}, {}),
+    )
     def test_dashboard_diary_post_saves_in_diary_thread(self, _mock_openai):
         response = self.client.post(
             "/archibald/",
@@ -28,7 +31,10 @@ class ArchibaldModesTests(TestCase):
         self.assertTrue(thread.is_active)
         self.assertEqual(ArchibaldMessage.objects.filter(owner=self.user, thread=thread).count(), 2)
 
-    @patch("archibald.views._openai_response", return_value="Risposta temporanea")
+    @patch(
+        "archibald.views._openai_response_with_state",
+        return_value=("Risposta temporanea", {}, {}),
+    )
     def test_dashboard_temp_post_creates_temporary_thread(self, _mock_openai):
         response = self.client.post(
             "/archibald/",
@@ -100,7 +106,10 @@ class ArchibaldModesTests(TestCase):
         self.assertEqual(remove_response.url, "/archibald/?mode=temp")
         self.assertFalse(ArchibaldThread.objects.filter(owner=self.user, id=thread.id).exists())
 
-    @patch("archibald.views._openai_response", return_value="Risposta quick")
+    @patch(
+        "archibald.views._openai_response_with_state",
+        return_value=("Risposta quick", {}, {}),
+    )
     def test_quick_chat_creates_temporary_thread(self, _mock_openai):
         response = self.client.post(
             "/archibald/quick",
@@ -113,3 +122,37 @@ class ArchibaldModesTests(TestCase):
         thread = ArchibaldThread.objects.get(owner=self.user, id=payload["thread_id"])
         self.assertEqual(thread.kind, ArchibaldThread.Kind.TEMPORARY)
         self.assertEqual(ArchibaldMessage.objects.filter(owner=self.user, thread=thread).count(), 2)
+
+    @patch(
+        "archibald.views._openai_response_with_state",
+        return_value=(
+            "Risposta con stato",
+            {
+                "response_id": "resp_123",
+                "conversation_id": "conv_123",
+                "model": "gpt-5.4",
+            },
+            {},
+        ),
+    )
+    def test_dashboard_persists_openai_state_on_thread_and_message(self, _mock_openai):
+        self.client.post(
+            "/archibald/",
+            {
+                "prompt": "Test stato conversazione",
+                "mode": "temp",
+                "thread_id": "",
+            },
+        )
+
+        thread = ArchibaldThread.objects.get(owner=self.user, kind=ArchibaldThread.Kind.TEMPORARY)
+        assistant = (
+            ArchibaldMessage.objects.filter(owner=self.user, thread=thread, role=ArchibaldMessage.Role.ASSISTANT)
+            .order_by("-id")
+            .first()
+        )
+        self.assertIsNotNone(assistant)
+        self.assertEqual(thread.openai_conversation_id, "conv_123")
+        self.assertEqual(thread.openai_last_response_id, "resp_123")
+        self.assertEqual(thread.openai_model, "gpt-5.4")
+        self.assertEqual(assistant.openai_response_id, "resp_123")

@@ -25,7 +25,7 @@
           {{ persona_form.non_field_errors }}
           <div class="persona-core-grid">
             {% for field in persona_form.visible_fields %}
-              {% if field.name not in psychological_field_names %}
+              {% if field.name not in psychological_field_names and field.name not in bias_field_names %}
                 <div class="field-block">
                   <label for="{{ field.id_for_label }}">{{ field.label }}</label>
                   {{ field }}
@@ -42,6 +42,26 @@
           <ul class="psych-list">
             {% for field in persona_form.visible_fields %}
               {% if field.name in psychological_field_names %}
+                <li class="psych-item">
+                  <label for="{{ field.id_for_label }}" class="psych-toggle">
+                    {{ field }}
+                    <span class="psych-label">{{ field.label }}</span>
+                  </label>
+                  {% if field.help_text %}
+                    <div class="psych-help">{{ field.help_text }}</div>
+                  {% endif %}
+                  {{ field.errors }}
+                </li>
+              {% endif %}
+            {% endfor %}
+          </ul>
+          <h4 class="psych-title">Bias cognitivi da monitorare</h4>
+          <p class="field-help">
+            Questi bias alimentano il layer cognitivo di Archibald durante la conversazione reale: rilevamento segnali + correzione operativa.
+          </p>
+          <ul class="psych-list">
+            {% for field in persona_form.visible_fields %}
+              {% if field.name in bias_field_names %}
                 <li class="psych-item">
                   <label for="{{ field.id_for_label }}" class="psych-toggle">
                     {{ field }}

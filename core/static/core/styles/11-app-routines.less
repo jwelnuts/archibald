@@ -86,19 +86,47 @@ body.routines-skin {
 }
 
 .routines-page .content {
-  gap: 16px;
+  gap: 12px;
   padding-bottom: 96px;
 }
 
 .routines-dashboard,
 .routines-stats-page {
-  display: grid;
-  gap: 14px;
   animation: routines-fade-up 280ms ease;
+}
+
+.routines-dashboard:not(.uk-grid),
+.routines-stats-page {
+  display: grid;
+  gap: 10px;
 }
 
 .routines-gap-small {
   gap: 8px;
+}
+
+.routines-dashboard.uk-grid-small,
+.routines-hero-main.uk-grid-small,
+.routines-hero-actions.uk-grid-small,
+.routines-overview-grid.uk-grid-small,
+.routines-main-grid.uk-grid-small {
+  margin-left: -10px;
+}
+
+.routines-dashboard.uk-grid-small > *,
+.routines-hero-main.uk-grid-small > *,
+.routines-hero-actions.uk-grid-small > *,
+.routines-overview-grid.uk-grid-small > *,
+.routines-main-grid.uk-grid-small > * {
+  padding-left: 10px;
+}
+
+.routines-dashboard.uk-grid-small > .uk-grid-margin,
+.routines-hero-main.uk-grid-small > .uk-grid-margin,
+.routines-hero-actions.uk-grid-small > .uk-grid-margin,
+.routines-overview-grid.uk-grid-small > .uk-grid-margin,
+.routines-main-grid.uk-grid-small > .uk-grid-margin {
+  margin-top: 10px;
 }
 
 .routines-hidden {
@@ -115,17 +143,17 @@ body.routines-skin {
 }
 
 .routines-panel {
-  padding: 16px;
+  padding: 14px;
 }
 
 .routines-hero {
-  padding: 18px;
+  padding: 16px;
   overflow: hidden;
 }
 
-.routines-hero-main {
+.routines-hero-main:not(.uk-grid) {
   display: grid;
-  gap: 16px;
+  gap: 10px;
 }
 
 .routines-kicker,
@@ -211,9 +239,12 @@ body.routines-skin {
 }
 
 .routines-hero-actions {
+  margin-top: 14px;
+}
+
+.routines-hero-actions:not(.uk-grid) {
   display: grid;
   gap: 8px;
-  margin-top: 16px;
 }
 
 .routines-hero-actions .uk-button {
@@ -222,10 +253,10 @@ body.routines-skin {
   border-radius: 14px;
 }
 
-.routines-overview-grid,
-.routines-main-grid {
+.routines-overview-grid:not(.uk-grid),
+.routines-main-grid:not(.uk-grid) {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .routines-hero-main > *,
@@ -258,7 +289,7 @@ body.routines-skin {
 .routines-week-nav {
   display: grid;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 10px;
 }
 
 .routines-week-nav .uk-button {
@@ -272,7 +303,7 @@ body.routines-skin {
   grid-auto-columns: minmax(88px, 1fr);
   gap: 10px;
   overflow-x: auto;
-  margin-top: 16px;
+  margin-top: 12px;
   padding-bottom: 4px;
   scroll-snap-type: x proximity;
 }
@@ -549,7 +580,7 @@ body.routines-skin {
 
 .routines-sidebar {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .routines-metric-stack {
@@ -850,7 +881,7 @@ body.routines-skin {
     padding-bottom: 112px;
   }
 
-  .routines-hero-actions {
+  .routines-hero-actions:not(.uk-grid) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
@@ -881,16 +912,16 @@ body.routines-skin {
     padding: 22px;
   }
 
-  .routines-hero-main {
+  .routines-hero-main:not(.uk-grid) {
     grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
     align-items: end;
   }
 
-  .routines-overview-grid {
+  .routines-overview-grid:not(.uk-grid) {
     grid-template-columns: minmax(0, 1.2fr) minmax(360px, 0.8fr);
   }
 
-  .routines-main-grid {
+  .routines-main-grid:not(.uk-grid) {
     grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.72fr);
     align-items: start;
   }
