@@ -157,6 +157,7 @@ class RoutineCrudTests(TestCase):
         self.assertContains(response, f'/routines/api/remove?id={self.routine.id}')
         self.assertContains(response, f'/routines/items/update?id={self.item.id}')
         self.assertContains(response, f'/routines/items/remove?id={self.item.id}')
+        self.assertContains(response, 'data-routine-day-jump')
 
 
 class RoutineStatsPageTests(TestCase):
@@ -218,3 +219,56 @@ class RoutineStatsPageTests(TestCase):
 
         self.assertEqual(len(response.context["trend"]), 8)
         self.assertGreaterEqual(len(response.context["routine_stats"]), 2)
+
+    def test_stats_page_can_filter_by_single_routine(self):
+        RoutineCheck.objects.create(
+            owner=self.user,
+            item=self.item_a1,
+            week_start=self.week_start,
+            status=RoutineCheck.Status.DONE,
+        )
+        RoutineCheck.objects.create(
+            owner=self.user,
+            item=self.item_a2,
+            week_start=self.week_start,
+            status=RoutineCheck.Status.PLANNED,
+        )
+        RoutineCheck.objects.create(
+            owner=self.user,
+            item=self.item_b1,
+            week_start=self.week_start,
+            status=RoutineCheck.Status.SKIPPED,
+        )
+        RoutineCheck.objects.create(
+            owner=self.user,
+            item=self.item_a1,
+            week_start=self.prev_week,
+            status=RoutineCheck.Status.DONE,
+        )
+
+        response = self.client.get(
+            f"/routines/stats?week={self.week_start.isoformat()}&routine={self.routine_a.id}"
+        )
+        self.assertEqual(response.status_code, 200)
+
+        selected = response.context["selected_routine"]
+        self.assertIsNotNone(selected)
+        self.assertEqual(selected.id, self.routine_a.id)
+
+        week_stats = response.context["week_stats"]
+        self.assertEqual(week_stats["total"], 2)
+        self.assertEqual(week_stats["done"], 1)
+        self.assertEqual(week_stats["planned"], 1)
+        self.assertEqual(week_stats["skipped"], 0)
+        self.assertEqual(week_stats["completion_rate"], 50.0)
+
+        overall_stats = response.context["overall_stats"]
+        self.assertEqual(overall_stats["total"], 3)
+        self.assertEqual(overall_stats["done"], 2)
+        self.assertEqual(overall_stats["planned"], 1)
+        self.assertEqual(overall_stats["skipped"], 0)
+        self.assertEqual(overall_stats["completion_rate"], 66.7)
+
+        routine_stats = response.context["routine_stats"]
+        self.assertEqual(len(routine_stats), 1)
+        self.assertEqual(routine_stats[0]["name"], "Routine A")

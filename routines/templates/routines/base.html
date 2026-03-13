@@ -5,12 +5,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}MIO - Routines{% endblock %}</title>
-    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
+    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=routines-modern-2">
     {% include "core/partials/uikit_head.html" %}
     <script src="{% static 'core/vendor/htmx/htmx.min.js' %}" defer></script>
     <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
   </head>
-  <body>
+  <body class="routines-skin">
     <div class="page routines-page">
       {% include "core/partials/site_header.html" with module_subtitle="Routines module" %}
 

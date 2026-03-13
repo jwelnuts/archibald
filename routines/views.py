@@ -264,7 +264,16 @@ def stats(request):
     week_start = _week_start_for(request.GET.get("week"))
     week_end = week_start + timedelta(days=6)
 
+    routine_options = Routine.objects.filter(owner=user).order_by("name")
+    selected_routine = None
+    selected_routine_raw = (request.GET.get("routine") or "").strip()
+    if selected_routine_raw.isdigit():
+        selected_routine = routine_options.filter(id=int(selected_routine_raw)).first()
+
     checks_qs = RoutineCheck.objects.filter(owner=user).select_related("item__routine")
+    if selected_routine is not None:
+        checks_qs = checks_qs.filter(item__routine=selected_routine)
+
     stats_agg = {
         "total": Count("id"),
         "done": Count("id", filter=Q(status=RoutineCheck.Status.DONE)),
@@ -352,6 +361,9 @@ def stats(request):
         "week_end": week_end,
         "prev_week": (week_start - timedelta(days=7)).isoformat(),
         "next_week": (week_start + timedelta(days=7)).isoformat(),
+        "routine_query": f"&routine={selected_routine.id}" if selected_routine is not None else "",
+        "routine_options": routine_options,
+        "selected_routine": selected_routine,
         "overall_stats": overall_stats,
         "week_stats": week_stats,
         "trend": trend,

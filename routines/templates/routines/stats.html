@@ -31,12 +31,31 @@
           </div>
           <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
             <div>
-              <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/routines/stats?week={{ prev_week }}">Precedente</a>
+              <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/routines/stats?week={{ prev_week }}{{ routine_query }}">Precedente</a>
             </div>
             <div>
-              <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/routines/stats?week={{ next_week }}">Successiva</a>
+              <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/routines/stats?week={{ next_week }}{{ routine_query }}">Successiva</a>
             </div>
           </div>
+          <form method="get" class="uk-form-stacked uk-margin-small-top">
+            <input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
+            <label class="uk-form-label" for="stats-routine-select">Routine</label>
+            <div class="uk-grid-small uk-child-width-1-1 uk-child-width-auto@s" uk-grid>
+              <div class="uk-width-expand@s">
+                <select id="stats-routine-select" name="routine" class="uk-select uk-form-small">
+                  <option value="">Tutte le routine</option>
+                  {% for routine in routine_options %}
+                    <option value="{{ routine.id }}" {% if selected_routine and selected_routine.id == routine.id %}selected{% endif %}>
+                      {{ routine.name }}
+                    </option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div>
+                <button class="uk-button uk-button-default uk-button-small" type="submit">Applica</button>
+              </div>
+            </div>
+          </form>
         </div>
       </article>
     </section>

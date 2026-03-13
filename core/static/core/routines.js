@@ -27,6 +27,8 @@ withStimulusModule(({ Controller }) => {
       this.modalForm = document.getElementById("routine-modal-form");
       this.todayStatsRoot = this.element.querySelector(".routines-today-stats");
       this.filterButtons = this.element.querySelectorAll("[data-routine-filter]");
+      this.dayJumpButtons = this.element.querySelectorAll("[data-routine-day-jump]");
+      this.daySections = this.element.querySelectorAll("[data-routine-day]");
 
       this.onDashboardClick = this.handleDashboardClick.bind(this);
       this.onAfterSettle = this.handleAfterSettle.bind(this);
@@ -54,6 +56,7 @@ withStimulusModule(({ Controller }) => {
       this.refreshCardStates();
       this.refreshTodayStats();
       this.setFilter(this.activeFilter);
+      this.activateCurrentDay();
     }
 
     disconnect() {
@@ -85,6 +88,13 @@ withStimulusModule(({ Controller }) => {
       if (filterButton) {
         event.preventDefault();
         this.setFilter(filterButton.dataset.routineFilter || "all");
+        return;
+      }
+
+      const dayJumpButton = event.target.closest("[data-routine-day-jump]");
+      if (dayJumpButton) {
+        event.preventDefault();
+        this.jumpToDay(dayJumpButton.dataset.dayIndex, dayJumpButton);
       }
     }
 
@@ -92,6 +102,7 @@ withStimulusModule(({ Controller }) => {
       this.refreshCardStates();
       this.refreshTodayStats();
       this.applyFilters();
+      this.activateCurrentDay();
     }
 
     handleResponseError() {
@@ -216,6 +227,8 @@ withStimulusModule(({ Controller }) => {
         }
         day.classList.toggle("routines-hidden", !showDay);
       });
+
+      this.syncActiveDayButton();
     }
 
     setFilter(value) {
@@ -224,6 +237,51 @@ withStimulusModule(({ Controller }) => {
         button.classList.toggle("is-active", button.dataset.routineFilter === value);
       });
       this.applyFilters();
+    }
+
+    activateCurrentDay() {
+      const todayDate = (this.todayStatsRoot && this.todayStatsRoot.dataset.todayDate) || "";
+      const current = Array.from(this.daySections).find((day) => day.dataset.dayDate === todayDate);
+      if (current) {
+        this.setActiveDayButton(current.dataset.dayIndex || "");
+      }
+    }
+
+    jumpToDay(dayIndex, button) {
+      if (!dayIndex) {
+        return;
+      }
+
+      const target = this.element.querySelector(`[data-routine-day][data-day-index="${dayIndex}"]`);
+      if (!target) {
+        return;
+      }
+
+      target.classList.add("uk-open");
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      this.setActiveDayButton(dayIndex, button);
+    }
+
+    syncActiveDayButton() {
+      const visibleDay = Array.from(this.daySections).find((day) => !day.classList.contains("routines-hidden"));
+      if (visibleDay) {
+        this.setActiveDayButton(visibleDay.dataset.dayIndex || "");
+      }
+    }
+
+    setActiveDayButton(dayIndex, preferredButton = null) {
+      let activeButton = preferredButton;
+      this.dayJumpButtons.forEach((button) => {
+        const isActive = button.dataset.dayIndex === dayIndex;
+        button.classList.toggle("is-active", isActive);
+        if (isActive) {
+          activeButton = button;
+        }
+      });
+
+      if (activeButton && typeof activeButton.scrollIntoView === "function") {
+        activeButton.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      }
     }
 
     openModal(button) {
