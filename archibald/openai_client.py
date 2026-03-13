@@ -37,11 +37,15 @@ def _extract_response_id(data) -> str:
 
 
 def _resolve_model() -> str:
-    return (
-        os.getenv("OPENAI_MODEL_ARCHIBALD", "").strip()
-        or os.getenv("OPENAI_MODEL", "").strip()
-        or "gpt-5.4"
-    )
+    archibald_model = os.getenv("OPENAI_MODEL_ARCHIBALD", "").strip()
+    if archibald_model:
+        return archibald_model
+
+    generic_model = os.getenv("OPENAI_MODEL", "").strip()
+    # Safety default: Archibald should not silently inherit mini models.
+    if generic_model.lower() in {"", "gpt-4o-mini", "gpt4mini", "gpt-4-mini"}:
+        return "gpt-5.4"
+    return generic_model
 
 
 def _resolve_reasoning_effort(model: str) -> str:
