@@ -13,7 +13,11 @@ from .openai_client import (
     create_openai_conversation_with_debug,
     request_openai_response_with_state,
 )
-from .prompting import build_archibald_system_for_user, build_cognitive_context_for_prompt
+from .prompting import (
+    build_archibald_system_for_user,
+    build_cognitive_context_for_prompt,
+    build_relational_context_for_prompt,
+)
 from .services import build_context_messages, build_insight_cards
 
 MODE_DIARY = "diary"
@@ -72,6 +76,9 @@ def _build_messages(history, user_text):
 
 def _build_model_messages(user, thread, history, user_text):
     context = build_context_messages(user, user_text)
+    relational_context = build_relational_context_for_prompt(user, user_text)
+    if relational_context:
+        context = [{"role": "system", "content": relational_context}] + context
     cognitive_context = build_cognitive_context_for_prompt(user, user_text)
     if cognitive_context:
         context = [{"role": "system", "content": cognitive_context}] + context

@@ -1,3 +1,6 @@
+import unicodedata
+
+
 ARCHIBALD_BASE_SYSTEM = (
     "Sei Archibald, il maggiordomo strategico personale dell'utente, con stile ispirato ad Alfred Pennyworth. "
     "Parla in modo elegante, riservato, lucido e affidabile: mai servile, sempre impeccabile. "
@@ -10,6 +13,11 @@ ARCHIBALD_BASE_SYSTEM = (
     "Se l'utente chiede fonti esterne o confronti, puoi citarle, ma resta "
     "sempre nel ruolo di assistente di MIO. "
     "Hai pieno accesso ai dati dell'utente corrente in tutte le app del progetto. "
+    "Privilegia un tono conversazionale naturale, come un amico lucido e affidabile: "
+    "evita di trasformare ogni risposta in una checklist. "
+    "Quando l'utente esprime stanchezza, demotivazione, senso di colpa o sfogo relazionale, "
+    "non attribuire automaticamente la responsabilita solo a lui: considera anche contesto, "
+    "carico, riconoscimento, confini e dinamiche con le persone coinvolte. "
     "Se l'utente vuole progettare pannelli o dashboard personali, proponi una struttura pratica: "
     "obiettivo, blocchi, KPI, filtri, azioni rapide e passi di implementazione. "
     "Quando richiesto esplicitamente, prepara anche JSON pronto per UI Generator."
@@ -35,6 +43,9 @@ def _enabled_bias_labels(config) -> list[str]:
 
 def _detect_bias_signals(text: str) -> list[str]:
     low = (text or "").lower()
+    low = "".join(
+        char for char in unicodedata.normalize("NFD", low) if unicodedata.category(char) != "Mn"
+    )
     if not low:
         return []
 
@@ -45,6 +56,8 @@ def _detect_bias_signals(text: str) -> list[str]:
             "e finita",
             "non ne usciro",
             "andra mal",
+            "e un inferno",
+            "e un incubo",
         ),
         "pensiero tutto-o-nulla": (
             "sempre",
@@ -53,6 +66,7 @@ def _detect_bias_signals(text: str) -> list[str]:
             "niente",
             "o perfetto o",
             "o bianco o nero",
+            "o dentro o fuori",
         ),
         "sovrageneralizzazione": (
             "ogni volta",
@@ -77,6 +91,54 @@ def _detect_bias_signals(text: str) -> list[str]:
             "dimmi che ho ragione",
             "conferma che",
             "cerca prove che",
+            "ho gia deciso",
+        ),
+    }
+
+    found = []
+    for label, keywords in rules.items():
+        if any(word in low for word in keywords):
+            found.append(label)
+    return found
+
+
+def _detect_relational_distress_signals(text: str) -> list[str]:
+    low = (text or "").lower()
+    low = "".join(
+        char for char in unicodedata.normalize("NFD", low) if unicodedata.category(char) != "Mn"
+    )
+    if not low:
+        return []
+
+    rules = {
+        "auto-colpevolizzazione": (
+            "colpa mia",
+            "e colpa mia",
+            "sono io il problema",
+            "sbaglio sempre io",
+        ),
+        "sovraccarico lavorativo": (
+            "36 ore",
+            "mi sbatto",
+            "sacrificandomi",
+            "faccio piu degli altri",
+            "sto lavorando troppo",
+            "non reggo",
+        ),
+        "demotivazione/infelicita": (
+            "demotivato",
+            "infelice",
+            "non ho piu energie",
+            "non ce la faccio",
+            "non ha senso",
+        ),
+        "frattura relazionale": (
+            "non lo considera nessuno",
+            "non mi vede nessuno",
+            "non gliene frega",
+            "non capiscono",
+            "persone che mi circondano",
+            "per chi lavoro",
         ),
     }
 
@@ -102,6 +164,9 @@ def _persona_lines(config):
 
     if config.preset == config.Preset.OPERATIVE:
         lines.append("- Stile operativo: risposte dirette, pragmatiche, senza giri di parole.")
+    elif config.preset == config.Preset.ELITE:
+        lines.append("- Stile Alfred elite: strategico, impeccabile, orientato a risultati ad alto impatto.")
+        lines.append("- Tratta ogni richiesta come una missione: priorita, rischio, execution plan.")
     elif config.preset == config.Preset.CLASSIC:
         lines.append("- Stile classico: tono piu elegante e formale da maggiordomo.")
     else:
@@ -126,7 +191,8 @@ def _persona_lines(config):
     elif config.action_mode == config.ActionMode.NEVER:
         lines.append("- Evita la lista finale di azioni, salvo richiesta esplicita.")
     else:
-        lines.append("- Proponi 1-3 azioni pratiche solo quando utili.")
+        lines.append("- Proponi azioni pratiche solo quando utili e richieste dal contesto.")
+        lines.append("- Se l'utente si sta sfogando, resta in ascolto attivo e non chiudere con lista automatica.")
 
     if config.avoid_pandering:
         lines.append("- Non assecondare automaticamente: evita frasi compiacenti inutili.")
@@ -215,6 +281,18 @@ def build_cognitive_context_for_prompt(user, prompt: str) -> str:
         "- Correggi con fermezza gentile e senza tono giudicante.",
     ]
 
+    if config.challenge_level == config.ChallengeLevel.HIGH:
+        lines.append("- Intensita intervento: alta. Contesta le assunzioni fragili con rispetto ma senza ambiguita.")
+    elif config.challenge_level == config.ChallengeLevel.LOW:
+        lines.append("- Intensita intervento: bassa. Correggi solo i bias evidenti, con tono morbido.")
+    else:
+        lines.append("- Intensita intervento: normale. Correggi i bias che impattano la decisione.")
+
+    if config.psych_socratic_questions:
+        lines.append("- Usa massimo 1 domanda socratica per verificare evidenze o priorita.")
+    else:
+        lines.append("- Evita domande superflue: vai su proposta concreta.")
+
     if enabled_biases:
         lines.append("- Bias monitorati: " + ", ".join(enabled_biases) + ".")
     else:
@@ -225,5 +303,32 @@ def build_cognitive_context_for_prompt(user, prompt: str) -> str:
         lines.append("- Chiedi al massimo 1 domanda di verifica prima della correzione, se utile.")
     else:
         lines.append("- Nessun segnale forte rilevato: mantieni monitoraggio passivo.")
+
+    return "\n".join(lines)
+
+
+def build_relational_context_for_prompt(user, prompt: str) -> str:
+    config = _get_persona_config(user)
+    if not config:
+        return ""
+
+    distress_signals = _detect_relational_distress_signals(prompt)
+    if not distress_signals:
+        return ""
+
+    lines = [
+        "Layer relazionale umano (turno corrente):",
+        "- Priorita: ascolto, rispecchiamento e chiarezza emotiva prima di eventuale problem solving.",
+        "- Evita liste, framework e tono da report: rispondi in modo caldo, diretto e naturale.",
+        "- Non rinforzare auto-colpa totale: separa responsabilita personali da fattori esterni/sistemici.",
+        "- Considera esplicitamente: carico reale, confini, riconoscimento, dinamiche con colleghi/clienti/manager.",
+        "- Offri al massimo 1 passo piccolo finale, e solo se l'utente mostra apertura.",
+        "- Segnali rilevati: " + ", ".join(distress_signals) + ".",
+    ]
+
+    if config.psych_validate_emotions:
+        lines.append("- Inizia con validazione emotiva breve e concreta, senza paternalismo.")
+    if config.psych_non_judgmental_tone:
+        lines.append("- Mantieni tono non giudicante e non moralistico.")
 
     return "\n".join(lines)

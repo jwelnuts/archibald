@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
 from archibald.openai_client import request_openai_response, request_openai_response_with_debug
-from archibald.prompting import build_archibald_system_for_user
+from archibald.prompting import build_archibald_system_for_user, build_cognitive_context_for_prompt
 
 from .forms import ArchibaldPersonaConfigForm, ArchibaldSandboxPromptForm, LabEntryForm
 from .models import ArchibaldPersonaConfig, LabEntry
@@ -48,6 +48,7 @@ def personal_lab(request):
     sandbox_debug_enabled = True
     sandbox_debug_text = ""
     system_preview = build_archibald_system_for_user(request.user)
+    cognitive_preview = ""
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
@@ -76,6 +77,7 @@ def personal_lab(request):
                         request.user,
                         custom_instructions_override=custom_instructions_override,
                     )
+                    cognitive_preview = build_cognitive_context_for_prompt(request.user, sandbox_prompt)
                     if sandbox_debug_enabled:
                         sandbox_result, openai_debug = request_openai_response_with_debug(
                             test_messages,
@@ -116,6 +118,7 @@ def personal_lab(request):
             "sandbox_debug_enabled": sandbox_debug_enabled,
             "sandbox_debug_text": sandbox_debug_text,
             "system_preview": system_preview,
+            "cognitive_preview": cognitive_preview,
             "psychological_field_names": ArchibaldPersonaConfigForm.PSYCHOLOGICAL_BOOLEAN_FIELDS,
             "bias_field_names": ArchibaldPersonaConfigForm.BIAS_BOOLEAN_FIELDS,
         },

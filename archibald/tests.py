@@ -3,6 +3,8 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
+from ai_lab.models import ArchibaldPersonaConfig
+
 from .models import ArchibaldMessage, ArchibaldThread
 
 
@@ -156,3 +158,32 @@ class ArchibaldModesTests(TestCase):
         self.assertEqual(thread.openai_last_response_id, "resp_123")
         self.assertEqual(thread.openai_model, "gpt-5.4")
         self.assertEqual(assistant.openai_response_id, "resp_123")
+
+    @patch(
+        "archibald.views._openai_response_with_state",
+        return_value=("Risposta relazionale", {}, {}),
+    )
+    def test_dashboard_injects_relational_context_for_distress_prompt(self, mocked_openai):
+        ArchibaldPersonaConfig.objects.update_or_create(
+            owner=self.user,
+            defaults={
+                "psych_validate_emotions": True,
+                "psych_non_judgmental_tone": True,
+            },
+        )
+        self.client.post(
+            "/archibald/",
+            {
+                "prompt": "Se sono infelice e colpa mia, lavoro 36 ore e sono demotivato.",
+                "mode": "diary",
+                "day": "2026-03-05",
+            },
+        )
+
+        messages = mocked_openai.call_args[0][1]
+        self.assertTrue(
+            any(
+                msg.get("role") == "system" and "Layer relazionale umano" in (msg.get("content") or "")
+                for msg in messages
+            )
+        )

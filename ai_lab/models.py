@@ -42,6 +42,7 @@ class ArchibaldPersonaConfig(OwnedModel, TimeStampedModel):
         OPERATIVE = "OPERATIVE", "Operativo diretto"
         BALANCED = "BALANCED", "Bilanciato"
         CLASSIC = "CLASSIC", "Magiordomo classico"
+        ELITE = "ELITE", "Alfred elite"
 
     class Verbosity(models.TextChoices):
         SHORT = "SHORT", "Breve"

@@ -3,7 +3,11 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from archibald.prompting import build_archibald_system_for_user, build_cognitive_context_for_prompt
+from archibald.prompting import (
+    build_archibald_system_for_user,
+    build_cognitive_context_for_prompt,
+    build_relational_context_for_prompt,
+)
 
 from .models import ArchibaldPersonaConfig, LabEntry
 
@@ -133,6 +137,17 @@ class AiLabViewsTests(TestCase):
         self.assertIn("Rispondi in polacco.", system)
         self.assertIn("Regola prioritaria", system)
 
+    def test_build_system_elite_preset_contains_mission_style(self):
+        ArchibaldPersonaConfig.objects.update_or_create(
+            owner=self.user,
+            defaults={
+                "preset": ArchibaldPersonaConfig.Preset.ELITE,
+            },
+        )
+        system = build_archibald_system_for_user(self.user)
+        self.assertIn("Alfred elite", system)
+        self.assertIn("missione", system)
+
     def test_build_cognitive_context_reflects_enabled_biases(self):
         ArchibaldPersonaConfig.objects.update_or_create(
             owner=self.user,
@@ -150,6 +165,7 @@ class AiLabViewsTests(TestCase):
         self.assertIn("Layer cognitivo operativo", context)
         self.assertIn("catastrofismo", context)
         self.assertNotIn("bias di conferma", context)
+        self.assertIn("Intensita intervento", context)
 
     def test_build_cognitive_context_disabled_when_bias_check_off(self):
         ArchibaldPersonaConfig.objects.update_or_create(
@@ -159,4 +175,42 @@ class AiLabViewsTests(TestCase):
             },
         )
         context = build_cognitive_context_for_prompt(self.user, "e un disastro")
+        self.assertEqual(context, "")
+
+    def test_personal_lab_shows_cognitive_preview_in_sandbox(self):
+        self.client.login(username="alab", password="test1234")
+        response = self.client.post(
+            "/ai-lab/personal-lab/",
+            {
+                "action": "test_persona",
+                "prompt": "E un disastro, non ne usciro.",
+                "debug_enabled": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Layer cognitivo operativo")
+
+    def test_build_relational_context_detects_distress_signals(self):
+        ArchibaldPersonaConfig.objects.update_or_create(
+            owner=self.user,
+            defaults={
+                "psych_validate_emotions": True,
+                "psych_non_judgmental_tone": True,
+            },
+        )
+        context = build_relational_context_for_prompt(
+            self.user,
+            "Se sono infelice e colpa mia, sono demotivato e lavoro 36 ore.",
+        )
+        self.assertIn("Layer relazionale umano", context)
+        self.assertIn("auto-colpevolizzazione", context)
+        self.assertIn("sovraccarico lavorativo", context)
+        self.assertIn("demotivazione/infelicita", context)
+
+    def test_build_relational_context_empty_without_signals(self):
+        ArchibaldPersonaConfig.objects.update_or_create(
+            owner=self.user,
+            defaults={},
+        )
+        context = build_relational_context_for_prompt(self.user, "Aggiorna il planner di domani.")
         self.assertEqual(context, "")

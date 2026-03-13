@@ -118,6 +118,12 @@
       <summary>Vedi istruzioni attive di Archibald</summary>
       <pre>{{ system_preview }}</pre>
     </details>
+    {% if cognitive_preview %}
+      <details class="system-preview" open>
+        <summary>Vedi layer cognitivo applicato al prompt di test</summary>
+        <pre>{{ cognitive_preview }}</pre>
+      </details>
+    {% endif %}
   </section>
   <script>
     (function () {
