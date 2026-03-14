@@ -111,6 +111,91 @@
           <button class="uk-button uk-button-default uk-button-small" type="button" data-routine-filter="today">Solo oggi</button>
           <button class="uk-button uk-button-default uk-button-small" type="button" data-routine-filter="pending">Solo da fare</button>
         </div>
+
+        <div class="routines-quick-block">
+          <div class="routines-quick-title">Inserimento veloce</div>
+          <ul class="uk-accordion routines-quick-accordion" uk-accordion="active: false; collapsible: true">
+            <li class="{% if active_quick_form == "item" %}uk-open{% endif %}">
+              <a class="uk-accordion-title" href="#">Nuova attivita</a>
+              <div class="uk-accordion-content">
+                <form method="post" class="uk-form-stacked routines-quick-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="quick_action" value="add_item">
+                  <input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
+                  {% if quick_item_form.errors %}
+                    <div class="uk-alert-danger uk-padding-small uk-margin-small-bottom">
+                      Correggi i campi del form attivita.
+                    </div>
+                  {% endif %}
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_item_form.routine_choice.id_for_label }}">Routine</label>
+                    {{ quick_item_form.routine_choice }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_item_form.routine_name.id_for_label }}">Nuova routine (opzionale)</label>
+                    {{ quick_item_form.routine_name }}
+                    {{ quick_item_form.routine_name.errors }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_item_form.title.id_for_label }}">Attivita</label>
+                    {{ quick_item_form.title }}
+                    {{ quick_item_form.title.errors }}
+                  </div>
+                  <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+                    <div class="uk-margin-small">
+                      <label class="uk-form-label" for="{{ quick_item_form.weekday.id_for_label }}">Giorno</label>
+                      {{ quick_item_form.weekday }}
+                      {{ quick_item_form.weekday.errors }}
+                    </div>
+                    <div class="uk-margin-small">
+                      <label class="uk-form-label" for="{{ quick_item_form.time_start.id_for_label }}">Orario</label>
+                      {{ quick_item_form.time_start }}
+                      {{ quick_item_form.time_start.errors }}
+                    </div>
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_item_form.note.id_for_label }}">Nota</label>
+                    {{ quick_item_form.note }}
+                  </div>
+                  <div class="uk-margin-small-top">
+                    <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi attivita</button>
+                  </div>
+                  {{ quick_item_form.routine_choice.errors }}
+                  {{ quick_item_form.non_field_errors }}
+                </form>
+              </div>
+            </li>
+            <li class="{% if active_quick_form == "routine" %}uk-open{% endif %}">
+              <a class="uk-accordion-title" href="#">Nuova routine</a>
+              <div class="uk-accordion-content">
+                <form method="post" class="uk-form-stacked routines-quick-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="quick_action" value="add_routine">
+                  <input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
+                  {% if quick_routine_form.errors %}
+                    <div class="uk-alert-danger uk-padding-small uk-margin-small-bottom">
+                      Correggi i campi del form routine.
+                    </div>
+                  {% endif %}
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_routine_form.name.id_for_label }}">Nome routine</label>
+                    {{ quick_routine_form.name }}
+                    {{ quick_routine_form.name.errors }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_routine_form.description.id_for_label }}">Descrizione</label>
+                    {{ quick_routine_form.description }}
+                    {{ quick_routine_form.description.errors }}
+                  </div>
+                  <div class="uk-margin-small-top">
+                    <button class="uk-button uk-button-default uk-button-small" type="submit">Aggiungi routine</button>
+                  </div>
+                  {{ quick_routine_form.non_field_errors }}
+                </form>
+              </div>
+            </li>
+          </ul>
+        </div>
       </article>
     </section>
 

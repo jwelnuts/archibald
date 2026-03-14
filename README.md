@@ -110,6 +110,14 @@ Note Stimulus:
   - insight cards per dominio (overview, tasks, expenses, subscriptions, planner, routines, projects)
   - arricchimento contesto automatico dai dati utente (`archibald/services.py`)
   - endpoint quick chat
+- `archibald_mail` (`/archibald-mail/`):
+  - pannello configurazione IMAP/SMTP per inbox dedicata (es. `archibald@miorganizzo.ovh`)
+  - auto-reply email con generazione risposta Archibald (OpenAI)
+  - notifiche email automatiche su task/planner/subscriptions/routines
+  - log completo email inbound/outbound/notification/test
+  - comandi management per automazione cron:
+    - `python manage.py process_archibald_inbox`
+    - `python manage.py send_archibald_notifications`
 - `ai_lab` (`/ai-lab/`):
   - tracking studio/esperimenti AI (area, status, prompt, result, next_step, resource_url)
 - `link_storage` (`/link_storage/`):
@@ -190,6 +198,9 @@ Opzionali (feature specifiche):
 - `OPENAI_MODEL_ARCHIBALD` (override modello solo per Archibald, default: `gpt-5-mini`)
 - `ARCHIBALD_REASONING_EFFORT` (es. `low|medium|high|xhigh`; default auto `high` su GPT-5)
 - `ARCHIBALD_USE_CONVERSATIONS` (`true|false`, default: `true`)
+- `ARCHIBALD_MAIL_DEFAULT_INBOX` (default inbox precompilata nel pannello, es. `archibald@miorganizzo.ovh`)
+- `ARCHIBALD_MAIL_IMAP_PASSWORD` (fallback password IMAP se non salvata nel DB)
+- `ARCHIBALD_MAIL_SMTP_PASSWORD` (fallback password SMTP se non salvata nel DB)
 - `VAULT_ENCRYPTION_KEY` (consigliata in prod)
 - `VAULT_TOTP_ISSUER` (default: `MIO Vault`)
 - `VAULT_SESSION_TIMEOUT_SECONDS` (default: `600`)
@@ -198,6 +209,22 @@ Note:
 
 - Se `OPENAI_API_KEY` manca, le feature AI mostrano errore controllato o fallback.
 - Se `VAULT_ENCRYPTION_KEY` manca, in locale viene derivata da `SECRET_KEY` (fallback deterministico).
+
+## Automazione email Archibald
+
+Comandi principali:
+
+```bash
+python manage.py process_archibald_inbox
+python manage.py send_archibald_notifications
+```
+
+Esempio `cron` (ogni 5 minuti inbox, notifiche giornaliere con controllo orario interno):
+
+```bash
+*/5 * * * * cd /path/mio_master && /path/mio_master/.venv/bin/python manage.py process_archibald_inbox >> /var/log/mio_archibald_mail.log 2>&1
+*/15 * * * * cd /path/mio_master && /path/mio_master/.venv/bin/python manage.py send_archibald_notifications >> /var/log/mio_archibald_notify.log 2>&1
+```
 
 ## Deploy VPS (Docker)
 
@@ -299,6 +326,7 @@ mio_master/
   todo/ planner/     # task e pianificazione
   routines/          # routine settimanali con check
   archibald/         # assistente AI contestuale
+  archibald_mail/    # inbox email Archibald + notifiche
   ai_lab/            # tracking studi/esperimenti AI
   vault/             # vault cifrato + TOTP
   link_storage/      # archivio link rapido

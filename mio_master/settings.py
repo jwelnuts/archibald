@@ -79,6 +79,7 @@ INSTALLED_APPS = [
     'planner',
     'routines',
     'archibald',
+    'archibald_mail',
     'ai_lab',
     'vault',
     'link_storage',

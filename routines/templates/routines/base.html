@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=0.7">
     <title>{% block title %}MIO - Routines{% endblock %}</title>
     {% include "core/partials/uikit_head.html" %}
+    <link rel="stylesheet" href="{% static 'routines/app.css' %}">
+    {% block extra_head %}{% endblock %}
     <script src="{% static 'core/vendor/htmx/htmx.min.js' %}" defer></script>
   </head>
   <body class="routines-skin">

@@ -6,7 +6,13 @@ from django.http import JsonResponse
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from .forms import RoutineForm, RoutineItemForm, WEEKDAY_ALL
+from .forms import (
+    QuickRoutineForm,
+    QuickRoutineItemForm,
+    RoutineForm,
+    RoutineItemForm,
+    WEEKDAY_ALL,
+)
 from .models import Routine, RoutineCheck, RoutineItem
 from projects.models import Project
 
@@ -103,9 +109,51 @@ def _completion_rate(done: int, total: int):
 @login_required
 def dashboard(request):
     user = request.user
-    week_start = _week_start_for(request.GET.get("week"))
+    requested_week = request.POST.get("week") if request.method == "POST" else request.GET.get("week")
+    week_start = _week_start_for(requested_week)
     week_end = week_start + timedelta(days=6)
     today = date.today()
+
+    active_quick_form = ""
+    quick_routine_form = QuickRoutineForm()
+    quick_item_form = QuickRoutineItemForm(owner=user, initial={"weekday": str(today.weekday())})
+
+    if request.method == "POST":
+        quick_action = (request.POST.get("quick_action") or "").strip()
+        if quick_action == "add_routine":
+            active_quick_form = "routine"
+            quick_routine_form = QuickRoutineForm(request.POST)
+            quick_item_form = QuickRoutineItemForm(owner=user, initial={"weekday": str(today.weekday())})
+            if quick_routine_form.is_valid():
+                name = (quick_routine_form.cleaned_data.get("name") or "").strip()
+                description = (quick_routine_form.cleaned_data.get("description") or "").strip()
+                routine, created = Routine.objects.get_or_create(
+                    owner=user,
+                    name=name,
+                    defaults={
+                        "description": description,
+                        "is_active": True,
+                    },
+                )
+                if not created:
+                    updates = []
+                    if description and routine.description != description:
+                        routine.description = description
+                        updates.append("description")
+                    if not routine.is_active:
+                        routine.is_active = True
+                        updates.append("is_active")
+                    if updates:
+                        routine.save(update_fields=updates)
+                return redirect(f"/routines/?week={week_start.isoformat()}")
+
+        elif quick_action == "add_item":
+            active_quick_form = "item"
+            quick_item_form = QuickRoutineItemForm(request.POST, owner=user)
+            quick_routine_form = QuickRoutineForm()
+            if quick_item_form.is_valid():
+                quick_item_form.save(owner=user)
+                return redirect(f"/routines/?week={week_start.isoformat()}")
 
     routines = Routine.objects.filter(owner=user, is_active=True).order_by("name")
     items = (
@@ -196,6 +244,9 @@ def dashboard(request):
         "today_stats": today_stats,
         "prev_week": (week_start - timedelta(days=7)).isoformat(),
         "next_week": (week_start + timedelta(days=7)).isoformat(),
+        "quick_routine_form": quick_routine_form,
+        "quick_item_form": quick_item_form,
+        "active_quick_form": active_quick_form,
     }
     return render(request, "routines/dashboard.html", context)
 

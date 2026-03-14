@@ -1,0 +1,162 @@
+import os
+
+from django.conf import settings
+from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+
+from common.models import OwnedModel, TimeStampedModel
+
+
+DEFAULT_ARCHIBALD_INBOX = "archibald@miorganizzo.ovh"
+
+
+def default_inbox_address() -> str:
+    return (os.getenv("ARCHIBALD_MAIL_DEFAULT_INBOX") or DEFAULT_ARCHIBALD_INBOX).strip()
+
+
+def default_timezone_name() -> str:
+    return str(getattr(settings, "TIME_ZONE", "UTC") or "UTC")
+
+
+class ArchibaldMailboxConfig(OwnedModel, TimeStampedModel):
+    inbox_address = models.EmailField(default=default_inbox_address)
+    timezone_name = models.CharField(max_length=64, default=default_timezone_name)
+
+    is_enabled = models.BooleanField(default=False)
+    auto_reply_enabled = models.BooleanField(default=True)
+    auto_reply_subject_prefix = models.CharField(max_length=24, default="Re:")
+    auto_reply_signature = models.TextField(blank=True)
+    allowed_sender_regex = models.CharField(max_length=180, blank=True)
+
+    imap_host = models.CharField(max_length=120, blank=True)
+    imap_port = models.PositiveIntegerField(default=993)
+    imap_use_ssl = models.BooleanField(default=True)
+    imap_username = models.CharField(max_length=180, blank=True)
+    imap_password = models.CharField(max_length=255, blank=True)
+    imap_mailbox = models.CharField(max_length=80, default="INBOX")
+
+    smtp_host = models.CharField(max_length=120, blank=True)
+    smtp_port = models.PositiveIntegerField(default=587)
+    smtp_use_tls = models.BooleanField(default=True)
+    smtp_use_ssl = models.BooleanField(default=False)
+    smtp_username = models.CharField(max_length=180, blank=True)
+    smtp_password = models.CharField(max_length=255, blank=True)
+    smtp_from_email = models.EmailField(blank=True)
+    smtp_reply_to = models.EmailField(blank=True)
+
+    max_inbox_emails_per_run = models.PositiveSmallIntegerField(
+        default=10,
+        validators=[MinValueValidator(1), MaxValueValidator(50)],
+    )
+
+    notifications_enabled = models.BooleanField(default=False)
+    notification_recipient = models.EmailField(blank=True)
+    notification_hour = models.PositiveSmallIntegerField(
+        default=8,
+        validators=[MinValueValidator(0), MaxValueValidator(23)],
+    )
+    notification_minute = models.PositiveSmallIntegerField(
+        default=30,
+        validators=[MinValueValidator(0), MaxValueValidator(59)],
+    )
+    notification_days_ahead = models.PositiveSmallIntegerField(
+        default=2,
+        validators=[MinValueValidator(1), MaxValueValidator(14)],
+    )
+    notification_include_tasks = models.BooleanField(default=True)
+    notification_include_planner = models.BooleanField(default=True)
+    notification_include_subscriptions = models.BooleanField(default=True)
+    notification_include_routines = models.BooleanField(default=True)
+
+    latest_poll_at = models.DateTimeField(null=True, blank=True)
+    latest_poll_status = models.CharField(max_length=32, blank=True)
+    latest_poll_error = models.TextField(blank=True)
+    last_notification_sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner"],
+                name="archibald_mail_config_owner_unique",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["owner", "is_enabled"]),
+            models.Index(fields=["owner", "notifications_enabled"]),
+        ]
+
+    def __str__(self):
+        return f"ArchibaldMailboxConfig({self.owner_id})"
+
+    def resolved_imap_password(self) -> str:
+        return (self.imap_password or os.getenv("ARCHIBALD_MAIL_IMAP_PASSWORD", "")).strip()
+
+    def resolved_smtp_password(self) -> str:
+        return (self.smtp_password or os.getenv("ARCHIBALD_MAIL_SMTP_PASSWORD", "")).strip()
+
+    def smtp_sender(self) -> str:
+        return (self.smtp_from_email or self.inbox_address or self.smtp_username).strip()
+
+    def notification_target(self) -> str:
+        return (self.notification_recipient or self.owner.email or self.inbox_address).strip()
+
+    def is_imap_configured(self) -> bool:
+        return bool(self.imap_host and self.imap_username and self.resolved_imap_password())
+
+    def is_smtp_configured(self) -> bool:
+        return bool(self.smtp_host and self.smtp_username and self.resolved_smtp_password() and self.smtp_sender())
+
+
+class ArchibaldEmailMessage(OwnedModel, TimeStampedModel):
+    class Direction(models.TextChoices):
+        INBOUND = "INBOUND", "Inbound"
+        OUTBOUND = "OUTBOUND", "Outbound"
+        NOTIFICATION = "NOTIFICATION", "Notification"
+        TEST = "TEST", "Test"
+
+    class Status(models.TextChoices):
+        RECEIVED = "RECEIVED", "Received"
+        REPLIED = "REPLIED", "Replied"
+        SENT = "SENT", "Sent"
+        FAILED = "FAILED", "Failed"
+        SKIPPED = "SKIPPED", "Skipped"
+
+    config = models.ForeignKey(
+        "archibald_mail.ArchibaldMailboxConfig",
+        on_delete=models.CASCADE,
+        related_name="messages",
+    )
+    related_message = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        related_name="followups",
+        null=True,
+        blank=True,
+    )
+    direction = models.CharField(max_length=16, choices=Direction.choices)
+    status = models.CharField(max_length=16, choices=Status.choices)
+
+    message_id = models.CharField(max_length=255, blank=True)
+    in_reply_to = models.CharField(max_length=255, blank=True)
+    external_ref = models.CharField(max_length=120, blank=True)
+
+    sender = models.EmailField(blank=True)
+    recipient = models.EmailField(blank=True)
+    subject = models.CharField(max_length=255, blank=True)
+    body_text = models.TextField(blank=True)
+    ai_response_text = models.TextField(blank=True)
+    raw_headers = models.TextField(blank=True)
+    error_text = models.TextField(blank=True)
+
+    processed_at = models.DateTimeField(null=True, blank=True)
+    sent_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["owner", "config", "direction", "created_at"]),
+            models.Index(fields=["owner", "message_id"]),
+            models.Index(fields=["owner", "status", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.direction} {self.status} ({self.owner_id})"

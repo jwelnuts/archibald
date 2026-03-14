@@ -107,6 +107,46 @@ class RoutineItemCreationTests(TestCase):
         for item in items:
             self.assertEqual(item.schema.get("fields", [{}])[0].get("name"), "energia")
 
+    def test_dashboard_quick_add_routine_creates_routine(self):
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+
+        response = self.client.post(
+            "/routines/",
+            {
+                "quick_action": "add_routine",
+                "week": week_start.isoformat(),
+                "name": "Routine lampo",
+                "description": "Creata da dashboard",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Routine.objects.filter(owner=self.user, name="Routine lampo", is_active=True).exists())
+
+    def test_dashboard_quick_add_item_creates_item(self):
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+
+        response = self.client.post(
+            "/routines/",
+            {
+                "quick_action": "add_item",
+                "week": week_start.isoformat(),
+                "routine_choice": str(self.routine.id),
+                "routine_name": "",
+                "title": "Task veloce",
+                "weekday": "2",
+                "time_start": "08:15",
+                "note": "Da dashboard",
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        created = RoutineItem.objects.filter(owner=self.user, routine=self.routine, title="Task veloce")
+        self.assertEqual(created.count(), 1)
+        self.assertEqual(created.first().weekday, 2)
+
 
 class RoutineCrudTests(TestCase):
     def setUp(self):

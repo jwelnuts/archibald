@@ -1,0 +1,198 @@
+{% extends "archibald_mail/base.html" %}
+
+{% block content %}
+  {% if messages %}
+    <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+      {% for message in messages %}
+        <div class="uk-alert-{% if message.tags == 'error' %}danger{% elif message.tags == 'warning' %}warning{% else %}success{% endif %}" uk-alert>
+          <a class="uk-alert-close" uk-close></a>
+          <p>{{ message }}</p>
+        </div>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <div class="uk-flex uk-flex-between uk-flex-wrap uk-flex-middle">
+      <div>
+        <h1 class="uk-heading-bullet uk-margin-remove">Archibald Mail Control Panel</h1>
+        <p class="uk-text-meta uk-margin-small-top">
+          Configura risposte automatiche per <strong>{{ config.inbox_address }}</strong> e notifiche intelligenti.
+        </p>
+      </div>
+      <div class="uk-flex uk-flex-wrap uk-gap-small">
+        <form method="post" action="" class="uk-margin-remove">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="process_inbox">
+          <button class="uk-button uk-button-primary uk-button-small" type="submit">Processa inbox ora</button>
+        </form>
+        <form method="post" action="" class="uk-margin-remove">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="send_notification">
+          <button class="uk-button uk-button-default uk-button-small" type="submit">Invia notifica ora</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="uk-grid-small uk-child-width-1-4@m uk-margin-top" uk-grid>
+      <div>
+        <div class="uk-card uk-card-secondary uk-card-small uk-card-body">
+          <div class="uk-text-meta">Auto-reply</div>
+          <div class="uk-text-bold">{% if config.auto_reply_enabled and config.is_enabled %}Attivo{% else %}Disattivo{% endif %}</div>
+        </div>
+      </div>
+      <div>
+        <div class="uk-card uk-card-secondary uk-card-small uk-card-body">
+          <div class="uk-text-meta">Notifiche</div>
+          <div class="uk-text-bold">{% if config.notifications_enabled %}Attive{% else %}Disattive{% endif %}</div>
+        </div>
+      </div>
+      <div>
+        <div class="uk-card uk-card-secondary uk-card-small uk-card-body">
+          <div class="uk-text-meta">Ultimo poll</div>
+          <div class="uk-text-bold">{% if config.latest_poll_at %}{{ config.latest_poll_at|date:"d/m H:i" }}{% else %}Mai{% endif %}</div>
+          <div class="uk-text-meta">{{ config.latest_poll_status|default:"-" }}</div>
+        </div>
+      </div>
+      <div>
+        <div class="uk-card uk-card-secondary uk-card-small uk-card-body">
+          <div class="uk-text-meta">Ultima notifica</div>
+          <div class="uk-text-bold">{% if config.last_notification_sent_at %}{{ config.last_notification_sent_at|date:"d/m H:i" }}{% else %}Mai{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="uk-grid-large" uk-grid>
+    <div class="uk-width-2-3@l">
+      <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+        <h2 class="uk-margin-remove">Configurazione</h2>
+        <form method="post" action="" class="uk-margin-top uk-form-stacked">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="save_config">
+          {{ config_form.non_field_errors }}
+
+          <h3 class="uk-heading-line"><span>Generale</span></h3>
+          <div class="uk-grid-small uk-child-width-1-2@m" uk-grid>
+            {% for field in config_form %}
+              {% if field.name in core_field_names %}
+                <div>
+                  <label class="uk-form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  <div class="uk-form-controls">{{ field }}</div>
+                  {% if field.help_text %}<div class="uk-text-meta">{{ field.help_text }}</div>{% endif %}
+                  {{ field.errors }}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <h3 class="uk-heading-line uk-margin-medium-top"><span>IMAP (ricezione)</span></h3>
+          <div class="uk-grid-small uk-child-width-1-2@m" uk-grid>
+            {% for field in config_form %}
+              {% if field.name in imap_field_names %}
+                <div>
+                  <label class="uk-form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  <div class="uk-form-controls">{{ field }}</div>
+                  {% if field.name == 'imap_password' and imap_password_configured %}<div class="uk-text-meta">Password IMAP già impostata.</div>{% endif %}
+                  {% if field.help_text %}<div class="uk-text-meta">{{ field.help_text }}</div>{% endif %}
+                  {{ field.errors }}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <h3 class="uk-heading-line uk-margin-medium-top"><span>SMTP (invio)</span></h3>
+          <div class="uk-grid-small uk-child-width-1-2@m" uk-grid>
+            {% for field in config_form %}
+              {% if field.name in smtp_field_names %}
+                <div>
+                  <label class="uk-form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  <div class="uk-form-controls">{{ field }}</div>
+                  {% if field.name == 'smtp_password' and smtp_password_configured %}<div class="uk-text-meta">Password SMTP già impostata.</div>{% endif %}
+                  {% if field.help_text %}<div class="uk-text-meta">{{ field.help_text }}</div>{% endif %}
+                  {{ field.errors }}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <h3 class="uk-heading-line uk-margin-medium-top"><span>Notifiche</span></h3>
+          <div class="uk-grid-small uk-child-width-1-2@m" uk-grid>
+            {% for field in config_form %}
+              {% if field.name in notification_field_names %}
+                <div>
+                  <label class="uk-form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+                  <div class="uk-form-controls">{{ field }}</div>
+                  {% if field.help_text %}<div class="uk-text-meta">{{ field.help_text }}</div>{% endif %}
+                  {{ field.errors }}
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <div class="uk-margin-medium-top">
+            <button class="uk-button uk-button-primary" type="submit">Salva configurazione</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <aside class="uk-width-1-3@l">
+      <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+        <h3 class="uk-margin-remove">Invio test</h3>
+        <form method="post" action="" class="uk-form-stacked uk-margin-top">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="send_test_email">
+          {{ test_form.as_p }}
+          <button class="uk-button uk-button-default uk-button-small" type="submit">Invia test</button>
+        </form>
+      </section>
+
+      <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+        <h3 class="uk-margin-remove">Stato messaggi</h3>
+        <ul class="uk-list uk-list-divider uk-margin-small-top">
+          {% for card in status_cards %}
+            <li class="uk-flex uk-flex-between uk-flex-middle"><span>{{ card.status }}</span><strong>{{ card.total }}</strong></li>
+          {% empty %}
+            <li class="uk-text-meta">Nessun log disponibile.</li>
+          {% endfor %}
+        </ul>
+      </section>
+    </aside>
+  </div>
+
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <h2 class="uk-margin-remove">Storico email</h2>
+    <div class="uk-overflow-auto uk-margin-top">
+      <table class="uk-table uk-table-small uk-table-divider uk-table-middle">
+        <thead>
+          <tr>
+            <th>Quando</th>
+            <th>Direzione</th>
+            <th>Stato</th>
+            <th>Da</th>
+            <th>A</th>
+            <th>Oggetto</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in recent_messages %}
+            <tr>
+              <td>{{ row.created_at|date:"d/m H:i" }}</td>
+              <td>{{ row.direction }}</td>
+              <td>{{ row.status }}</td>
+              <td>{{ row.sender|default:"-" }}</td>
+              <td>{{ row.recipient|default:"-" }}</td>
+              <td>
+                <div>{{ row.subject|default:"(senza oggetto)" }}</div>
+                {% if row.error_text %}<div class="uk-text-danger uk-text-meta">{{ row.error_text|truncatechars:130 }}</div>{% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="uk-text-meta">Nessun messaggio registrato.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}

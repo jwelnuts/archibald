@@ -1,0 +1,17 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.7">
+    <title>{% block title %}MIO - Archibald Mail{% endblock %}</title>
+    {% include "core/partials/uikit_head.html" %}
+  </head>
+  <body>
+    <div class="uk-container uk-container-xlarge uk-margin-top uk-margin-bottom">
+      {% include "core/partials/site_header.html" with module_subtitle="Archibald Mail" %}
+      {% block content %}{% endblock %}
+    </div>
+    {% include "core/partials/uikit_body.html" %}
+  </body>
+</html>

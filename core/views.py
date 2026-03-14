@@ -103,6 +103,13 @@ DEFAULT_DASHBOARD_WIDGETS = [
         "group": "ops",
     },
     {
+        "id": "archibald_mail",
+        "title": "Archibald Mail",
+        "description": "Inbox AI e notifiche email.",
+        "url": "/archibald-mail/",
+        "group": "ops",
+    },
+    {
         "id": "ai_lab",
         "title": "AI Lab",
         "description": "Esperimenti e appunti AI.",

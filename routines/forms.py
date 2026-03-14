@@ -1,3 +1,5 @@
+from datetime import date
+
 from django import forms
 
 from projects.models import Project
@@ -36,6 +38,125 @@ class RoutineForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _apply_uikit_compact(self.fields)
+
+
+class QuickRoutineForm(forms.Form):
+    name = forms.CharField(label="Nome routine", max_length=160)
+    description = forms.CharField(
+        label="Descrizione",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _apply_uikit_compact(self.fields)
+
+
+class QuickRoutineItemForm(forms.Form):
+    routine_choice = forms.ChoiceField(label="Routine", required=False)
+    routine_name = forms.CharField(label="Nuova routine", required=False, max_length=160)
+    title = forms.CharField(label="Attivita", max_length=200)
+    weekday = forms.ChoiceField(
+        label="Giorno",
+        choices=[(str(value), label) for value, label in RoutineItem.Weekday.choices],
+    )
+    time_start = forms.TimeField(
+        label="Orario",
+        required=False,
+        widget=forms.TimeInput(attrs={"type": "time"}),
+    )
+    note = forms.CharField(
+        label="Nota",
+        required=False,
+        widget=forms.Textarea(attrs={"rows": 2}),
+    )
+
+    def __init__(self, *args, **kwargs):
+        owner = kwargs.pop("owner", None)
+        super().__init__(*args, **kwargs)
+        _apply_uikit_compact(self.fields)
+        self._owner = owner
+        self._routine_qs = Routine.objects.none()
+
+        if owner is not None:
+            self._routine_qs = Routine.objects.filter(owner=owner).order_by("name")
+            self.fields["routine_choice"].choices = [("", "Seleziona...")] + [
+                (str(r.id), r.name) for r in self._routine_qs
+            ] + [("__new__", "+ Nuova routine")]
+        else:
+            self.fields["routine_choice"].choices = [("", "Seleziona..."), ("__new__", "+ Nuova routine")]
+
+        if not self.is_bound and not self.initial.get("weekday"):
+            self.initial["weekday"] = str(date.today().weekday())
+
+    def clean_weekday(self):
+        raw = self.cleaned_data.get("weekday")
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            raise forms.ValidationError("Giorno non valido.")
+        allowed = {choice[0] for choice in RoutineItem.Weekday.choices}
+        if value not in allowed:
+            raise forms.ValidationError("Giorno non valido.")
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+        routine_choice = (cleaned.get("routine_choice") or "").strip()
+        routine_name = (cleaned.get("routine_name") or "").strip()
+
+        if routine_choice == "__new__":
+            if not routine_name:
+                self.add_error("routine_name", "Inserisci il nome della nuova routine.")
+        elif not routine_choice:
+            self.add_error("routine_choice", "Seleziona una routine.")
+        else:
+            if not routine_choice.isdigit():
+                self.add_error("routine_choice", "Routine non valida.")
+            elif self._owner is not None and not self._routine_qs.filter(id=routine_choice).exists():
+                self.add_error("routine_choice", "Routine non trovata.")
+
+        return cleaned
+
+    def resolve_routine(self):
+        routine_choice = (self.cleaned_data.get("routine_choice") or "").strip()
+        routine_name = (self.cleaned_data.get("routine_name") or "").strip()
+
+        if routine_choice == "__new__":
+            if self._owner is None:
+                return None
+            routine, _ = Routine.objects.get_or_create(
+                owner=self._owner,
+                name=routine_name,
+                defaults={"is_active": True},
+            )
+            if not routine.is_active:
+                routine.is_active = True
+                routine.save(update_fields=["is_active"])
+            return routine
+
+        if routine_choice and self._owner is not None:
+            try:
+                return self._routine_qs.get(id=int(routine_choice))
+            except (Routine.DoesNotExist, ValueError, TypeError):
+                return None
+
+        return None
+
+    def save(self, *, owner):
+        routine = self.resolve_routine()
+        if routine is None:
+            raise ValueError("Routine non valida.")
+        return RoutineItem.objects.create(
+            owner=owner,
+            routine=routine,
+            title=(self.cleaned_data.get("title") or "").strip(),
+            weekday=self.cleaned_data["weekday"],
+            time_start=self.cleaned_data.get("time_start"),
+            note=(self.cleaned_data.get("note") or "").strip(),
+            is_active=True,
+        )
 
 
 class RoutineItemForm(forms.ModelForm):
