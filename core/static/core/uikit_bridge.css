@@ -1,0 +1,31 @@
+.is-hidden,
+.is-filter-hidden,
+.is-user-hidden,
+.tx-hidden,
+.todo-hidden,
+.routines-hidden {
+  display: none !important;
+}
+
+.modal-open {
+  overflow: hidden;
+}
+
+.uk-button.is-active,
+.is-active.uk-button {
+  background-color: #1e87f0;
+  border-color: #1e87f0;
+  color: #fff;
+}
+
+.uk-gap-small {
+  gap: 0.5rem;
+}
+
+.uk-gap-medium {
+  gap: 1rem;
+}
+
+.uk-gap-large {
+  gap: 1.5rem;
+}

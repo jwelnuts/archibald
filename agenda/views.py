@@ -1,13 +1,19 @@
 from calendar import Calendar
 from datetime import date, timedelta
 from decimal import Decimal
+import json
 from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_http_methods
 
+from core.models import UserNavConfig
 from planner.models import PlannerItem
+from planner.forms import PlannerItemForm
+from projects.models import ProjectNote
 from routines.models import RoutineCheck, RoutineItem
 from todo.forms import TaskForm
 from todo.models import Task
@@ -30,10 +36,18 @@ MONTH_NAMES_IT = [
     "Dicembre",
 ]
 
-
 ROUTINE_STATUS_LABELS = {
     choice: label for choice, label in RoutineCheck.Status.choices
 }
+
+DEFAULT_AGENDA_PREFERENCES = {
+    "density": "comfortable",
+    "accent": "blue",
+    "sections": ["snapshot", "panel", "forms", "quick_actions"],
+}
+ALLOWED_AGENDA_DENSITIES = {"comfortable", "compact"}
+ALLOWED_AGENDA_ACCENTS = {"blue", "green", "amber", "rose"}
+ALLOWED_AGENDA_SECTIONS = {"snapshot", "panel", "forms", "quick_actions"}
 
 
 def _month_start_end(month_raw: str | None):
@@ -84,95 +98,109 @@ def _redirect_agenda(month_value: str | None, selected_value: str | None):
     return redirect(f"/agenda/{'?' + query if query else ''}")
 
 
-@login_required
-def dashboard(request):
-    month_raw = request.GET.get("month")
+def _normalize_agenda_preferences(raw_config):
+    if not isinstance(raw_config, dict):
+        raw_config = {}
+
+    density = (raw_config.get("density") or DEFAULT_AGENDA_PREFERENCES["density"]).strip().lower()
+    if density not in ALLOWED_AGENDA_DENSITIES:
+        density = DEFAULT_AGENDA_PREFERENCES["density"]
+
+    accent = (raw_config.get("accent") or DEFAULT_AGENDA_PREFERENCES["accent"]).strip().lower()
+    if accent not in ALLOWED_AGENDA_ACCENTS:
+        accent = DEFAULT_AGENDA_PREFERENCES["accent"]
+
+    sections_raw = raw_config.get("sections", [])
+    sections = []
+    if isinstance(sections_raw, list):
+        for row in sections_raw:
+            key = (str(row) or "").strip().lower()
+            if key in ALLOWED_AGENDA_SECTIONS and key not in sections:
+                sections.append(key)
+
+    if not sections:
+        sections = list(DEFAULT_AGENDA_PREFERENCES["sections"])
+
+    return {
+        "density": density,
+        "accent": accent,
+        "sections": sections,
+    }
+
+
+def _agenda_preferences_for_user(user):
+    nav_config, _ = UserNavConfig.objects.get_or_create(user=user)
+    raw = nav_config.config or {}
+    return _normalize_agenda_preferences(raw.get("agenda_preferences", {}))
+
+
+def _build_agenda_context(
+    user,
+    month_raw: str | None,
+    selected_raw: str | None,
+    todo_form=None,
+    work_form=None,
+    planner_form=None,
+):
     month_start, month_end = _month_start_end(month_raw)
     month_param = month_start.strftime("%Y-%m")
 
     selected_default = month_start
     if month_start <= date.today() <= month_end:
         selected_default = date.today()
-    selected_date = _safe_date(request.GET.get("selected"), selected_default)
+    selected_date = _safe_date(selected_raw, selected_default)
     if not (month_start <= selected_date <= month_end):
         selected_date = selected_default
     selected_param = selected_date.isoformat()
 
-    todo_form = TaskForm(
-        owner=request.user,
-        initial={
-            "due_date": selected_date,
-            "item_type": Task.ItemType.REMINDER,
-            "status": Task.Status.OPEN,
-        },
-    )
-    selected_log = WorkLog.objects.filter(owner=request.user, work_date=selected_date).first()
-    if selected_log:
-        work_form = WorkLogForm(instance=selected_log)
-    else:
-        work_form = WorkLogForm(initial={"work_date": selected_date})
+    if todo_form is None:
+        todo_form = TaskForm(
+            owner=user,
+            initial={
+                "due_date": selected_date,
+                "item_type": Task.ItemType.REMINDER,
+                "status": Task.Status.OPEN,
+            },
+        )
 
-    if request.method == "POST":
-        action = (request.POST.get("action") or "").strip()
-        posted_month = request.POST.get("month") or month_param
-        posted_selected = request.POST.get("selected") or selected_param
+    if work_form is None:
+        selected_log = WorkLog.objects.filter(owner=user, work_date=selected_date).first()
+        if selected_log:
+            work_form = WorkLogForm(instance=selected_log)
+        else:
+            work_form = WorkLogForm(initial={"work_date": selected_date})
 
-        if action == "add_todo_item":
-            todo_form = TaskForm(request.POST, owner=request.user)
-            if todo_form.is_valid():
-                task = todo_form.save(commit=False)
-                task.owner = request.user
-                task.save()
-                if task.due_date:
-                    return _redirect_agenda(task.due_date.strftime("%Y-%m"), task.due_date.isoformat())
-                return _redirect_agenda(posted_month, posted_selected)
-        elif action == "log_hours":
-            work_form = WorkLogForm(request.POST)
-            if work_form.is_valid():
-                work_date = work_form.cleaned_data["work_date"]
-                WorkLog.objects.update_or_create(
-                    owner=request.user,
-                    work_date=work_date,
-                    defaults={
-                        "time_start": work_form.cleaned_data["time_start"],
-                        "time_end": work_form.cleaned_data["time_end"],
-                        "lunch_break_minutes": work_form.cleaned_data["lunch_break_minutes"],
-                        "hours": work_form.cleaned_data["hours"],
-                        "note": work_form.cleaned_data["note"],
-                    },
-                )
-                return _redirect_agenda(work_date.strftime("%Y-%m"), work_date.isoformat())
-        elif action == "toggle_item":
-            item = get_object_or_404(AgendaItem, id=request.POST.get("item_id"), owner=request.user)
-            item.status = AgendaItem.Status.DONE if item.status != AgendaItem.Status.DONE else AgendaItem.Status.PLANNED
-            item.save(update_fields=["status", "updated_at"])
-            return _redirect_agenda(posted_month, posted_selected)
-        elif action == "remove_item":
-            item = get_object_or_404(AgendaItem, id=request.POST.get("item_id"), owner=request.user)
-            item.delete()
-            return _redirect_agenda(posted_month, posted_selected)
+    if planner_form is None:
+        planner_form = PlannerItemForm(
+            owner=user,
+            prefix="planner",
+            initial={
+                "due_date": selected_date,
+                "status": PlannerItem.Status.PLANNED,
+            },
+        )
 
     agenda_items = (
-        AgendaItem.objects.filter(owner=request.user, due_date__range=(month_start, month_end))
+        AgendaItem.objects.filter(owner=user, due_date__range=(month_start, month_end))
         .select_related("project")
         .order_by("due_date", "due_time", "created_at")
     )
     todo_items = (
-        Task.objects.filter(owner=request.user, due_date__range=(month_start, month_end))
+        Task.objects.filter(owner=user, due_date__range=(month_start, month_end))
         .exclude(status=Task.Status.DONE)
         .select_related("project")
         .order_by("due_date", "due_time", "created_at")
     )
     planner_items = (
         PlannerItem.objects.filter(
-            owner=request.user,
+            owner=user,
             due_date__range=(month_start, month_end),
             status=PlannerItem.Status.PLANNED,
         )
         .select_related("project")
         .order_by("due_date", "created_at")
     )
-    work_logs = WorkLog.objects.filter(owner=request.user, work_date__range=(month_start, month_end)).order_by("work_date")
+    work_logs = WorkLog.objects.filter(owner=user, work_date__range=(month_start, month_end)).order_by("work_date")
 
     events_map = {}
     summary_map = {}
@@ -251,7 +279,7 @@ def dashboard(request):
         )
 
     routine_items = (
-        RoutineItem.objects.filter(owner=request.user, is_active=True, routine__is_active=True)
+        RoutineItem.objects.filter(owner=user, is_active=True, routine__is_active=True)
         .select_related("routine", "project")
         .order_by("time_start", "title")
     )
@@ -259,7 +287,7 @@ def dashboard(request):
         week_start_min = _week_start(month_start)
         week_start_max = _week_start(month_end)
         checks = RoutineCheck.objects.filter(
-            owner=request.user,
+            owner=user,
             item__in=routine_items,
             week_start__range=(week_start_min, week_start_max),
         )
@@ -329,6 +357,7 @@ def dashboard(request):
 
     month_total_hours = work_logs.aggregate(total=Sum("hours")).get("total") or Decimal("0")
     month_logged_days = work_logs.count()
+    routine_month_total = sum(summary["routine"] for summary in summary_map.values())
 
     weeks = []
     calendar = Calendar(firstweekday=0)
@@ -384,7 +413,11 @@ def dashboard(request):
     else:
         next_month = month_start.replace(month=month_start.month + 1, day=1)
 
+    selected_events = events_map.get(selected_date, [])
+
     context = {
+        "month_start": month_start,
+        "month_end": month_end,
         "month_label": f"{MONTH_NAMES_IT[month_start.month - 1]} {month_start.year}",
         "month_param": month_param,
         "selected_param": selected_param,
@@ -393,14 +426,174 @@ def dashboard(request):
         "next_month_param": next_month.strftime("%Y-%m"),
         "calendar_weeks": weeks,
         "weekday_labels": ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"],
-        "selected_events": events_map.get(selected_date, []),
+        "selected_events": selected_events,
         "month_total_hours": _hours_label(month_total_hours),
         "month_logged_days": month_logged_days,
         "agenda_counts": {
             "planned": agenda_items.filter(status=AgendaItem.Status.PLANNED).count(),
             "done": agenda_items.filter(status=AgendaItem.Status.DONE).count(),
         },
+        "todo_open_month": todo_items.count(),
+        "planner_open_month": planner_items.count(),
+        "routine_month_total": routine_month_total,
+        "selected_events_total": len(selected_events),
         "todo_form": todo_form,
         "work_form": work_form,
+        "planner_form": planner_form,
     }
+    return context
+
+
+@login_required
+def dashboard(request):
+    month_raw = request.GET.get("month")
+    selected_raw = request.GET.get("selected")
+    todo_form = None
+    work_form = None
+    planner_form = None
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        posted_month = request.POST.get("month") or month_raw
+        posted_selected = request.POST.get("selected") or selected_raw
+
+        if action == "add_todo_item":
+            todo_form = TaskForm(request.POST, owner=request.user)
+            if todo_form.is_valid():
+                task = todo_form.save(commit=False)
+                task.owner = request.user
+                task.save()
+                if task.due_date:
+                    return _redirect_agenda(task.due_date.strftime("%Y-%m"), task.due_date.isoformat())
+                return _redirect_agenda(posted_month, posted_selected)
+        elif action == "log_hours":
+            work_form = WorkLogForm(request.POST)
+            if work_form.is_valid():
+                work_date = work_form.cleaned_data["work_date"]
+                WorkLog.objects.update_or_create(
+                    owner=request.user,
+                    work_date=work_date,
+                    defaults={
+                        "time_start": work_form.cleaned_data["time_start"],
+                        "time_end": work_form.cleaned_data["time_end"],
+                        "lunch_break_minutes": work_form.cleaned_data["lunch_break_minutes"],
+                        "hours": work_form.cleaned_data["hours"],
+                        "note": work_form.cleaned_data["note"],
+                    },
+                )
+                return _redirect_agenda(work_date.strftime("%Y-%m"), work_date.isoformat())
+        elif action == "add_planner_item":
+            planner_form = PlannerItemForm(request.POST, owner=request.user, prefix="planner")
+            if planner_form.is_valid():
+                item = planner_form.save(commit=False)
+                item.owner = request.user
+                item.save()
+                if item.project_id:
+                    due = item.due_date.strftime("%d/%m/%Y") if item.due_date else "senza scadenza"
+                    note_parts = [
+                        f"Promemoria creato: {item.title}",
+                        f"Scadenza: {due}",
+                        f"Stato: {item.get_status_display()}",
+                    ]
+                    if item.note:
+                        note_parts.append(f"Note: {item.note}")
+                    ProjectNote.objects.create(
+                        owner=request.user,
+                        project=item.project,
+                        content="<br>".join(note_parts),
+                    )
+                if item.due_date:
+                    return _redirect_agenda(item.due_date.strftime("%Y-%m"), item.due_date.isoformat())
+                return _redirect_agenda(posted_month, posted_selected)
+        elif action == "toggle_item":
+            item = get_object_or_404(AgendaItem, id=request.POST.get("item_id"), owner=request.user)
+            item.status = AgendaItem.Status.DONE if item.status != AgendaItem.Status.DONE else AgendaItem.Status.PLANNED
+            item.save(update_fields=["status", "updated_at"])
+            return _redirect_agenda(posted_month, posted_selected)
+        elif action == "remove_item":
+            item = get_object_or_404(AgendaItem, id=request.POST.get("item_id"), owner=request.user)
+            item.delete()
+            return _redirect_agenda(posted_month, posted_selected)
+
+        month_raw = posted_month
+        selected_raw = posted_selected
+
+    context = _build_agenda_context(
+        user=request.user,
+        month_raw=month_raw,
+        selected_raw=selected_raw,
+        todo_form=todo_form,
+        work_form=work_form,
+        planner_form=planner_form,
+    )
+    context["agenda_preferences"] = _agenda_preferences_for_user(request.user)
     return render(request, "agenda/dashboard.html", context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def panel(request):
+    context = _build_agenda_context(
+        user=request.user,
+        month_raw=request.GET.get("month"),
+        selected_raw=request.GET.get("selected"),
+    )
+    return render(request, "agenda/partials/panel.html", context)
+
+
+@login_required
+@require_http_methods(["GET"])
+def snapshot(request):
+    context = _build_agenda_context(
+        user=request.user,
+        month_raw=request.GET.get("month"),
+        selected_raw=request.GET.get("selected"),
+    )
+    return render(request, "agenda/partials/snapshot.html", context)
+
+
+@login_required
+@require_http_methods(["POST"])
+def item_action(request):
+    action = (request.POST.get("action") or "").strip()
+    month_value = request.POST.get("month") or request.GET.get("month")
+    selected_value = request.POST.get("selected") or request.GET.get("selected")
+
+    if action == "toggle_item":
+        item = get_object_or_404(AgendaItem, id=request.POST.get("item_id"), owner=request.user)
+        item.status = AgendaItem.Status.DONE if item.status != AgendaItem.Status.DONE else AgendaItem.Status.PLANNED
+        item.save(update_fields=["status", "updated_at"])
+    elif action == "remove_item":
+        item = get_object_or_404(AgendaItem, id=request.POST.get("item_id"), owner=request.user)
+        item.delete()
+
+    if request.headers.get("HX-Request"):
+        context = _build_agenda_context(
+            user=request.user,
+            month_raw=month_value,
+            selected_raw=selected_value,
+        )
+        response = render(request, "agenda/partials/panel.html", context)
+        response["HX-Trigger"] = "agenda:refresh-snapshot"
+        return response
+
+    return _redirect_agenda(month_value, selected_value)
+
+
+@login_required
+@require_http_methods(["POST"])
+def preferences(request):
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
+
+    normalized = _normalize_agenda_preferences(payload)
+
+    nav_config, _ = UserNavConfig.objects.get_or_create(user=request.user)
+    config = nav_config.config if isinstance(nav_config.config, dict) else {}
+    config["agenda_preferences"] = normalized
+    nav_config.config = config
+    nav_config.save(update_fields=["config"])
+
+    return JsonResponse({"ok": True, "agenda_preferences": normalized})

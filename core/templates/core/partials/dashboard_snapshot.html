@@ -1,0 +1,73 @@
+<div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@xl" uk-grid>
+  <div>
+    <article class="snapshot-card">
+      <div class="snapshot-label">Task aperti</div>
+      <div class="snapshot-value">{{ snapshot.open_tasks }}</div>
+      <div class="snapshot-meta">Oggi: {{ snapshot.tasks_today }} · Overdue: {{ snapshot.overdue_tasks }}</div>
+    </article>
+  </div>
+  <div>
+    <article class="snapshot-card">
+      <div class="snapshot-label">Planner pianificato</div>
+      <div class="snapshot-value">{{ snapshot.planner_planned }}</div>
+      <div class="snapshot-meta">In scadenza oggi: {{ snapshot.planner_today }}</div>
+    </article>
+  </div>
+  <div>
+    <article class="snapshot-card">
+      <div class="snapshot-label">Abbonamenti (7 giorni)</div>
+      <div class="snapshot-value">{{ snapshot.due_subscriptions_week }}</div>
+      <div class="snapshot-meta">Da saldare nel breve periodo</div>
+    </article>
+  </div>
+  <div>
+    <article class="snapshot-card">
+      <div class="snapshot-label">Movimenti mese</div>
+      <div class="snapshot-value">{{ snapshot.month_transactions }}</div>
+      <div class="snapshot-meta">Saldo: {{ snapshot.month_balance }}</div>
+    </article>
+  </div>
+</div>
+
+<div class="uk-grid-small uk-margin-small-top" uk-grid>
+  <div class="uk-width-expand@m">
+    <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+      <h3 class="uk-margin-small-bottom">Focus immediato</h3>
+      {% if focus_rows %}
+        <table class="uk-table uk-table-small uk-table-divider uk-margin-remove">
+          <thead>
+            <tr>
+              <th>Area</th>
+              <th>Titolo</th>
+              <th>Scadenza</th>
+              <th>Apri</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in focus_rows %}
+              <tr>
+                <td>{{ row.kind }}</td>
+                <td>{{ row.title }}</td>
+                <td>{% if row.due_date %}{{ row.due_date|date:"d/m/Y" }}{% else %}-{% endif %}</td>
+                <td><a class="uk-button uk-button-text" href="{{ row.url }}">Apri</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="uk-text-meta">Nessuna voce urgente al momento.</div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="uk-width-1-3@m">
+    <div class="uk-card uk-card-muted uk-card-small uk-card-body">
+      <h3 class="uk-margin-small-bottom">Contatori finanziari</h3>
+      <ul class="uk-list uk-list-divider uk-margin-remove-top uk-margin-remove-bottom">
+        <li>Entrate mese: <strong>{{ snapshot.month_income }}</strong></li>
+        <li>Uscite mese: <strong>{{ snapshot.month_expense }}</strong></li>
+        <li>Saldo mese: <strong>{{ snapshot.month_balance }}</strong></li>
+      </ul>
+      <div class="uk-text-meta uk-margin-small-top">Aggiornato: {{ generated_on|date:"d/m/Y" }}</div>
+    </div>
+  </div>
+</div>

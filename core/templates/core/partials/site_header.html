@@ -1,29 +1,41 @@
-<header class="site-header">
-  <div class="brand">
-    <div class="brand-mark">MIO</div>
-    <div class="brand-text">
-      <div class="brand-title">Money Organizer</div>
-      <div class="brand-sub">{{ module_subtitle|default:"App module" }}</div>
+<header class="site-header uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+  <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+    <div class="brand uk-flex uk-flex-middle">
+      <div class="brand-mark uk-label">MIO</div>
+      <div class="brand-text uk-margin-small-left">
+        <div class="brand-title uk-text-bold">Money Organizer</div>
+        <div class="brand-sub uk-text-meta">{{ module_subtitle|default:"App module" }}</div>
+      </div>
     </div>
+    <nav class="site-nav uk-flex uk-flex-wrap uk-flex-middle">
+      <a href="/" class="nav-link uk-button uk-button-default uk-button-small">Dashboard</a>
+      {% for custom in site_nav.custom_links %}
+        <a
+          href="{{ custom.url }}"
+          class="nav-link uk-button uk-button-default uk-button-small"
+          {% if custom.external %}target="_blank" rel="noopener noreferrer"{% endif %}
+        >{{ custom.label }}</a>
+      {% endfor %}
+      <div class="nav-select uk-inline uk-margin-small-left">
+        <button class="uk-button uk-button-default uk-button-small uk-flex uk-flex-middle uk-gap-small" type="button">
+          <span uk-icon="icon: {% if site_nav.selected_app %}{{ site_nav.selected_app.icon|default:'thumbnails' }}{% else %}thumbnails{% endif %}"></span>
+          <span>{% if site_nav.selected_app %}{{ site_nav.selected_app.label }}{% else %}App{% endif %}</span>
+          <span uk-icon="icon: chevron-down"></span>
+        </button>
+        <div uk-dropdown="mode: click; pos: bottom-right; offset: 10">
+          <ul class="uk-nav uk-dropdown-nav">
+            {% for app in site_nav.app_options %}
+              <li {% if site_nav.selected_app_key == app.key %}class="uk-active"{% endif %}>
+                <a href="{{ app.url }}">
+                  <span uk-icon="icon: {{ app.icon|default:'thumbnails' }}"></span>
+                  <span class="uk-margin-small-left">{{ app.label }}</span>
+                </a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+      <a href="/accounts/logout/" class="nav-link uk-button uk-button-danger uk-button-small uk-margin-small-left">Logout</a>
+    </nav>
   </div>
-  <nav class="site-nav">
-    <a href="/" class="nav-link">Dashboard</a>
-    {% for custom in site_nav.custom_links %}
-      <a
-        href="{{ custom.url }}"
-        class="nav-link"
-        {% if custom.external %}target="_blank" rel="noopener noreferrer"{% endif %}
-      >{{ custom.label }}</a>
-    {% endfor %}
-    <div class="nav-select">
-      <label for="app-switch" class="nav-label">App</label>
-      <select id="app-switch" onchange="if (this.value) window.location.href = this.value;">
-        <option value="">Seleziona...</option>
-        {% for app in site_nav.app_options %}
-          <option value="{{ app.url }}" {% if site_nav.selected_app_key == app.key %}selected{% endif %}>{{ app.label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <a href="/accounts/logout/" class="nav-link">Logout</a>
-  </nav>
 </header>

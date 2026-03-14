@@ -75,3 +75,16 @@ class OutcomeAttachmentTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("attachment", response.context["form"].errors)
         self.assertFalse(Transaction.objects.filter(owner=self.user, tx_type=Transaction.Type.EXPENSE).exists())
+
+
+class OutcomeDashboardFlowTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="outcome_dash_user", password="test1234")
+        self.client.login(username="outcome_dash_user", password="test1234")
+
+    def test_outcome_dashboard_redirects_to_transactions_with_quick_form(self):
+        response = self.client.get("/outcome/", follow=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Inserimento rapido")
+        self.assertTrue(response.request["PATH_INFO"].startswith("/transactions/"))
+        self.assertIn("tx_type=OUT", response.request.get("QUERY_STRING", ""))

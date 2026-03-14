@@ -5,9 +5,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}MIO - Projects{% endblock %}</title>
-    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=projects2">
     {% include "core/partials/uikit_head.html" %}
-    <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
+    {% block extra_head %}{% endblock %}
   </head>
   <body class="projects-body">
     <div class="page projects-page">

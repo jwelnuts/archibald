@@ -223,8 +223,33 @@ def _dashboard_redirect_url(tx_type=""):
 @login_required
 def dashboard(request):
     filter_form, filters = _resolve_filters(request)
+    requested_type = filters.get("tx_type") or Transaction.Type.EXPENSE
+    if requested_type not in {choice[0] for choice in Transaction.Type.choices}:
+        requested_type = Transaction.Type.EXPENSE
+
+    if request.method == "POST":
+        post_type = (request.POST.get("tx_type") or requested_type).strip()
+        if post_type not in {choice[0] for choice in Transaction.Type.choices}:
+            post_type = Transaction.Type.EXPENSE
+
+        quick_form = TransactionEntryForm(
+            request.POST,
+            owner=request.user,
+            tx_type=post_type,
+        )
+        if quick_form.is_valid():
+            saved = quick_form.save()
+            return redirect(_dashboard_redirect_url(saved.tx_type))
+    else:
+        quick_form = TransactionEntryForm(
+            owner=request.user,
+            tx_type=requested_type,
+            initial={"tx_type": requested_type},
+        )
+
     context = {
         "filter_form": filter_form,
+        "quick_form": quick_form,
         "modal_open_url": _modal_open_url(request),
     }
     context.update(_board_context(request.user, filters))

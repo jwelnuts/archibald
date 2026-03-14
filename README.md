@@ -29,7 +29,7 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 - UIKit (static locale in `core/static/core/vendor/uikit`)
 - HTMX (static locale in `core/static/core/vendor/htmx`)
 - Stimulus (bootstrap in `core/static/core/stimulus.js`)
-- LESS (`core/styles.less` compilato client-side via `less.min.js`)
+- UIKit baseline bridge (`core/static/core/uikit_bridge.js`)
 
 Note Stimulus:
 

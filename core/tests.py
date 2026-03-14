@@ -189,3 +189,61 @@ class DashboardWidgetsTests(TestCase):
         self.assertEqual(widgets[0]["id"], "vault")
         todo_widget = next(row for row in widgets if row["id"] == "todo")
         self.assertTrue(todo_widget["hidden"])
+
+
+class DashboardPreferencesTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="dash_pref_user", password="test12345")
+
+    def test_dashboard_preferences_endpoint_requires_login(self):
+        response = self.client.post(
+            "/dashboard/preferences",
+            data=json.dumps({"density": "compact", "accent": "green", "sections": ["snapshot"]}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_dashboard_preferences_endpoint_saves_normalized_payload(self):
+        self.client.login(username="dash_pref_user", password="test12345")
+        response = self.client.post(
+            "/dashboard/preferences",
+            data=json.dumps(
+                {
+                    "density": "compact",
+                    "accent": "rose",
+                    "sections": ["snapshot", "calendar", "invalid"],
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        nav_cfg = UserNavConfig.objects.get(user=self.user)
+        prefs = nav_cfg.config.get("dashboard_preferences", {})
+        self.assertEqual(prefs.get("density"), "compact")
+        self.assertEqual(prefs.get("accent"), "rose")
+        self.assertEqual(prefs.get("sections"), ["snapshot", "calendar"])
+
+    def test_dashboard_snapshot_requires_login(self):
+        response = self.client.get("/dashboard/snapshot")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    def test_dashboard_context_exposes_preferences(self):
+        self.client.login(username="dash_pref_user", password="test12345")
+        UserNavConfig.objects.create(
+            user=self.user,
+            config={
+                "dashboard_preferences": {
+                    "density": "compact",
+                    "accent": "amber",
+                    "sections": ["snapshot", "widgets"],
+                }
+            },
+        )
+        response = self.client.get("/")
+        self.assertEqual(response.status_code, 200)
+        prefs = response.context["dashboard_preferences"]
+        self.assertEqual(prefs["density"], "compact")
+        self.assertEqual(prefs["accent"], "amber")
+        self.assertEqual(prefs["sections"], ["snapshot", "widgets"])

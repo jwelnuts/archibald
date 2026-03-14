@@ -20,7 +20,10 @@
                 name="app_visible_{{ app.key }}"
                 {% if app.visible %}checked{% endif %}
               >
-              <span>{{ app.label }}</span>
+              <span class="uk-flex uk-flex-middle uk-gap-small">
+                <span uk-icon="icon: {{ app.icon|default:'thumbnails' }}"></span>
+                <span>{{ app.label }}</span>
+              </span>
             </label>
             <input
               type="number"

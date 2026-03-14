@@ -1,0 +1,161 @@
+<section
+  id="agenda-live-panel"
+  class="uk-card uk-card-default uk-card-small uk-card-body uk-margin"
+  data-agenda-section="panel"
+  data-agenda-target="panel"
+  data-month="{{ month_param }}"
+  data-selected="{{ selected_param }}"
+>
+  <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+    <div>
+      <h2 class="uk-margin-remove">Calendario operativo</h2>
+      <p class="uk-text-meta uk-margin-small-top">Navigazione mese, selezione giorno e dettaglio eventi live.</p>
+    </div>
+    <div class="uk-flex uk-flex-middle uk-gap-small">
+      <a
+        class="uk-button uk-button-default uk-button-small"
+        href="/agenda/?month={{ prev_month_param }}&selected={{ selected_param }}"
+        hx-get="/agenda/panel?month={{ prev_month_param }}&selected={{ selected_param }}"
+        hx-target="#agenda-live-panel"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+      >Precedente</a>
+      <strong class="agenda-month-label">{{ month_label }}</strong>
+      <a
+        class="uk-button uk-button-default uk-button-small"
+        href="/agenda/?month={{ next_month_param }}&selected={{ selected_param }}"
+        hx-get="/agenda/panel?month={{ next_month_param }}&selected={{ selected_param }}"
+        hx-target="#agenda-live-panel"
+        hx-swap="outerHTML"
+        hx-push-url="true"
+      >Successivo</a>
+    </div>
+  </div>
+
+  <div class="agenda-board uk-margin-top">
+    <article class="agenda-calendar-wrap">
+      <div class="agenda-calendar">
+        {% for day_name in weekday_labels %}
+          <div class="agenda-weekday">{{ day_name }}</div>
+        {% endfor %}
+
+        {% for week in calendar_weeks %}
+          {% for cell in week %}
+            {% if cell %}
+              <a
+                class="agenda-day {% if cell.is_today %}is-today{% endif %} {% if cell.is_selected %}is-selected{% endif %}"
+                href="/agenda/?month={{ month_param }}&selected={{ cell.iso }}"
+                hx-get="/agenda/panel?month={{ month_param }}&selected={{ cell.iso }}"
+                hx-target="#agenda-live-panel"
+                hx-swap="outerHTML"
+                hx-push-url="true"
+              >
+                <div class="agenda-day-head">
+                  <span class="agenda-day-number">{{ cell.day }}</span>
+                  {% if cell.items_count %}
+                    <span class="agenda-day-count">{{ cell.items_count }}</span>
+                  {% endif %}
+                </div>
+                {% if cell.chips %}
+                  <div class="agenda-day-chips">
+                    {% for chip in cell.chips %}
+                      <span class="agenda-chip {{ chip.kind }}" title="{{ chip.label }} {{ chip.value }}" aria-label="{{ chip.label }} {{ chip.value }}">
+                        {% if chip.kind == "agenda_activity" %}
+                          <span uk-icon="icon: bolt; ratio: 0.72"></span>
+                        {% elif chip.kind == "agenda_reminder" %}
+                          <span uk-icon="icon: bell; ratio: 0.72"></span>
+                        {% elif chip.kind == "todo" %}
+                          <span uk-icon="icon: check; ratio: 0.72"></span>
+                        {% elif chip.kind == "planner" %}
+                          <span uk-icon="icon: calendar; ratio: 0.72"></span>
+                        {% elif chip.kind == "routine" %}
+                          <span uk-icon="icon: refresh; ratio: 0.72"></span>
+                        {% elif chip.kind == "worklog" %}
+                          <span uk-icon="icon: clock; ratio: 0.72"></span>
+                        {% else %}
+                          <span uk-icon="icon: tag; ratio: 0.72"></span>
+                        {% endif %}
+                        <span class="agenda-chip-value">{{ chip.value }}</span>
+                      </span>
+                    {% endfor %}
+                  </div>
+                {% else %}
+                  <div class="agenda-day-empty">Nessuna voce</div>
+                {% endif %}
+              </a>
+            {% else %}
+              <div class="agenda-day is-empty" aria-hidden="true"></div>
+            {% endif %}
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="agenda-day-detail uk-card uk-card-muted uk-card-body">
+      <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+        <div>
+          <h3 class="uk-margin-remove">Dettaglio {{ selected_date|date:"d/m/Y" }}</h3>
+          <p class="uk-text-meta uk-margin-small-top">{{ selected_events_total }} eventi nel giorno selezionato.</p>
+        </div>
+        <div class="uk-button-group agenda-filter-group">
+          <button class="uk-button uk-button-default uk-button-small is-active" type="button" data-agenda-filter="all" data-action="agenda#filterPanelEvents">Tutti</button>
+          <button class="uk-button uk-button-default uk-button-small" type="button" data-agenda-filter="agenda" data-action="agenda#filterPanelEvents">Agenda</button>
+          <button class="uk-button uk-button-default uk-button-small" type="button" data-agenda-filter="todo" data-action="agenda#filterPanelEvents">Todo</button>
+          <button class="uk-button uk-button-default uk-button-small" type="button" data-agenda-filter="planner" data-action="agenda#filterPanelEvents">Planner</button>
+          <button class="uk-button uk-button-default uk-button-small" type="button" data-agenda-filter="routine" data-action="agenda#filterPanelEvents">Routine</button>
+        </div>
+      </div>
+
+      <ul class="uk-list uk-list-divider agenda-events-list uk-margin-small-top">
+        {% if selected_events %}
+          {% for event in selected_events %}
+            <li class="agenda-event-row {% if event.is_done %}is-done{% endif %}" data-agenda-event-row data-kind="{{ event.kind }}">
+              <div>
+                <div class="uk-flex uk-flex-middle uk-gap-small uk-flex-wrap">
+                  <span class="agenda-chip {{ event.kind }}">{{ event.label }}</span>
+                  {% if event.time %}<span class="uk-text-meta">{{ event.time }}</span>{% endif %}
+                </div>
+                <div class="uk-text-bold">{{ event.title }}</div>
+                {% if event.meta %}<div class="uk-text-meta">{{ event.meta }}</div>{% endif %}
+              </div>
+              {% if event.is_agenda_item %}
+                <div class="agenda-inline-actions">
+                  <form
+                    method="post"
+                    action="/agenda/item-action"
+                    hx-post="/agenda/item-action"
+                    hx-target="#agenda-live-panel"
+                    hx-swap="outerHTML"
+                  >
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="toggle_item">
+                    <input type="hidden" name="item_id" value="{{ event.item_id }}">
+                    <input type="hidden" name="month" value="{{ month_param }}">
+                    <input type="hidden" name="selected" value="{{ selected_param }}">
+                    <button class="uk-button uk-button-default uk-button-small" type="submit">{% if event.is_done %}Riapri{% else %}Completa{% endif %}</button>
+                  </form>
+                  <form
+                    method="post"
+                    action="/agenda/item-action"
+                    hx-post="/agenda/item-action"
+                    hx-target="#agenda-live-panel"
+                    hx-swap="outerHTML"
+                  >
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove_item">
+                    <input type="hidden" name="item_id" value="{{ event.item_id }}">
+                    <input type="hidden" name="month" value="{{ month_param }}">
+                    <input type="hidden" name="selected" value="{{ selected_param }}">
+                    <button class="uk-button uk-button-danger uk-button-small" type="submit">Elimina</button>
+                  </form>
+                </div>
+              {% endif %}
+            </li>
+          {% endfor %}
+        {% else %}
+          <li class="uk-text-meta">Nessuna voce per il giorno selezionato.</li>
+        {% endif %}
+      </ul>
+    </article>
+  </div>
+</section>

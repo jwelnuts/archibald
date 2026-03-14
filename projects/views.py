@@ -1,4 +1,5 @@
 from datetime import date, datetime, time
+from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Max, Min, Q, Sum
@@ -369,12 +370,27 @@ def dashboard(request):
         "categories": Category.objects.filter(owner=user).count(),
         "customers": Contact.objects.filter(owner=user, role_customer=True).count(),
     }
+    summary = {
+        "visible_projects": len(project_rows),
+        "income_total": sum((row["income_total"] for row in project_rows), Decimal("0")),
+        "expense_total": sum((row["expense_total"] for row in project_rows), Decimal("0")),
+        "tx_total": sum((row["tx_total"] for row in project_rows), 0),
+        "todo_open_total": sum((row["todo_open"] for row in project_rows), 0),
+        "todo_total": sum((row["todo_total"] for row in project_rows), 0),
+        "planner_planned_total": sum((row["planner_planned"] for row in project_rows), 0),
+        "planner_total": sum((row["planner_total"] for row in project_rows), 0),
+        "subs_active_total": sum((row["subscriptions_active"] for row in project_rows), 0),
+        "subs_total": sum((row["subscriptions_total"] for row in project_rows), 0),
+        "routines_active_total": sum((row["routines_active"] for row in project_rows), 0),
+    }
+    summary["balance_total"] = summary["income_total"] - summary["expense_total"]
     return render(
         request,
         "projects/dashboard.html",
         {
             "project_rows": project_rows,
             "counts": counts,
+            "summary": summary,
             "scope": scope,
         },
     )

@@ -3,204 +3,255 @@
 
 {% block title %}MIO - Storyboard{% endblock %}
 
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'projects/storyboard.css' %}">
+  <link rel="stylesheet" href="{% static 'core/vendor/quill/quill.snow.css' %}">
+{% endblock %}
+
 {% block content %}
-  <section class="hero projects-hero" id="project-storyboard-head">
-    <div class="hero-copy">
-      <div class="hero-tag">Project storyboard</div>
-      <h1>Storyboard · {{ project.name }}</h1>
-      <p>Appunti e azioni collegate al progetto.</p>
-      <div class="projects-kpi-inline">
-        <span class="projects-kpi-chip"><strong>{{ activity_counts.note }}</strong> appunti</span>
-        <span class="projects-kpi-chip"><strong>{{ activity_counts.task }}</strong> task</span>
-        <span class="projects-kpi-chip"><strong>{{ activity_counts.planner }}</strong> reminder</span>
-        <span class="projects-kpi-chip"><strong>{{ activity_counts.transaction }}</strong> transazioni</span>
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin storyboard-shell">
+    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap storyboard-shell-head">
+      <div>
+        <p class="uk-text-meta storyboard-kicker uk-margin-remove">Project storyboard</p>
+        <h1 class="uk-margin-small-top uk-margin-remove-bottom">Storyboard · {{ project.name }}</h1>
+        <p class="uk-text-meta uk-margin-small-top">
+          Hub operativo per appunti, task e reminder collegati al progetto.
+        </p>
+        <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top">
+          {% if project.is_archived %}
+            <span class="uk-label uk-label-warning">Archiviato</span>
+          {% else %}
+            <span class="uk-label uk-label-success">Attivo</span>
+          {% endif %}
+          <span class="uk-label">Cliente: {% if project.customer %}{{ project.customer.name }}{% else %}-{% endif %}</span>
+          <span class="uk-label">Categoria: {% if project.category %}{{ project.category.name }}{% else %}-{% endif %}</span>
+        </div>
       </div>
-      <div class="hero-actions" data-module="projects_storyboard">
+
+      <div class="uk-flex uk-flex-wrap uk-gap-small">
         {% if "back" in allowed_actions %}
-          <a class="btn" href="/projects/view?id={{ project.id }}" data-action="back">Torna al progetto</a>
+          <a class="uk-button uk-button-default uk-button-small" href="/projects/view?id={{ project.id }}" data-action="back">
+            <span uk-icon="icon: arrow-left"></span>
+            <span class="uk-margin-small-left">Torna al progetto</span>
+          </a>
         {% endif %}
         {% if "edit" in allowed_actions %}
-          <a class="btn primary" href="/projects/api/update?id={{ project.id }}" data-action="edit">Modifica progetto</a>
+          <a class="uk-button uk-button-primary uk-button-small" href="/projects/api/update?id={{ project.id }}" data-action="edit">
+            <span uk-icon="icon: file-edit"></span>
+            <span class="uk-margin-small-left">Modifica progetto</span>
+          </a>
+        {% endif %}
+        {% if hidden_actions %}
+          <div class="uk-inline">
+            <button class="uk-button uk-button-default uk-button-small" type="button">
+              Azioni nascoste ({{ hidden_actions|length }})
+            </button>
+            <div uk-dropdown="mode: click; pos: bottom-right">
+              <ul class="uk-nav uk-dropdown-nav">
+                {% for action in hidden_actions %}
+                  {% if action.key == "back" %}
+                    <li><a href="/projects/view?id={{ project.id }}" data-action="{{ action.key }}">{{ action.label }}</a></li>
+                  {% elif action.key == "edit" %}
+                    <li><a href="/projects/api/update?id={{ project.id }}" data-action="{{ action.key }}">{{ action.label }}</a></li>
+                  {% endif %}
+                {% endfor %}
+              </ul>
+            </div>
+          </div>
         {% endif %}
       </div>
-      {% if hidden_actions %}
-        <details class="ghost-menu">
-          <summary class="btn">Azioni nascoste ({{ hidden_actions|length }})</summary>
-          <div class="ghost-menu-list">
-            {% for action in hidden_actions %}
-              {% if action.key == "back" %}
-                <a class="btn" href="/projects/view?id={{ project.id }}" data-action="{{ action.key }}">{{ action.label }}</a>
-              {% elif action.key == "edit" %}
-                <a class="btn" href="/projects/api/update?id={{ project.id }}" data-action="{{ action.key }}">{{ action.label }}</a>
-              {% endif %}
-            {% endfor %}
-          </div>
-        </details>
-      {% endif %}
     </div>
-    <div class="hero-card projects-hero-card">
-      <div class="card-title">Dettagli</div>
-      <ul class="list">
-        <li>
-          <span class="muted">Cliente</span>
-          <span>{% if project.customer %}{{ project.customer.name }}{% else %}-{% endif %}</span>
-        </li>
-        <li>
-          <span class="muted">Categoria</span>
-          <span>{% if project.category %}{{ project.category.name }}{% else %}-{% endif %}</span>
-        </li>
-        <li>
-          <span class="muted">Stato</span>
-          <span>{% if project.is_archived %}Archiviato{% else %}Attivo{% endif %}</span>
-        </li>
-      </ul>
+
+    <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-5@xl uk-margin-top" uk-grid>
+      <div>
+        <article class="storyboard-kpi-card">
+          <div class="storyboard-kpi-label">Appunti</div>
+          <div class="storyboard-kpi-value">{{ activity_counts.note }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="storyboard-kpi-card">
+          <div class="storyboard-kpi-label">Task</div>
+          <div class="storyboard-kpi-value">{{ activity_counts.task }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="storyboard-kpi-card">
+          <div class="storyboard-kpi-label">Reminder</div>
+          <div class="storyboard-kpi-value">{{ activity_counts.planner }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="storyboard-kpi-card">
+          <div class="storyboard-kpi-label">Transazioni</div>
+          <div class="storyboard-kpi-value">{{ activity_counts.transaction }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="storyboard-kpi-card">
+          <div class="storyboard-kpi-label">Totale log</div>
+          <div class="storyboard-kpi-value">{{ activity_total_count }}</div>
+        </article>
+      </div>
     </div>
   </section>
 
-  <section class="storyboard-grid" id="project-storyboard-grid">
-    <article class="panel storyboard-panel storyboard-panel-forms">
-      <h2>Inserimenti rapidi</h2>
-      <ul class="storyboard-accordion" uk-accordion>
-        <li class="{% if active_form == "note" %}uk-open{% endif %}">
-          <a class="uk-accordion-title" href="#">Nuovo appunto progetto</a>
-          <div class="uk-accordion-content">
-            <form class="form form-compact" method="post" action="" enctype="multipart/form-data" novalidate>
-              {% csrf_token %}
-              <input type="hidden" name="form_kind" value="note">
-              {% if note_form.errors %}
-                <div class="warning-box">
-                  Correggi i campi del form appunto.
-                  {{ note_form.non_field_errors }}
-                  {{ note_form.content.errors }}
-                  {{ note_form.attachment.errors }}
-                </div>
-              {% endif %}
-              <div class="field">
-                <label>Editor</label>
-                <div id="note-editor-toolbar">
-                  <span class="ql-formats">
-                    <button class="ql-bold"></button>
-                    <button class="ql-italic"></button>
-                    <button class="ql-underline"></button>
-                  </span>
-                  <span class="ql-formats">
-                    <button class="ql-list" value="ordered"></button>
-                    <button class="ql-list" value="bullet"></button>
-                  </span>
-                  <span class="ql-formats">
-                    <button class="ql-link"></button>
-                  </span>
-                </div>
-                <div id="note-editor" class="rich-editor"></div>
-              </div>
-              <div class="field" style="display:none;">
-                <label for="id_content">Nuovo appunto</label>
-                {{ note_form.content }}
-              </div>
-              <div class="field">
-                <label for="id_attachment">Allega file</label>
-                {{ note_form.attachment }}
-              </div>
-              <div class="actions">
-                <button class="btn primary" type="submit">Aggiungi appunto</button>
-              </div>
-            </form>
+  <section class="uk-margin storyboard-layout">
+    <div class="uk-grid-large" uk-grid>
+      <div class="uk-width-2-5@l uk-width-1-3@xl">
+        <article class="uk-card uk-card-default uk-card-small uk-card-body storyboard-panel storyboard-panel-forms">
+          <div class="storyboard-panel-head">
+            <h2 class="uk-margin-remove">Nuove voci</h2>
+            <p class="uk-text-meta uk-margin-small-top">Inserimento rapido in modalità operativa.</p>
           </div>
-        </li>
 
-        <li class="{% if active_form == "task" %}uk-open{% endif %}">
-          <a class="uk-accordion-title" href="#">Nuovo task collegato al progetto</a>
-          <div class="uk-accordion-content">
-            <form class="form form-compact" method="post" action="" novalidate>
-              {% csrf_token %}
-              <input type="hidden" name="form_kind" value="task">
-              {% if task_form.errors %}
-                <div class="warning-box">
-                  Correggi i campi del form task.
-                  {{ task_form.non_field_errors }}
-                  {{ task_form.title.errors }}
-                  {{ task_form.due_date.errors }}
-                  {{ task_form.status.errors }}
-                  {{ task_form.priority.errors }}
-                  {{ task_form.note.errors }}
-                </div>
-              {% endif %}
-              <div class="field">
-                <label for="{{ task_form.title.id_for_label }}">Titolo</label>
-                {{ task_form.title }}
+          <ul class="uk-accordion storyboard-accordion" uk-accordion="active: false; collapsible: true">
+            <li class="{% if active_form == "note" %}uk-open{% endif %}">
+              <a class="uk-accordion-title" href="#">Nuovo appunto progetto</a>
+              <div class="uk-accordion-content">
+                <form class="uk-form-stacked storyboard-form" method="post" action="" enctype="multipart/form-data" novalidate>
+                  {% csrf_token %}
+                  <input type="hidden" name="form_kind" value="note">
+                  {% if note_form.errors %}
+                    <div class="uk-alert-danger">
+                      Correggi i campi del form appunto.
+                      {{ note_form.non_field_errors }}
+                      {{ note_form.content.errors }}
+                      {{ note_form.attachment.errors }}
+                    </div>
+                  {% endif %}
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label">Editor</label>
+                    <div id="note-editor-toolbar">
+                      <span class="ql-formats">
+                        <button class="ql-bold"></button>
+                        <button class="ql-italic"></button>
+                        <button class="ql-underline"></button>
+                      </span>
+                      <span class="ql-formats">
+                        <button class="ql-list" value="ordered"></button>
+                        <button class="ql-list" value="bullet"></button>
+                      </span>
+                      <span class="ql-formats">
+                        <button class="ql-link"></button>
+                      </span>
+                    </div>
+                    <div id="note-editor" class="rich-editor"></div>
+                  </div>
+                  <div class="uk-margin-small" style="display:none;">
+                    <label class="uk-form-label" for="id_content">Nuovo appunto</label>
+                    {{ note_form.content }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="id_attachment">Allega file</label>
+                    {{ note_form.attachment }}
+                  </div>
+                  <div class="uk-margin-small-top">
+                    <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi appunto</button>
+                  </div>
+                </form>
               </div>
-              <div class="field">
-                <label for="{{ task_form.due_date.id_for_label }}">Scadenza</label>
-                {{ task_form.due_date }}
+            </li>
+
+            <li class="{% if active_form == "task" %}uk-open{% endif %}">
+              <a class="uk-accordion-title" href="#">Nuovo task collegato al progetto</a>
+              <div class="uk-accordion-content">
+                <form class="uk-form-stacked storyboard-form" method="post" action="" novalidate>
+                  {% csrf_token %}
+                  <input type="hidden" name="form_kind" value="task">
+                  {% if task_form.errors %}
+                    <div class="uk-alert-danger">
+                      Correggi i campi del form task.
+                      {{ task_form.non_field_errors }}
+                      {{ task_form.title.errors }}
+                      {{ task_form.due_date.errors }}
+                      {{ task_form.status.errors }}
+                      {{ task_form.priority.errors }}
+                      {{ task_form.note.errors }}
+                    </div>
+                  {% endif %}
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ task_form.title.id_for_label }}">Titolo</label>
+                    {{ task_form.title }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ task_form.due_date.id_for_label }}">Scadenza</label>
+                    {{ task_form.due_date }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ task_form.status.id_for_label }}">Status</label>
+                    {{ task_form.status }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ task_form.priority.id_for_label }}">Priorita</label>
+                    {{ task_form.priority }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ task_form.note.id_for_label }}">Note</label>
+                    {{ task_form.note }}
+                  </div>
+                  <div class="uk-margin-small-top">
+                    <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi task</button>
+                  </div>
+                </form>
               </div>
-              <div class="field">
-                <label for="{{ task_form.status.id_for_label }}">Status</label>
-                {{ task_form.status }}
+            </li>
+
+            <li class="{% if active_form == "planner" %}uk-open{% endif %}">
+              <a class="uk-accordion-title" href="#">Nuovo reminder planner</a>
+              <div class="uk-accordion-content">
+                <form class="uk-form-stacked storyboard-form" method="post" action="" novalidate>
+                  {% csrf_token %}
+                  <input type="hidden" name="form_kind" value="planner">
+                  {% if planner_form.errors %}
+                    <div class="uk-alert-danger">
+                      Correggi i campi del form planner.
+                      {{ planner_form.non_field_errors }}
+                      {{ planner_form.title.errors }}
+                      {{ planner_form.due_date.errors }}
+                      {{ planner_form.status.errors }}
+                      {{ planner_form.note.errors }}
+                    </div>
+                  {% endif %}
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ planner_form.title.id_for_label }}">Titolo</label>
+                    {{ planner_form.title }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ planner_form.due_date.id_for_label }}">Scadenza</label>
+                    {{ planner_form.due_date }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ planner_form.status.id_for_label }}">Status</label>
+                    {{ planner_form.status }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ planner_form.note.id_for_label }}">Note</label>
+                    {{ planner_form.note }}
+                  </div>
+                  <div class="uk-margin-small-top">
+                    <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi planner</button>
+                  </div>
+                </form>
               </div>
-              <div class="field">
-                <label for="{{ task_form.priority.id_for_label }}">Priorita</label>
-                {{ task_form.priority }}
-              </div>
-              <div class="field">
-                <label for="{{ task_form.note.id_for_label }}">Note</label>
-                {{ task_form.note }}
-              </div>
-              <div class="actions">
-                <button class="btn primary" type="submit">Aggiungi task</button>
-              </div>
-            </form>
+            </li>
+          </ul>
+        </article>
+      </div>
+
+      <div class="uk-width-expand@l">
+        <article class="uk-card uk-card-default uk-card-small uk-card-body storyboard-panel storyboard-panel-log">
+          <div class="storyboard-panel-head">
+            <h2 class="uk-margin-remove">Activity log</h2>
+            <p class="uk-text-meta uk-margin-small-top">Timeline unificata di note, task, planner e transazioni.</p>
           </div>
-        </li>
-
-        <li class="{% if active_form == "planner" %}uk-open{% endif %}">
-          <a class="uk-accordion-title" href="#">Nuovo reminder planner</a>
-          <div class="uk-accordion-content">
-            <form class="form form-compact" method="post" action="" novalidate>
-              {% csrf_token %}
-              <input type="hidden" name="form_kind" value="planner">
-              {% if planner_form.errors %}
-                <div class="warning-box">
-                  Correggi i campi del form planner.
-                  {{ planner_form.non_field_errors }}
-                  {{ planner_form.title.errors }}
-                  {{ planner_form.due_date.errors }}
-                  {{ planner_form.status.errors }}
-                  {{ planner_form.note.errors }}
-                </div>
-              {% endif %}
-              <div class="field">
-                <label for="{{ planner_form.title.id_for_label }}">Titolo</label>
-                {{ planner_form.title }}
-              </div>
-              <div class="field">
-                <label for="{{ planner_form.due_date.id_for_label }}">Scadenza</label>
-                {{ planner_form.due_date }}
-              </div>
-              <div class="field">
-                <label for="{{ planner_form.status.id_for_label }}">Status</label>
-                {{ planner_form.status }}
-              </div>
-              <div class="field">
-                <label for="{{ planner_form.note.id_for_label }}">Note</label>
-                {{ planner_form.note }}
-              </div>
-              <div class="actions">
-                <button class="btn primary" type="submit">Aggiungi planner</button>
-              </div>
-            </form>
-          </div>
-        </li>
-      </ul>
-    </article>
-
-    <article class="panel storyboard-panel storyboard-panel-log">
-      <h2>Log progetto</h2>
-      {% include "projects/partials/storyboard_log.html" %}
-    </article>
+          {% include "projects/partials/storyboard_log.html" %}
+        </article>
+      </div>
+    </div>
   </section>
 
   <script src="{% static 'core/vendor/htmx/htmx.min.js' %}" defer></script>
-  <link rel="stylesheet" href="{% static 'core/vendor/quill/quill.snow.css' %}">
   <script src="{% static 'core/vendor/quill/quill.min.js' %}"></script>
   <script type="module" src="{% static 'core/projects_storyboard.js' %}"></script>
   <script>

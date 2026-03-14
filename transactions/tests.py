@@ -29,6 +29,33 @@ class TransactionsUnifiedFlowTests(TestCase):
         response = self.client.get("/transactions/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Transactions Hub")
+        self.assertContains(response, "Inserimento rapido")
+
+    def test_create_expense_via_dashboard_quick_form(self):
+        response = self.client.post(
+            "/transactions/?tx_type=OUT",
+            {
+                "tx_type": Transaction.Type.EXPENSE,
+                "date": "2026-03-06",
+                "amount": "22.40",
+                "currency": self.currency.id,
+                "account": self.account.id,
+                "payee_name": "Quick Supplier",
+                "source_choice": "",
+                "source_name": "",
+                "project_choice": "",
+                "project_name": "",
+                "category_choice": "",
+                "category_name": "",
+                "note": "Inserimento rapido dashboard",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/transactions/?tx_type=OUT")
+        tx = Transaction.objects.get(owner=self.user, note="Inserimento rapido dashboard")
+        self.assertEqual(tx.tx_type, Transaction.Type.EXPENSE)
+        self.assertEqual(str(tx.amount), "22.40")
+        self.assertEqual(tx.payee.name, "Quick Supplier")
 
     def test_create_expense_via_htmx_partial_form(self):
         response = self.client.post(

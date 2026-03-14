@@ -5,11 +5,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}MIO - Agenda{% endblock %}</title>
-    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
-    <link rel="stylesheet" href="{% static 'agenda/styles.css' %}">
     {% include "core/partials/uikit_head.html" %}
     <link rel="stylesheet" href="{% static 'core/vendor/flatpickr/flatpickr.min.css' %}">
-    <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'agenda/dashboard.css' %}">
+    <script src="{% static 'core/vendor/htmx/htmx.min.js' %}" defer></script>
   </head>
   <body>
     <div class="page">
@@ -22,11 +21,15 @@
     <script src="{% static 'core/vendor/flatpickr/flatpickr.min.js' %}"></script>
     <script>
       document.querySelectorAll(".date-field").forEach(function (el) {
-        window.flatpickr(el, { dateFormat: "Y-m-d" });
+        if (el._flatpickr) {
+          return;
+        }
+        window.flatpickr(el, { dateFormat: "Y-m-d", allowInput: true });
       });
     </script>
     {{ hero_actions_config|json_script:"hero-actions-config" }}
         {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/app.js' %}"></script>
+    <script type="module" src="{% static 'agenda/agenda.js' %}"></script>
   </body>
 </html>

@@ -1,126 +1,240 @@
 {% extends "projects/base.html" %}
+{% load static %}
 
 {% block title %}MIO - Projects Dashboard{% endblock %}
 
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'projects/dashboard.css' %}">
+{% endblock %}
+
 {% block content %}
-  <section class="hero projects-hero" id="projects-dashboard-head">
-    <div class="hero-copy project-topbar-main">
-      <div class="hero-tag">Project operations</div>
-      <h1>Projects workspace</h1>
-      <p class="project-desc">
-        Vista centrale per monitorare stato operativo, flussi economici e attività collegate a ogni progetto.
-      </p>
-      <div class="hero-actions project-actions" data-module="projects">
-        <a class="btn primary" href="/projects/api/add" data-action="add">Nuovo progetto</a>
-        <a class="btn" href="/projects/api/update" data-action="update">Aggiorna progetto</a>
-        <a class="btn" href="/projects/categories/">Categorie</a>
-        <a class="btn" href="/contacts/?role=customer">Contatti</a>
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin projects-dashboard-shell">
+    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap projects-dashboard-head">
+      <div>
+        <p class="projects-dashboard-kicker uk-text-meta uk-margin-remove">Portfolio projects</p>
+        <h1 class="uk-margin-small-top uk-margin-remove-bottom">Projects Dashboard</h1>
+        <p class="uk-text-meta uk-margin-small-top">
+          Vista enterprise per controllare pipeline, performance economica e operatività multi-progetto.
+        </p>
       </div>
-      <div class="projects-kpi-inline">
-        <span class="projects-kpi-chip"><strong>{{ counts.active }}</strong> attivi</span>
-        <span class="projects-kpi-chip"><strong>{{ counts.archived }}</strong> archiviati</span>
-        <span class="projects-kpi-chip"><strong>{{ counts.categories }}</strong> categorie</span>
-        <span class="projects-kpi-chip"><strong>{{ counts.customers }}</strong> clienti</span>
+      <div class="uk-flex uk-flex-wrap uk-gap-small">
+        <a class="uk-button uk-button-primary uk-button-small" href="/projects/api/add">
+          <span uk-icon="icon: plus"></span>
+          <span class="uk-margin-small-left">Nuovo progetto</span>
+        </a>
+        <a class="uk-button uk-button-default uk-button-small" href="/projects/categories/">Categorie</a>
+        <a class="uk-button uk-button-default uk-button-small" href="/contacts/?role=customer">Contatti</a>
       </div>
     </div>
 
-    <div class="hero-card projects-hero-card">
-      <div class="card-title">Filtro rapido</div>
-      <div class="projects-scope-grid">
-        <a class="projects-scope-btn {% if scope == 'active' %}active{% endif %}" href="/projects/?scope=active">Attivi</a>
-        <a class="projects-scope-btn {% if scope == 'archived' %}active{% endif %}" href="/projects/?scope=archived">Archiviati</a>
-        <a class="projects-scope-btn {% if scope == 'all' %}active{% endif %}" href="/projects/?scope=all">Tutti</a>
+    <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@l uk-margin-top" uk-grid>
+      <div>
+        <article class="projects-kpi-card">
+          <div class="projects-kpi-label">Progetti attivi</div>
+          <div class="projects-kpi-value">{{ counts.active }}</div>
+        </article>
       </div>
-      <div class="note">
-        Mostrati <strong>{{ project_rows|length }}</strong> progetti per il filtro selezionato.
+      <div>
+        <article class="projects-kpi-card">
+          <div class="projects-kpi-label">Progetti archiviati</div>
+          <div class="projects-kpi-value">{{ counts.archived }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="projects-kpi-card">
+          <div class="projects-kpi-label">Categorie</div>
+          <div class="projects-kpi-value">{{ counts.categories }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="projects-kpi-card">
+          <div class="projects-kpi-label">Clienti collegati</div>
+          <div class="projects-kpi-value">{{ counts.customers }}</div>
+        </article>
       </div>
     </div>
   </section>
 
-  <section class="panel projects-dashboard-list-section">
-    <div class="project-list-head">
-      <h2>Lista progetti</h2>
-      <span class="project-list-count">{{ project_rows|length }} visibili</span>
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+      <div>
+        <h2 class="uk-margin-remove">Scope portfolio</h2>
+        <p class="uk-text-meta uk-margin-small-top">Seleziona il sottoinsieme operativo da monitorare.</p>
+      </div>
+      <ul class="uk-subnav uk-subnav-pill projects-scope-nav">
+        <li {% if scope == "active" %}class="uk-active"{% endif %}><a href="/projects/?scope=active">Attivi</a></li>
+        <li {% if scope == "archived" %}class="uk-active"{% endif %}><a href="/projects/?scope=archived">Archiviati</a></li>
+        <li {% if scope == "all" %}class="uk-active"{% endif %}><a href="/projects/?scope=all">Tutti</a></li>
+      </ul>
+    </div>
+
+    <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@xl uk-margin-top" uk-grid>
+      <div>
+        <article class="projects-summary-card">
+          <div class="projects-summary-label">Saldo portfolio</div>
+          <div class="projects-summary-value {% if summary.balance_total < 0 %}is-negative{% elif summary.balance_total > 0 %}is-positive{% endif %}">
+            {{ summary.balance_total }}
+          </div>
+          <div class="uk-text-meta">Entrate {{ summary.income_total }} · Uscite {{ summary.expense_total }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="projects-summary-card">
+          <div class="projects-summary-label">Transazioni</div>
+          <div class="projects-summary-value">{{ summary.tx_total }}</div>
+          <div class="uk-text-meta">{{ summary.visible_projects }} progetti in vista</div>
+        </article>
+      </div>
+      <div>
+        <article class="projects-summary-card">
+          <div class="projects-summary-label">Todo aperti</div>
+          <div class="projects-summary-value">{{ summary.todo_open_total }}</div>
+          <div class="uk-text-meta">su {{ summary.todo_total }} totali</div>
+        </article>
+      </div>
+      <div>
+        <article class="projects-summary-card">
+          <div class="projects-summary-label">Planner planned</div>
+          <div class="projects-summary-value">{{ summary.planner_planned_total }}</div>
+          <div class="uk-text-meta">su {{ summary.planner_total }} totali</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+      <h2 class="uk-margin-remove">Registro progetti</h2>
+      <span class="uk-label">{{ summary.visible_projects }} in elenco</span>
     </div>
 
     {% if project_rows %}
-      <ul class="project-list projects-dashboard-list">
-        {% for row in project_rows %}
-          <li>
-            <article class="project-row projects-dashboard-row {% if row.project.is_archived %}is-archived{% endif %}">
-              <div class="project-head">
-                <div>
-                  <div class="project-row-title">
-                    <a class="project-name" href="/projects/view?id={{ row.project.id }}">{{ row.project.name }}</a>
+      <div class="uk-overflow-auto uk-margin-top uk-visible@m">
+        <table class="uk-table uk-table-divider uk-table-hover uk-table-middle uk-table-small projects-table">
+          <thead>
+            <tr>
+              <th>Progetto</th>
+              <th>Cliente / Categoria</th>
+              <th>Economico</th>
+              <th>Operativo</th>
+              <th>Timeline</th>
+              <th class="uk-text-right">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in project_rows %}
+              <tr>
+                <td>
+                  <div class="projects-row-main">
                     {% if row.project.is_archived %}
-                      <span class="project-row-status-pill">Archiviato</span>
+                      <span class="uk-label uk-label-warning">Archiviato</span>
                     {% else %}
-                      <span class="project-row-status-pill">Attivo</span>
+                      <span class="uk-label uk-label-success">Attivo</span>
                     {% endif %}
+                    <a class="projects-row-title" href="/projects/view?id={{ row.project.id }}">{{ row.project.name }}</a>
                   </div>
-                  <div class="project-row-meta project-row-meta-primary">
-                    <span>Cliente: <strong>{{ row.customer_name }}</strong></span>
-                    <span>Categoria: <strong>{{ row.category_name }}</strong></span>
-                    <span>Saldo: <strong>{{ row.balance }}</strong></span>
+                </td>
+                <td>
+                  <div><strong>{{ row.customer_name }}</strong></div>
+                  <div class="uk-text-meta">{{ row.category_name }}</div>
+                </td>
+                <td>
+                  <div class="projects-money-row">Entrate <strong>{{ row.income_total }}</strong></div>
+                  <div class="projects-money-row">Uscite <strong>{{ row.expense_total }}</strong></div>
+                  <div class="projects-money-row">
+                    Saldo
+                    <strong class="{% if row.balance < 0 %}is-negative{% elif row.balance > 0 %}is-positive{% endif %}">
+                      {{ row.balance }}
+                    </strong>
+                  </div>
+                </td>
+                <td>
+                  <div class="projects-ops-row">Todo {{ row.todo_open }}/{{ row.todo_total }}</div>
+                  <div class="projects-ops-row">Planner {{ row.planner_planned }}/{{ row.planner_total }}</div>
+                  <div class="projects-ops-row">Subs {{ row.subscriptions_active }}/{{ row.subscriptions_total }}</div>
+                  <div class="projects-ops-row">Routine {{ row.routines_active }}</div>
+                </td>
+                <td>
+                  <div class="uk-text-meta">Ultima transazione</div>
+                  <div>{{ row.last_tx_date|date:"d/m/Y"|default:"-" }}</div>
+                  <div class="uk-text-meta uk-margin-small-top">Prossima scadenza subs</div>
+                  <div>{{ row.next_subscription_due|date:"d/m/Y"|default:"-" }}</div>
+                </td>
+                <td class="uk-text-right">
+                  <div class="uk-button-group">
+                    <a class="uk-button uk-button-primary uk-button-small" href="/projects/view?id={{ row.project.id }}">Dettaglio</a>
+                    <a class="uk-button uk-button-default uk-button-small" href="/projects/storyboard?id={{ row.project.id }}">Storyboard</a>
+                  </div>
+                  <div class="uk-margin-small-top">
+                    <a class="uk-button uk-button-text" href="/projects/api/update?id={{ row.project.id }}">Modifica</a>
+                    <a class="uk-button uk-button-text uk-text-danger" href="/projects/api/remove?id={{ row.project.id }}">Rimuovi</a>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="uk-hidden@m uk-margin-top">
+        <div class="uk-grid-small uk-child-width-1-1" uk-grid>
+          {% for row in project_rows %}
+            <div>
+              <article class="uk-card uk-card-default uk-card-small uk-card-body projects-mobile-card">
+                <div class="uk-flex uk-flex-between uk-flex-top uk-margin-small-bottom">
+                  <div>
+                    <a class="projects-row-title" href="/projects/view?id={{ row.project.id }}">{{ row.project.name }}</a>
+                    <div class="uk-text-meta">{{ row.customer_name }} · {{ row.category_name }}</div>
+                  </div>
+                  {% if row.project.is_archived %}
+                    <span class="uk-label uk-label-warning">Archiviato</span>
+                  {% else %}
+                    <span class="uk-label uk-label-success">Attivo</span>
+                  {% endif %}
+                </div>
+
+                <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+                  <div class="projects-mobile-metric">
+                    <div class="uk-text-meta">Saldo</div>
+                    <div class="{% if row.balance < 0 %}is-negative{% elif row.balance > 0 %}is-positive{% endif %}">{{ row.balance }}</div>
+                  </div>
+                  <div class="projects-mobile-metric">
+                    <div class="uk-text-meta">Transazioni</div>
+                    <div>{{ row.tx_total }}</div>
+                  </div>
+                  <div class="projects-mobile-metric">
+                    <div class="uk-text-meta">Todo</div>
+                    <div>{{ row.todo_open }}/{{ row.todo_total }}</div>
+                  </div>
+                  <div class="projects-mobile-metric">
+                    <div class="uk-text-meta">Planner</div>
+                    <div>{{ row.planner_planned }}/{{ row.planner_total }}</div>
                   </div>
                 </div>
 
-                <div class="project-actions project-row-actions">
-                  <a class="btn primary" href="/projects/view?id={{ row.project.id }}">Dettaglio</a>
-                  <a class="btn" href="/projects/storyboard?id={{ row.project.id }}">Storyboard</a>
-                </div>
-              </div>
-
-              <div class="project-metrics project-metrics-secondary">
-                <div class="metric-chip">
-                  <div class="metric-label">Entrate/Uscite</div>
-                  <div class="metric-value">{{ row.income_total }} / {{ row.expense_total }}</div>
-                </div>
-                <div class="metric-chip">
-                  <div class="metric-label">Transazioni</div>
-                  <div class="metric-value">{{ row.tx_total }}</div>
-                </div>
-                <div class="metric-chip">
-                  <div class="metric-label">Todo aperti/totali</div>
-                  <div class="metric-value">{{ row.todo_open }}/{{ row.todo_total }}</div>
-                </div>
-                <div class="metric-chip">
-                  <div class="metric-label">Planner planned/totali</div>
-                  <div class="metric-value">{{ row.planner_planned }}/{{ row.planner_total }}</div>
-                </div>
-                <div class="metric-chip">
-                  <div class="metric-label">Subs attivi/totali</div>
-                  <div class="metric-value">{{ row.subscriptions_active }}/{{ row.subscriptions_total }}</div>
-                </div>
-                <div class="metric-chip">
-                  <div class="metric-label">Routine attive</div>
-                  <div class="metric-value">{{ row.routines_active }}</div>
-                </div>
-              </div>
-
-              <ul class="uk-accordion project-row-accordion" uk-accordion="active: false; collapsible: true">
-                <li>
-                  <a class="uk-accordion-title project-row-accordion-title" href="#">Dettagli secondari</a>
-                  <div class="uk-accordion-content project-row-accordion-content">
-                    <div class="project-row-meta project-row-meta-secondary">
-                      <span>Ultima transazione: <strong>{{ row.last_tx_date|date:"d/m/Y"|default:"-" }}</strong></span>
-                      <span>Prossima scadenza subs: <strong>{{ row.next_subscription_due|date:"d/m/Y"|default:"-" }}</strong></span>
+                <ul class="uk-accordion uk-margin-small-top" uk-accordion="active: false; collapsible: true">
+                  <li>
+                    <a class="uk-accordion-title" href="#">Dettagli secondari</a>
+                    <div class="uk-accordion-content">
+                      <div class="uk-text-meta">Ultima transazione: {{ row.last_tx_date|date:"d/m/Y"|default:"-" }}</div>
+                      <div class="uk-text-meta">Prossima scadenza subs: {{ row.next_subscription_due|date:"d/m/Y"|default:"-" }}</div>
+                      <div class="uk-margin-small-top uk-flex uk-flex-wrap uk-gap-small">
+                        <a class="uk-button uk-button-primary uk-button-small" href="/projects/view?id={{ row.project.id }}">Dettaglio</a>
+                        <a class="uk-button uk-button-default uk-button-small" href="/projects/storyboard?id={{ row.project.id }}">Storyboard</a>
+                        <a class="uk-button uk-button-default uk-button-small" href="/projects/api/update?id={{ row.project.id }}">Modifica</a>
+                      </div>
                     </div>
-
-                    <div class="project-actions project-row-actions project-row-actions-secondary">
-                      <a class="btn" href="/projects/api/update?id={{ row.project.id }}">Modifica</a>
-                      <a class="btn" href="/projects/hero-actions?id={{ row.project.id }}">Azioni</a>
-                      <a class="btn danger" href="/projects/api/remove?id={{ row.project.id }}">Rimuovi</a>
-                    </div>
-                  </div>
-                </li>
-              </ul>
-            </article>
-          </li>
-        {% endfor %}
-      </ul>
+                  </li>
+                </ul>
+              </article>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
     {% else %}
-      <div class="note">Nessun progetto trovato con il filtro selezionato.</div>
+      <div class="uk-alert-primary uk-margin-top">
+        Nessun progetto trovato per il filtro selezionato.
+      </div>
     {% endif %}
   </section>
 {% endblock %}

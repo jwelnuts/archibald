@@ -5,15 +5,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>link_storage</title>
-    <link rel="stylesheet" href="{% static 'link_storage/styles.css' %}">
+    {% include "core/partials/uikit_head.html" %}
   </head>
   <body>
-    <main class="shell">
-      <header class="top">
-        <h1>link_storage</h1>
-        <a class="btn" href="/">Dashboard</a>
-      </header>
-      {% block content %}{% endblock %}
-    </main>
+    <div class="page uk-container uk-container-large uk-margin">
+      {% include "core/partials/site_header.html" with module_subtitle="Link storage" %}
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    {{ hero_actions_config|json_script:"hero-actions-config" }}
+    {% include "core/partials/uikit_body.html" %}
+    <script type="module" src="{% static 'core/app.js' %}"></script>
   </body>
 </html>

@@ -43,6 +43,103 @@
     </section>
 
     <section class="uk-card uk-card-default uk-card-small uk-card-body transactions-card uk-margin-small-top">
+      <ul uk-accordion="collapsible: true; active: {% if quick_form.errors %}0{% else %}false{% endif %}">
+        <li>
+          <a class="uk-accordion-title" href="#">
+            Inserimento rapido transazione
+            <span class="uk-text-meta uk-display-block">Mostra/nascondi il form rapido</span>
+          </a>
+          <div class="uk-accordion-content">
+            <p class="uk-text-meta uk-margin-small-top">
+              Registra un movimento in pochi campi senza aprire la modale avanzata.
+            </p>
+
+            {% if quick_form.errors %}
+              <div class="uk-alert-danger uk-margin-small-top">
+                <strong>Controlla i campi del form rapido.</strong>
+                <div class="uk-text-small">
+                  {{ quick_form.non_field_errors }}
+                  {% for field in quick_form %}
+                    {{ field.errors }}
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+
+            <form
+              id="transactions-quick-form"
+              class="uk-form-stacked uk-margin-small-top"
+              method="post"
+              action=""
+            >
+              {% csrf_token %}
+              <div class="uk-grid-small" uk-grid>
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_tx_type">{{ quick_form.tx_type.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.tx_type }}</div>
+                </div>
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_date">{{ quick_form.date.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.date }}</div>
+                </div>
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_amount">{{ quick_form.amount.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.amount }}</div>
+                </div>
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_account">{{ quick_form.account.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.account }}</div>
+                </div>
+
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_currency">{{ quick_form.currency.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.currency }}</div>
+                </div>
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_project_choice">{{ quick_form.project_choice.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.project_choice }}</div>
+                </div>
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_project_name">{{ quick_form.project_name.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.project_name }}</div>
+                </div>
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_category_choice">{{ quick_form.category_choice.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.category_choice }}</div>
+                </div>
+
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_category_name">{{ quick_form.category_name.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.category_name }}</div>
+                </div>
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_payee_name">{{ quick_form.payee_name.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.payee_name }}</div>
+                </div>
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_source_choice">{{ quick_form.source_choice.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.source_choice }}</div>
+                </div>
+                <div class="uk-width-1-1 uk-width-1-4@m">
+                  <label class="uk-form-label" for="id_source_name">{{ quick_form.source_name.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.source_name }}</div>
+                </div>
+
+                <div class="uk-width-1-1">
+                  <label class="uk-form-label" for="id_note">{{ quick_form.note.label }}</label>
+                  <div class="uk-form-controls">{{ quick_form.note }}</div>
+                </div>
+                <div class="uk-width-1-1">
+                  <button class="uk-button uk-button-primary uk-button-small" type="submit">Salva transazione rapida</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <section class="uk-card uk-card-default uk-card-small uk-card-body transactions-card uk-margin-small-top">
       <form
         id="transactions-filters-form"
         class="uk-form-stacked"

@@ -5,92 +5,158 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MIO - Dashboard</title>
-    <link rel="stylesheet/less" href="{% static 'core/styles.less' %}?v=retro1">
     {% include "core/partials/uikit_head.html" %}
     <link rel="stylesheet" href="{% static 'core/vendor/toastui-date-picker/dist/tui-date-picker.css' %}">
     <link rel="stylesheet" href="{% static 'core/vendor/toastui-time-picker/dist/tui-time-picker.css' %}">
     <link rel="stylesheet" href="{% static 'core/vendor/toastui/dist/toastui-calendar.min.css' %}">
-    <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
- 
+    <link rel="stylesheet" href="{% static 'core/dashboard.css' %}">
+    <script src="{% static 'core/vendor/htmx/htmx.min.js' %}" defer></script>
   </head>
   <body>
-    <div class="shell">
-      <header class="shell-header">
-        <div class="brand">
-          <div class="brand-mark">MIO</div>
-          <div class="brand-text">
-            <div class="brand-title">Money Organizer</div>
-            <div class="brand-sub">Modular dashboard</div>
-          </div>
-        </div>
-        <nav class="shell-nav">
-          <a href="/transactions/">Transactions</a>
-          <a href="/finance/">Finance Hub</a>
-          <a href="/contacts/">Contacts</a>
-          <a href="/planner/">Planner</a>
-          <a href="/projects/">Projects</a>
-          <a href="/subs/">Subscriptions</a>
-          <a href="/todo/">Todo</a>
-          <a href="/agenda/">Agenda</a>
-          <a href="/routines/">Routines</a>
-          <a href="/archibald/">Archibald</a>
-          <a href="/ai-lab/">AI Lab</a>
-          <a href="/vault/">Vault</a>
-          <a href="/workbench/">Workbench</a>
-          <a href="/workbench/ai/ui-generator">UI Generator</a>
-          <a href="/profile/">Profilo</a>
-          <a href="/accounts/logout/">Logout</a>
-        </nav>
-      </header>
+    <div
+      class="dashboard-shell uk-container uk-container-xlarge uk-margin-top uk-margin-bottom"
+      data-controller="dashboard"
+      data-dashboard-target="root"
+      data-dashboard-preferences-url-value="/dashboard/preferences"
+    >
+      {% include "core/partials/site_header.html" with module_subtitle="Dashboard" %}
+      {{ dashboard_preferences|json_script:"dashboard-preferences" }}
 
-      <section class="shell-hero dashboard-hero">
-        <div class="hero-copy">
-          <div class="hero-tag">Command Center</div>
-          <h1>Dashboard operativa</h1>
-          <p>
-            Una plancia viva: dialoghi con Archibald, esegui azioni rapide,
-            monitora le scadenze e trascina i moduli che ti servono davvero.
-          </p>
-          <div class="hero-metrics">
-            <div class="hero-metric">
-              <span class="hero-metric-label">Focus</span>
-              <strong>Oggi</strong>
-            </div>
-            <div class="hero-metric">
-              <span class="hero-metric-label">Modalità</span>
-              <strong>Operativa</strong>
-            </div>
-            <div class="hero-metric">
-              <span class="hero-metric-label">Stato</span>
-              <strong>Attiva</strong>
-            </div>
+      <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin" data-dashboard-section="snapshot">
+        <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+          <div>
+            <h1 class="uk-heading-bullet uk-margin-remove">Dashboard operativa</h1>
+            <p class="uk-text-meta uk-margin-small-top">Vista live con snapshot periodico e focus su attivita imminenti.</p>
+          </div>
+          <div class="uk-flex uk-flex-middle uk-flex-wrap uk-gap-small">
+            <button
+              class="uk-button uk-button-default uk-button-small"
+              type="button"
+              data-action="dashboard#refreshSnapshot"
+            >Aggiorna snapshot</button>
+            <span class="uk-text-meta" data-dashboard-target="saveState">Preferenze sincronizzate</span>
           </div>
         </div>
-        <div class="hero-card hero-card-accent">
-          <div class="hero-title">Suggerimento</div>
-          <div class="hero-copy">
-            Sposta i moduli chiave in alto per avere priorità visiva. Le azioni
-            rapide sono nella colonna laterale.
-          </div>
-          <div class="hero-actions-row">
-            <a class="btn" href="/archibald/">Apri Archibald</a>
-            <a class="btn" href="/profile/">Preferenze</a>
-          </div>
+        <div
+          id="dashboard-live-snapshot"
+          class="uk-margin-top"
+          hx-get="/dashboard/snapshot"
+          hx-trigger="load, every 90s, dashboard:refresh from:body"
+          hx-target="this"
+          hx-swap="innerHTML"
+        >
+          <div class="uk-text-meta">Caricamento snapshot...</div>
         </div>
       </section>
 
-      <section class="dashboard-layout">
-        <div class="dashboard-main">
-          <section class="panel" id="dashboard-archibald">
-            <div class="card-title">Archibald · nuova conversazione</div>
-            <p class="muted">Qui inizi un nuovo argomento. In Archibald trovi la chat “di giornata”.</p>
-            <div class="chat" id="dashboard-archibald-chat"></div>
-            <form class="form dashboard-archibald-form" id="dashboard-archibald-form" method="post" action="">
+      <div class="uk-grid-large" uk-grid>
+        <div class="uk-width-expand@xl">
+          <section
+            class="uk-card uk-card-default uk-card-small uk-card-body uk-margin"
+            data-dashboard-section="widgets"
+            data-dashboard-widgets
+            data-save-url="/dashboard/widgets"
+          >
+            <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+              <div>
+                <h2 class="uk-margin-remove">Moduli operativi</h2>
+                <p class="uk-text-meta uk-margin-small-top">Drag & drop, filtri per dominio e layout personale persistente.</p>
+              </div>
+              <div class="uk-flex uk-flex-wrap uk-gap-small">
+                <button class="uk-button uk-button-default uk-button-small" type="button" data-widget-edit-toggle>Personalizza</button>
+                <button class="uk-button uk-button-default uk-button-small" type="button" data-widget-reset>Reset layout</button>
+              </div>
+            </div>
+
+            <div class="uk-margin-small-top" data-widget-status>Drag & drop attivo</div>
+
+            <div class="uk-margin-small-top" data-portal-filter>
+              <div class="uk-button-group">
+                <button class="uk-button uk-button-default uk-button-small filter-chip active" type="button" data-filter="all">Tutti</button>
+                <button class="uk-button uk-button-default uk-button-small filter-chip" type="button" data-filter="money">Finanza</button>
+                <button class="uk-button uk-button-default uk-button-small filter-chip" type="button" data-filter="planning">Pianificazione</button>
+                <button class="uk-button uk-button-default uk-button-small filter-chip" type="button" data-filter="ops">Operativo</button>
+              </div>
+            </div>
+
+            <div class="uk-alert-primary uk-margin-small-top" data-widget-hidden-panel hidden>
+              <div class="uk-text-bold">Widget nascosti</div>
+              <div class="widget-hidden-list uk-margin-small-top" data-widget-hidden-list></div>
+            </div>
+
+            <div id="portal" class="dashboard-portal uk-margin-top">
+              {% for widget in dashboard_widgets %}
+                <article
+                  class="portlet{% if widget.hidden %} is-user-hidden is-hidden{% endif %}"
+                  data-widget-card
+                  data-widget-id="{{ widget.id }}"
+                  data-group="{{ widget.group }}"
+                >
+                  <div class="portlet-head">
+                    <div>
+                      <div class="portlet-title">{{ widget.title }}</div>
+                      <div class="uk-text-meta">{{ widget.group|title }}</div>
+                    </div>
+                    <div class="widget-head-actions">
+                      <button class="widget-move-btn" type="button" data-widget-move="up" title="Sposta su">Su</button>
+                      <button class="widget-move-btn" type="button" data-widget-move="down" title="Sposta giu">Giu</button>
+                      <button class="widget-hide-btn" type="button" data-widget-hide title="Nascondi widget">Nascondi</button>
+                    </div>
+                  </div>
+                  <p class="uk-margin-small-top">{{ widget.description }}</p>
+                  <a class="uk-button uk-button-primary uk-button-small" href="{{ widget.url }}">Apri modulo</a>
+                </article>
+              {% endfor %}
+            </div>
+          </section>
+
+          <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin" data-dashboard-section="calendar">
+            <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+              <div>
+                <h2 class="uk-margin-remove">Calendario operativo</h2>
+                <p class="uk-text-meta uk-margin-small-top">Eventi aggregati da Task, Planner, Agenda, Subscriptions, Transactions e Routines.</p>
+              </div>
+              <div class="uk-flex uk-flex-middle uk-gap-small">
+                <button class="uk-button uk-button-default uk-button-small" type="button" id="calendar-prev" aria-label="Mese precedente">Precedente</button>
+                <strong id="calendar-month-label">Mese</strong>
+                <button class="uk-button uk-button-default uk-button-small" type="button" id="calendar-next" aria-label="Mese successivo">Successivo</button>
+              </div>
+            </div>
+            <div class="dashboard-calendar-layout uk-margin-top">
+              <div id="dashboard-calendar" class="calendar-widget">
+                <div class="calendar-empty">Caricamento calendario...</div>
+              </div>
+              <aside class="dashboard-calendar-detail uk-card uk-card-secondary uk-card-body">
+                <h3 class="uk-margin-small-bottom">Eventi del giorno</h3>
+                <div class="uk-text-meta" id="calendar-detail-date">Seleziona una data</div>
+                <div class="calendar-detail-list uk-margin-small-top" id="calendar-detail-list"></div>
+                <hr>
+                <h3 class="uk-margin-small-bottom">Riepilogo mese</h3>
+                <div class="calendar-detail-list" id="calendar-month-list"></div>
+              </aside>
+            </div>
+          </section>
+
+          <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin" id="dashboard-archibald" data-dashboard-section="archibald">
+            <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+              <div>
+                <h2 class="uk-margin-remove">Archibald rapido</h2>
+                <p class="uk-text-meta uk-margin-small-top">Testa un prompt rapido senza lasciare la dashboard.</p>
+              </div>
+              <div class="uk-flex uk-flex-wrap uk-gap-small">
+                <button class="uk-button uk-button-default uk-button-small" type="button" data-archibald-prompt="Analizza la mia priorita per oggi.">Priorita oggi</button>
+                <button class="uk-button uk-button-default uk-button-small" type="button" data-archibald-prompt="Dimmi 3 azioni ad alto impatto per oggi.">3 azioni</button>
+              </div>
+            </div>
+
+            <div class="chat uk-margin-small-top" id="dashboard-archibald-chat"></div>
+            <form class="uk-form-stacked uk-margin-small-top" id="dashboard-archibald-form" method="post" action="">
               {% csrf_token %}
               <input type="hidden" name="thread_id" id="dashboard-archibald-thread" value="">
-              <div class="field">
-                <label for="dashboard-archibald-prompt">Messaggio</label>
+              <label class="uk-form-label" for="dashboard-archibald-prompt">Messaggio</label>
+              <div class="uk-form-controls">
                 <textarea
+                  class="uk-textarea"
                   id="dashboard-archibald-prompt"
                   name="prompt"
                   rows="3"
@@ -98,132 +164,101 @@
                   required
                 ></textarea>
               </div>
-              <div class="actions">
-                <button class="btn primary" type="submit">Invia</button>
-                <button class="btn" type="button" id="dashboard-archibald-reset">Nuova chat</button>
+              <div class="uk-margin-small-top uk-flex uk-flex-wrap uk-gap-small">
+                <button class="uk-button uk-button-primary uk-button-small" type="submit">Invia</button>
+                <button class="uk-button uk-button-default uk-button-small" type="button" id="dashboard-archibald-reset">Nuova chat</button>
               </div>
             </form>
           </section>
-
-          <section class="panel calendar-panel">
-            <div class="calendar-head">
-              <div>
-                <div class="card-title">Calendario operativo</div>
-                <p class="muted">Eventi rilevanti dalle app: task, planner, abbonamenti, transazioni e routine.</p>
-              </div>
-              <div class="calendar-nav">
-                <button class="calendar-nav-btn" type="button" id="calendar-prev" aria-label="Mese precedente">‹</button>
-                <div class="calendar-month" id="calendar-month-label">Mese</div>
-                <button class="calendar-nav-btn" type="button" id="calendar-next" aria-label="Mese successivo">›</button>
-              </div>
-            </div>
-            <div class="calendar-layout">
-              <div id="dashboard-calendar" class="calendar-widget">
-                <div class="calendar-empty">Caricamento calendario...</div>
-              </div>
-              <div class="calendar-detail">
-                <div class="calendar-detail-title">Eventi del giorno</div>
-                <div class="calendar-detail-date" id="calendar-detail-date">Seleziona una data</div>
-                <div class="calendar-detail-list" id="calendar-detail-list"></div>
-                <div class="calendar-detail-title calendar-month-title">Eventi del mese</div>
-                <div class="calendar-detail-list" id="calendar-month-list"></div>
-              </div>
-            </div>
-            <div class="calendar-legend">
-              <span class="legend-item"><i class="legend-dot event-task"></i> Task</span>
-              <span class="legend-item"><i class="legend-dot event-agenda_activity"></i> Agenda attività</span>
-              <span class="legend-item"><i class="legend-dot event-agenda_reminder"></i> Agenda reminder</span>
-              <span class="legend-item"><i class="legend-dot event-planner"></i> Planner</span>
-              <span class="legend-item"><i class="legend-dot event-subscription"></i> Abbonamenti</span>
-              <span class="legend-item"><i class="legend-dot event-transaction"></i> Transazioni</span>
-              <span class="legend-item"><i class="legend-dot event-worklog"></i> Ore lavoro</span>
-              <span class="legend-item"><i class="legend-dot event-routine"></i> Routine</span>
-            </div>
-          </section>
         </div>
 
-        <aside class="dashboard-rail">
-          <section class="panel quick-actions">
-            <div class="card-title">Azioni rapide</div>
-            <div class="quick-grid">
-              <a class="quick-card" href="/transactions/?open=new&tx_type=IN">Nuova entrata</a>
-              <a class="quick-card" href="/transactions/?open=new&tx_type=OUT">Nuova uscita</a>
-              <a class="quick-card" href="/finance/quotes/add">Nuovo preventivo</a>
-              <a class="quick-card" href="/finance/invoices/add">Nuova fattura</a>
-              <a class="quick-card" href="/todo/api/add">Nuovo task</a>
-              <a class="quick-card" href="/planner/add">Nuovo planner</a>
-              <a class="quick-card" href="/agenda/">Apri agenda</a>
-              <a class="quick-card" href="/routines/api/add">Nuova routine</a>
-              <a class="quick-card" href="/subs/api/add">Nuovo abbonamento</a>
-              <a class="quick-card" href="/projects/api/add">Nuovo progetto</a>
-              <a class="quick-card" href="/contacts/add">Nuovo contatto</a>
-              <a class="quick-card" href="/ai-lab/">AI Lab</a>
-              <a class="quick-card" href="/vault/">Vault</a>
+        <aside class="uk-width-1-3@xl">
+          <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin" data-dashboard-section="quick_actions">
+            <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+              <h2 class="uk-margin-remove">Azioni rapide</h2>
+              <span class="uk-text-meta">Live filter</span>
             </div>
+
+            <div class="uk-margin-small-top">
+              <input
+                class="uk-input uk-form-small"
+                type="search"
+                placeholder="Filtra azioni..."
+                data-dashboard-target="quickSearch"
+                data-action="input->dashboard#filterQuickActions"
+              >
+            </div>
+
+            <div class="quick-grid uk-margin-small-top" data-dashboard-target="quickList">
+              <a class="quick-card" href="/transactions/?open=new&tx_type=IN" data-dashboard-target="quickCard" data-dashboard-search="nuova entrata transactions">Nuova entrata</a>
+              <a class="quick-card" href="/transactions/?open=new&tx_type=OUT" data-dashboard-target="quickCard" data-dashboard-search="nuova uscita transactions">Nuova uscita</a>
+              <a class="quick-card" href="/finance/quotes/add" data-dashboard-target="quickCard" data-dashboard-search="nuovo preventivo finance">Nuovo preventivo</a>
+              <a class="quick-card" href="/finance/invoices/add" data-dashboard-target="quickCard" data-dashboard-search="nuova fattura finance">Nuova fattura</a>
+              <a class="quick-card" href="/todo/api/add" data-dashboard-target="quickCard" data-dashboard-search="nuovo task todo">Nuovo task</a>
+              <a class="quick-card" href="/planner/add" data-dashboard-target="quickCard" data-dashboard-search="nuovo planner">Nuovo planner</a>
+              <a class="quick-card" href="/agenda/" data-dashboard-target="quickCard" data-dashboard-search="agenda eventi">Apri agenda</a>
+              <a class="quick-card" href="/routines/api/add" data-dashboard-target="quickCard" data-dashboard-search="nuova routine">Nuova routine</a>
+              <a class="quick-card" href="/subs/api/add" data-dashboard-target="quickCard" data-dashboard-search="nuovo abbonamento">Nuovo abbonamento</a>
+              <a class="quick-card" href="/projects/api/add" data-dashboard-target="quickCard" data-dashboard-search="nuovo progetto">Nuovo progetto</a>
+              <a class="quick-card" href="/contacts/add" data-dashboard-target="quickCard" data-dashboard-search="nuovo contatto">Nuovo contatto</a>
+              <a class="quick-card" href="/ai-lab/" data-dashboard-target="quickCard" data-dashboard-search="ai lab">AI Lab</a>
+              <a class="quick-card" href="/vault/" data-dashboard-target="quickCard" data-dashboard-search="vault sicurezza">Vault</a>
+            </div>
+            <div class="uk-text-meta uk-margin-small-top" data-dashboard-target="quickEmpty" hidden>Nessuna azione trovata.</div>
           </section>
 
-          <section class="panel focus-panel">
-            <div class="card-title">Filtro rapido</div>
-            <p class="muted">Riduci il rumore e guarda solo i moduli utili ora.</p>
-            <div class="filter-row" data-portal-filter>
-              <button class="filter-chip active" type="button" data-filter="all">Tutti</button>
-              <button class="filter-chip" type="button" data-filter="money">Finanza</button>
-              <button class="filter-chip" type="button" data-filter="planning">Pianificazione</button>
-              <button class="filter-chip" type="button" data-filter="ops">Operativo</button>
-            </div>
-          </section>
+          <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+            <h2 class="uk-margin-remove">Personalizzazione</h2>
+            <p class="uk-text-meta uk-margin-small-top">Preferenze visuali e sezioni salvate per il tuo utente.</p>
 
-          <section class="panel pulse-panel">
-            <div class="card-title">Pulse rapido</div>
-            <ul class="pulse-list">
-              <li><span class="pulse-dot pulse-dot-green"></span> Agenda sincronizzata</li>
-              <li><span class="pulse-dot pulse-dot-amber"></span> Routine pronte per oggi</li>
-              <li><span class="pulse-dot pulse-dot-blue"></span> Archibald in ascolto</li>
-            </ul>
+            <div class="uk-margin-small-top">
+              <label class="uk-form-label" for="dashboard-density">Densita</label>
+              <div class="uk-form-controls">
+                <select
+                  id="dashboard-density"
+                  class="uk-select uk-form-small"
+                  data-dashboard-target="density"
+                  data-action="change->dashboard#densityChanged"
+                >
+                  <option value="comfortable">Comfortable</option>
+                  <option value="compact">Compact</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="uk-margin-small-top">
+              <label class="uk-form-label" for="dashboard-accent">Colore accent</label>
+              <div class="uk-form-controls">
+                <select
+                  id="dashboard-accent"
+                  class="uk-select uk-form-small"
+                  data-dashboard-target="accent"
+                  data-action="change->dashboard#accentChanged"
+                >
+                  <option value="blue">Blue</option>
+                  <option value="green">Green</option>
+                  <option value="amber">Amber</option>
+                  <option value="rose">Rose</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="uk-margin-small-top">
+              <div class="uk-text-meta uk-margin-small-bottom">Sezioni visibili</div>
+              <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-dashboard-target="sectionToggle" data-section-key="snapshot" data-action="change->dashboard#sectionChanged"> Snapshot</label>
+              <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-dashboard-target="sectionToggle" data-section-key="widgets" data-action="change->dashboard#sectionChanged"> Widget</label>
+              <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-dashboard-target="sectionToggle" data-section-key="calendar" data-action="change->dashboard#sectionChanged"> Calendario</label>
+              <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-dashboard-target="sectionToggle" data-section-key="archibald" data-action="change->dashboard#sectionChanged"> Archibald</label>
+              <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-dashboard-target="sectionToggle" data-section-key="quick_actions" data-action="change->dashboard#sectionChanged"> Azioni rapide</label>
+            </div>
+
+            <div class="uk-margin-small-top uk-flex uk-flex-wrap uk-gap-small">
+              <button class="uk-button uk-button-default uk-button-small" type="button" data-action="dashboard#saveNow">Salva ora</button>
+              <button class="uk-button uk-button-default uk-button-small" type="button" data-action="dashboard#resetPreferences">Reset preferenze</button>
+            </div>
           </section>
         </aside>
-      </section>
-
-      <section class="portal-block" data-dashboard-widgets data-save-url="/dashboard/widgets">
-        <div class="portal-head">
-          <div>
-            <h2>Moduli operativi</h2>
-            <p class="muted">Layout personale: trascina per riordinare, nascondi i widget inutili e ripristinali quando vuoi.</p>
-          </div>
-          <div class="portal-controls">
-            <button class="btn" type="button" data-widget-edit-toggle>Personalizza</button>
-            <button class="btn" type="button" data-widget-reset>Reset layout</button>
-          </div>
-        </div>
-        <div class="portal-hint" data-widget-status>Drag & drop attivo</div>
-
-        <div class="widget-hidden-panel" data-widget-hidden-panel hidden>
-          <div class="widget-hidden-title">Widget nascosti</div>
-          <div class="widget-hidden-list" data-widget-hidden-list></div>
-        </div>
-
-        <div id="portal" class="portal">
-          {% for widget in dashboard_widgets %}
-            <div
-              class="portlet{% if widget.hidden %} is-user-hidden is-hidden{% endif %}"
-              data-widget-card
-              data-widget-id="{{ widget.id }}"
-              data-group="{{ widget.group }}"
-            >
-              <div class="portlet-head">
-                <div class="portlet-title">{{ widget.title }}</div>
-                <div class="widget-head-actions">
-                  <button class="widget-move-btn" type="button" data-widget-move="up" title="Sposta su">Su</button>
-                  <button class="widget-move-btn" type="button" data-widget-move="down" title="Sposta giu">Giu</button>
-                  <button class="widget-hide-btn" type="button" data-widget-hide title="Nascondi widget">Nascondi</button>
-                </div>
-              </div>
-              <p>{{ widget.description }}</p>
-              <a class="portlet-link" href="{{ widget.url }}">Vai al modulo</a>
-            </div>
-          {% endfor %}
-        </div>
-      </section>
+      </div>
     </div>
 
     <script>window.tui = window.tui || {};</script>
@@ -233,7 +268,8 @@
     <script src="{% static 'core/vendor/toastui-date-picker/dist/tui-date-picker.min.js' %}"></script>
     <script src="{% static 'core/vendor/toastui/dist/toastui-calendar.min.js' %}"></script>
     <script src="{% static 'core/calendar.js' %}"></script>
-        {% include "core/partials/uikit_body.html" %}
+    {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/app.js' %}"></script>
+    <script type="module" src="{% static 'core/dashboard.js' %}"></script>
   </body>
 </html>

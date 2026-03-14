@@ -3,180 +3,297 @@
 {% block title %}MIO - Agenda{% endblock %}
 
 {% block content %}
-  <section class="hero" id="app-head">
-    <div class="hero-copy" id="app-header">
-      <h1>Agenda</h1>
-      <p>Pianifica giorno per giorno, gestisci attivita e reminder, registra ore lavorate.</p>
-      <div class="hero-actions" id="app-actions" data-module="agenda">
-        <a class="btn primary" href="#agenda-todo-form" data-action="add_todo_item">Nuovo reminder</a>
-        <a class="btn" href="#agenda-worklog-form" data-action="log_hours">Registra ore</a>
-      </div>
-    </div>
-    <div class="hero-card">
-      <div class="card-title">Totale ore del mese</div>
-      <div class="agenda-hours-total">{{ month_total_hours }}h</div>
-      <div class="muted">Giorni registrati: {{ month_logged_days }}</div>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-label">Pianificate</div>
-          <div class="stat-value">{{ agenda_counts.planned }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Completate</div>
-          <div class="stat-value">{{ agenda_counts.done }}</div>
-        </div>
-      </div>
-    </div>
-  </section>
+  <div
+    class="agenda-shell uk-margin-top uk-margin-bottom"
+    data-controller="agenda"
+    data-agenda-target="root"
+    data-agenda-preferences-url-value="/agenda/preferences"
+  >
+    {{ agenda_preferences|json_script:"agenda-preferences" }}
 
-  <section class="grid agenda-grid">
-    <article class="panel">
-      <div class="agenda-month-head">
-        <a class="btn" href="/agenda/?month={{ prev_month_param }}">&lt;</a>
-        <h2>{{ month_label }}</h2>
-        <a class="btn" href="/agenda/?month={{ next_month_param }}">&gt;</a>
+    <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin" data-agenda-section="snapshot">
+      <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+        <div>
+          <h1 class="uk-heading-bullet uk-margin-remove">Agenda operativa</h1>
+          <p class="uk-text-meta uk-margin-small-top">Vista calendario + dettaglio giornata + registrazione ore in un unico flusso.</p>
+        </div>
+        <div class="uk-flex uk-flex-middle uk-flex-wrap uk-gap-small">
+          <button class="uk-button uk-button-default uk-button-small" type="button" data-action="agenda#refreshSnapshot">Aggiorna snapshot</button>
+          <span class="uk-text-meta" data-agenda-target="saveState">Preferenze sincronizzate</span>
+        </div>
       </div>
-      <div class="agenda-calendar">
-        {% for day_name in weekday_labels %}
-          <div class="agenda-weekday">{{ day_name }}</div>
-        {% endfor %}
-        {% for week in calendar_weeks %}
-          {% for cell in week %}
-            {% if cell %}
-              <a
-                class="agenda-day {% if cell.is_today %}is-today{% endif %} {% if cell.is_selected %}is-selected{% endif %}"
-                href="/agenda/?month={{ month_param }}&selected={{ cell.iso }}"
-              >
-                <div class="agenda-day-number">{{ cell.day }}</div>
-                <div class="agenda-day-chips">
-                  {% for chip in cell.chips %}
-                    <span class="agenda-chip {{ chip.kind }}">{{ chip.label }}: {{ chip.value }}</span>
-                  {% endfor %}
+
+      <div
+        id="agenda-live-snapshot"
+        class="uk-margin-top"
+        data-agenda-target="snapshot"
+        hx-get="/agenda/snapshot?month={{ month_param }}&selected={{ selected_param }}"
+        hx-trigger="load, every 90s, agenda:refresh-snapshot from:body"
+        hx-target="this"
+        hx-swap="innerHTML"
+      >
+        <div class="uk-text-meta">Caricamento snapshot...</div>
+      </div>
+    </section>
+
+    <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin" data-agenda-section="forms">
+      <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+        <div>
+          <h2 class="uk-margin-remove">Nuove voci</h2>
+          <p class="uk-text-meta uk-margin-small-top">Task, ore lavorate e item Planner in tre form separati.</p>
+        </div>
+        <div class="uk-flex uk-flex-wrap uk-gap-small" id="app-actions" data-module="agenda">
+          <a class="uk-button uk-button-primary uk-button-small" href="#agenda-todo-form" data-action="add_todo_item">Nuovo reminder</a>
+          <a class="uk-button uk-button-default uk-button-small" href="#agenda-worklog-form" data-action="log_hours">Registra ore</a>
+          <a class="uk-button uk-button-default uk-button-small" href="#agenda-planner-form" data-action="add_planner_item">Nuovo planner</a>
+        </div>
+      </div>
+
+      <ul
+        class="uk-margin-top"
+        uk-accordion="collapsible: true; active: {% if todo_form.errors %}0{% elif work_form.errors %}1{% elif planner_form.errors %}2{% else %}false{% endif %}"
+      >
+        <li id="agenda-todo-form">
+          <a class="uk-accordion-title" href="#">Nuovo reminder / task / appuntamento</a>
+          <div class="uk-accordion-content">
+            <p class="uk-text-meta uk-margin-small-bottom">Form condiviso con Todo per massima coerenza dei dati.</p>
+
+            {% if todo_form.errors %}
+              <div class="uk-alert-danger uk-margin-small-bottom">
+                <strong>Controlla i campi della nuova voce Todo.</strong>
+                <div class="uk-text-small">
+                  {{ todo_form.non_field_errors }}
+                  {{ todo_form.title.errors }}
+                  {{ todo_form.item_type.errors }}
+                  {{ todo_form.due_date.errors }}
+                  {{ todo_form.due_time.errors }}
+                  {{ todo_form.status.errors }}
+                  {{ todo_form.priority.errors }}
+                  {{ todo_form.project_choice.errors }}
+                  {{ todo_form.project_name.errors }}
+                  {{ todo_form.note.errors }}
                 </div>
-              </a>
-            {% else %}
-              <div class="agenda-day is-empty"></div>
-            {% endif %}
-          {% endfor %}
-        {% endfor %}
-      </div>
-    </article>
-
-    <article class="panel">
-      <h2>Dettaglio {{ selected_date|date:"d/m/Y" }}</h2>
-      <ul class="list agenda-events-list">
-        {% if selected_events %}
-          {% for event in selected_events %}
-            <li class="{% if event.is_done %}is-done{% endif %}">
-              <div>
-                <span class="agenda-chip {{ event.kind }}">{{ event.label }}</span>
-                <strong>{{ event.title }}</strong>
-                {% if event.time %}<span class="muted">{{ event.time }}</span>{% endif %}
-                {% if event.meta %}<div class="muted">{{ event.meta }}</div>{% endif %}
               </div>
-              {% if event.is_agenda_item %}
-                <div class="actions">
-                  <form method="post" action="" style="display:inline;">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="toggle_item">
-                    <input type="hidden" name="item_id" value="{{ event.item_id }}">
-                    <input type="hidden" name="month" value="{{ month_param }}">
-                    <input type="hidden" name="selected" value="{{ selected_param }}">
-                    <button class="btn" type="submit">{% if event.is_done %}Riapri{% else %}Completa{% endif %}</button>
-                  </form>
-                  <form method="post" action="" style="display:inline;">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="remove_item">
-                    <input type="hidden" name="item_id" value="{{ event.item_id }}">
-                    <input type="hidden" name="month" value="{{ month_param }}">
-                    <input type="hidden" name="selected" value="{{ selected_param }}">
-                    <button class="btn danger" type="submit">Elimina</button>
-                  </form>
+            {% endif %}
+
+            <form class="uk-form-stacked" method="post" action="">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="add_todo_item">
+              <input type="hidden" name="month" value="{{ month_param }}" data-agenda-target="monthField">
+              <input type="hidden" name="selected" value="{{ selected_param }}" data-agenda-target="selectedField">
+              {% include "todo/partials/task_form_fields.html" with form=todo_form %}
+              <div class="uk-margin-small-top">
+                <button class="uk-button uk-button-primary uk-button-small" type="submit">Salva voce Todo</button>
+              </div>
+            </form>
+          </div>
+        </li>
+
+        <li id="agenda-worklog-form">
+          <a class="uk-accordion-title" href="#">Ore lavorate</a>
+          <div class="uk-accordion-content">
+            <p class="uk-text-meta uk-margin-small-bottom">Calcolo netto automatico sottraendo la pausa pranzo.</p>
+
+            {% if work_form.errors %}
+              <div class="uk-alert-danger uk-margin-small-bottom">
+                <strong>Controlla i campi del worklog.</strong>
+                <div class="uk-text-small">
+                  {{ work_form.non_field_errors }}
+                  {{ work_form.work_date.errors }}
+                  {{ work_form.time_start.errors }}
+                  {{ work_form.time_end.errors }}
+                  {{ work_form.lunch_break_minutes.errors }}
+                  {{ work_form.note.errors }}
                 </div>
-              {% endif %}
-            </li>
-          {% endfor %}
-        {% else %}
-          <li class="muted">Nessuna voce per il giorno selezionato.</li>
-        {% endif %}
+              </div>
+            {% endif %}
+
+            <form class="uk-form-stacked" method="post" action="">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="log_hours">
+              <input type="hidden" name="month" value="{{ month_param }}" data-agenda-target="monthField">
+              <input type="hidden" name="selected" value="{{ selected_param }}" data-agenda-target="selectedField">
+
+              <div class="uk-margin-small">
+                <label class="uk-form-label" for="id_work_date">Data</label>
+                <div class="uk-form-controls">{{ work_form.work_date }}</div>
+              </div>
+              <div class="uk-margin-small">
+                <label class="uk-form-label" for="id_time_start">Orario inizio</label>
+                <div class="uk-form-controls">{{ work_form.time_start }}</div>
+              </div>
+              <div class="uk-margin-small">
+                <label class="uk-form-label" for="id_time_end">Orario fine</label>
+                <div class="uk-form-controls">{{ work_form.time_end }}</div>
+              </div>
+              <div class="uk-margin-small">
+                <label class="uk-form-label" for="id_lunch_break_minutes">Pausa pranzo (minuti)</label>
+                <div class="uk-form-controls">{{ work_form.lunch_break_minutes }}</div>
+              </div>
+              <div class="uk-margin-small">
+                <label class="uk-form-label" for="id_note">Nota</label>
+                <div class="uk-form-controls">{{ work_form.note }}</div>
+              </div>
+
+              <div class="uk-margin-small-top">
+                <button class="uk-button uk-button-primary uk-button-small" type="submit">Salva ore</button>
+              </div>
+            </form>
+          </div>
+        </li>
+
+        <li id="agenda-planner-form">
+          <a class="uk-accordion-title" href="#">Nuova voce Planner</a>
+          <div class="uk-accordion-content">
+            <p class="uk-text-meta uk-margin-small-bottom">Aggiungi promemoria o spesa futura direttamente dall'Agenda.</p>
+
+            {% if planner_form.errors %}
+              <div class="uk-alert-danger uk-margin-small-bottom">
+                <strong>Controlla i campi della nuova voce Planner.</strong>
+                <div class="uk-text-small">
+                  {{ planner_form.non_field_errors }}
+                  {{ planner_form.title.errors }}
+                  {{ planner_form.due_date.errors }}
+                  {{ planner_form.amount.errors }}
+                  {{ planner_form.status.errors }}
+                  {{ planner_form.category_choice.errors }}
+                  {{ planner_form.category_name.errors }}
+                  {{ planner_form.project_choice.errors }}
+                  {{ planner_form.project_name.errors }}
+                  {{ planner_form.note.errors }}
+                </div>
+              </div>
+            {% endif %}
+
+            <form class="uk-form-stacked" method="post" action="">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="add_planner_item">
+              <input type="hidden" name="month" value="{{ month_param }}" data-agenda-target="monthField">
+              <input type="hidden" name="selected" value="{{ selected_param }}" data-agenda-target="selectedField">
+
+              <div class="uk-margin-small">
+                <label class="uk-form-label" for="{{ planner_form.title.id_for_label }}">Titolo</label>
+                <div class="uk-form-controls">{{ planner_form.title }}</div>
+              </div>
+
+              <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-3@m" uk-grid>
+                <div>
+                  <label class="uk-form-label" for="{{ planner_form.due_date.id_for_label }}">Data</label>
+                  <div class="uk-form-controls">{{ planner_form.due_date }}</div>
+                </div>
+                <div>
+                  <label class="uk-form-label" for="{{ planner_form.amount.id_for_label }}">Importo (opz.)</label>
+                  <div class="uk-form-controls">{{ planner_form.amount }}</div>
+                </div>
+                <div>
+                  <label class="uk-form-label" for="{{ planner_form.status.id_for_label }}">Status</label>
+                  <div class="uk-form-controls">{{ planner_form.status }}</div>
+                </div>
+              </div>
+
+              <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@m uk-margin-small-top" uk-grid>
+                <div>
+                  <label class="uk-form-label" for="{{ planner_form.category_choice.id_for_label }}">Categoria</label>
+                  <div class="uk-form-controls">{{ planner_form.category_choice }}</div>
+                </div>
+                <div>
+                  <label class="uk-form-label" for="{{ planner_form.project_choice.id_for_label }}">Progetto</label>
+                  <div class="uk-form-controls">{{ planner_form.project_choice }}</div>
+                </div>
+              </div>
+
+              <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@m uk-margin-small-top" uk-grid>
+                <div class="{% if planner_form.category_choice.value != '__new__' %}agenda-hidden{% endif %}" data-agenda-planner-category-row>
+                  <label class="uk-form-label" for="{{ planner_form.category_name.id_for_label }}">Nuova categoria</label>
+                  <div class="uk-form-controls">{{ planner_form.category_name }}</div>
+                </div>
+                <div class="{% if planner_form.project_choice.value != '__new__' %}agenda-hidden{% endif %}" data-agenda-planner-project-row>
+                  <label class="uk-form-label" for="{{ planner_form.project_name.id_for_label }}">Nuovo progetto</label>
+                  <div class="uk-form-controls">{{ planner_form.project_name }}</div>
+                </div>
+              </div>
+
+              <div class="uk-margin-small-top">
+                <label class="uk-form-label" for="{{ planner_form.note.id_for_label }}">Note</label>
+                <div class="uk-form-controls">{{ planner_form.note }}</div>
+              </div>
+
+              <div class="uk-margin-small-top">
+                <button class="uk-button uk-button-primary uk-button-small" type="submit">Salva voce Planner</button>
+              </div>
+            </form>
+          </div>
+        </li>
       </ul>
-    </article>
-  </section>
+    </section>
 
-  <section class="grid agenda-grid-forms">
-    <article class="panel" id="agenda-todo-form">
-      <h2>Nuovo reminder / task / appuntamento</h2>
-      <p class="muted">Usa lo stesso form dell'app Todo per mantenere coerenza.</p>
-      {% if todo_form.errors %}
-        <div class="warning-box">
-          Controlla i campi della nuova voce Todo.
-          <div class="form-errors">
-            {{ todo_form.non_field_errors }}
-            {{ todo_form.title.errors }}
-            {{ todo_form.item_type.errors }}
-            {{ todo_form.due_date.errors }}
-            {{ todo_form.due_time.errors }}
-            {{ todo_form.status.errors }}
-            {{ todo_form.priority.errors }}
-            {{ todo_form.project_choice.errors }}
-            {{ todo_form.project_name.errors }}
-            {{ todo_form.note.errors }}
-          </div>
-        </div>
-      {% endif %}
-      <form class="form" method="post" action="">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="add_todo_item">
-        {% include "todo/partials/task_form_fields.html" with form=todo_form %}
-        <div class="actions">
-          <button class="btn primary" type="submit">Salva voce Todo</button>
-        </div>
-      </form>
-    </article>
+    {% include "agenda/partials/panel.html" %}
 
-    <article class="panel" id="agenda-worklog-form">
-      <h2>Ore lavorate</h2>
-      <p class="muted">Inserisci orario di inizio/fine e, se serve, la pausa pranzo in minuti: le ore nette del giorno e il totale mensile si aggiornano automaticamente.</p>
-      {% if work_form.errors %}
-        <div class="warning-box">
-          Controlla i campi del worklog.
-          <div class="form-errors">
-            {{ work_form.non_field_errors }}
-            {{ work_form.work_date.errors }}
-            {{ work_form.time_start.errors }}
-            {{ work_form.time_end.errors }}
-            {{ work_form.lunch_break_minutes.errors }}
-            {{ work_form.note.errors }}
+    <section data-agenda-section="quick_actions">
+        <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+          <h2 class="uk-margin-remove">Azioni rapide</h2>
+          <p class="uk-text-meta uk-margin-small-top">Shortcut principali durante la pianificazione.</p>
+
+          <div class="uk-margin-small-top">
+            <input
+              class="uk-input uk-form-small"
+              type="search"
+              placeholder="Filtra azioni..."
+              data-agenda-target="quickSearch"
+              data-action="input->agenda#filterQuickActions"
+            >
           </div>
-        </div>
-      {% endif %}
-      <form class="form" method="post" action="">
-        {% csrf_token %}
-        <input type="hidden" name="action" value="log_hours">
-        <div class="field">
-          <label for="id_work_date">Data</label>
-          {{ work_form.work_date }}
-        </div>
-        <div class="field">
-          <label for="id_time_start">Orario inizio</label>
-          {{ work_form.time_start }}
-        </div>
-        <div class="field">
-          <label for="id_time_end">Orario fine</label>
-          {{ work_form.time_end }}
-        </div>
-        <div class="field">
-          <label for="id_lunch_break_minutes">Pausa pranzo (minuti)</label>
-          {{ work_form.lunch_break_minutes }}
-        </div>
-        <div class="field">
-          <label for="id_note">Nota</label>
-          {{ work_form.note }}
-        </div>
-        <div class="actions">
-          <button class="btn primary" type="submit">Salva ore</button>
-        </div>
-      </form>
-    </article>
-  </section>
+
+          <div class="agenda-quick-grid uk-margin-small-top">
+            <a class="agenda-quick-card" href="/todo/api/add" data-agenda-target="quickCard" data-agenda-search="nuovo todo task">Nuovo task</a>
+            <a class="agenda-quick-card" href="/planner/add" data-agenda-target="quickCard" data-agenda-search="nuovo planner">Nuovo planner</a>
+            <a class="agenda-quick-card" href="/routines/" data-agenda-target="quickCard" data-agenda-search="routines">Apri routines</a>
+            <a class="agenda-quick-card" href="/transactions/" data-agenda-target="quickCard" data-agenda-search="transazioni">Apri transazioni</a>
+            <a class="agenda-quick-card" href="/archibald/" data-agenda-target="quickCard" data-agenda-search="archibald">Apri Archibald</a>
+            <a class="agenda-quick-card" href="/profile/" data-agenda-target="quickCard" data-agenda-search="profilo">Profilo</a>
+          </div>
+          <div class="uk-text-meta uk-margin-small-top" data-agenda-target="quickEmpty" hidden>Nessuna azione trovata.</div>
+        </section>
+
+        <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+          <h2 class="uk-margin-remove">Personalizzazione</h2>
+          <p class="uk-text-meta uk-margin-small-top">Densita, colore e sezioni visibili, persistenti per utente.</p>
+
+          <div class="uk-margin-small-top">
+            <label class="uk-form-label" for="agenda-density">Densita</label>
+            <div class="uk-form-controls">
+              <select id="agenda-density" class="uk-select uk-form-small" data-agenda-target="density" data-action="change->agenda#densityChanged">
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="uk-margin-small-top">
+            <label class="uk-form-label" for="agenda-accent">Colore accent</label>
+            <div class="uk-form-controls">
+              <select id="agenda-accent" class="uk-select uk-form-small" data-agenda-target="accent" data-action="change->agenda#accentChanged">
+                <option value="blue">Blue</option>
+                <option value="green">Green</option>
+                <option value="amber">Amber</option>
+                <option value="rose">Rose</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="uk-margin-small-top">
+            <div class="uk-text-meta uk-margin-small-bottom">Sezioni visibili</div>
+            <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-agenda-target="sectionToggle" data-section-key="snapshot" data-action="change->agenda#sectionChanged"> Snapshot</label>
+            <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-agenda-target="sectionToggle" data-section-key="panel" data-action="change->agenda#sectionChanged"> Calendario + dettaglio</label>
+            <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-agenda-target="sectionToggle" data-section-key="forms" data-action="change->agenda#sectionChanged"> Form</label>
+            <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-agenda-target="sectionToggle" data-section-key="quick_actions" data-action="change->agenda#sectionChanged"> Azioni rapide</label>
+          </div>
+
+          <div class="uk-margin-small-top uk-flex uk-flex-wrap uk-gap-small">
+            <button class="uk-button uk-button-default uk-button-small" type="button" data-action="agenda#saveNow">Salva ora</button>
+            <button class="uk-button uk-button-default uk-button-small" type="button" data-action="agenda#resetPreferences">Reset preferenze</button>
+          </div>
+        </section>
+    </section>
+  </div>
 {% endblock %}

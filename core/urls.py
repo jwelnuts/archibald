@@ -5,6 +5,8 @@ from . import views
 urlpatterns = [
     path('', views.dashboard, name='core-dashboard'),
     path('dashboard/widgets', views.dashboard_widgets, name='core-dashboard-widgets'),
+    path('dashboard/preferences', views.dashboard_preferences, name='core-dashboard-preferences'),
+    path('dashboard/snapshot', views.dashboard_snapshot, name='core-dashboard-snapshot'),
     path('accounts/logout/', views.logout_view, name='logout'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/signup/', views.signup, name='signup'),

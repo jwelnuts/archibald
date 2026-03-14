@@ -2,23 +2,23 @@ import json
 
 
 DEFAULT_APP_OPTIONS = [
-    {"key": "subscriptions", "label": "Subscriptions", "url": "/subs/"},
-    {"key": "finance_hub", "label": "Finance Hub", "url": "/finance/"},
-    {"key": "contacts", "label": "Contacts", "url": "/contacts/"},
-    {"key": "transactions", "label": "Transactions", "url": "/transactions/"},
-    {"key": "projects", "label": "Projects", "url": "/projects/"},
-    {"key": "categories", "label": "Categories", "url": "/projects/categories/"},
-    {"key": "todo", "label": "Todo", "url": "/todo/"},
-    {"key": "planner", "label": "Planner", "url": "/planner/"},
-    {"key": "agenda", "label": "Agenda", "url": "/agenda/"},
-    {"key": "routines", "label": "Routines", "url": "/routines/"},
-    {"key": "archibald", "label": "Archibald", "url": "/archibald/"},
-    {"key": "ai_lab", "label": "AI Lab", "url": "/ai-lab/"},
-    {"key": "personal_lab", "label": "Personal Lab", "url": "/ai-lab/personal-lab/"},
-    {"key": "vault", "label": "Vault", "url": "/vault/"},
-    {"key": "workbench", "label": "Workbench", "url": "/workbench/"},
-    {"key": "accounts", "label": "Accounts", "url": "/core/accounts/"},
-    {"key": "profile", "label": "Profilo", "url": "/profile/"},
+    {"key": "subscriptions", "label": "Subscriptions", "url": "/subs/", "icon": "credit-card"},
+    {"key": "finance_hub", "label": "Finance Hub", "url": "/finance/", "icon": "database"},
+    {"key": "contacts", "label": "Contacts", "url": "/contacts/", "icon": "users"},
+    {"key": "transactions", "label": "Transactions", "url": "/transactions/", "icon": "sorting"},
+    {"key": "projects", "label": "Projects", "url": "/projects/", "icon": "folder"},
+    {"key": "categories", "label": "Categories", "url": "/projects/categories/", "icon": "tag"},
+    {"key": "todo", "label": "Todo", "url": "/todo/", "icon": "check"},
+    {"key": "planner", "label": "Planner", "url": "/planner/", "icon": "table"},
+    {"key": "agenda", "label": "Agenda", "url": "/agenda/", "icon": "calendar"},
+    {"key": "routines", "label": "Routines", "url": "/routines/", "icon": "clock"},
+    {"key": "archibald", "label": "Archibald", "url": "/archibald/", "icon": "commenting"},
+    {"key": "ai_lab", "label": "AI Lab", "url": "/ai-lab/", "icon": "bolt"},
+    {"key": "personal_lab", "label": "Personal Lab", "url": "/ai-lab/personal-lab/", "icon": "code"},
+    {"key": "vault", "label": "Vault", "url": "/vault/", "icon": "lock"},
+    {"key": "workbench", "label": "Workbench", "url": "/workbench/", "icon": "cog"},
+    {"key": "accounts", "label": "Accounts", "url": "/core/accounts/", "icon": "settings"},
+    {"key": "profile", "label": "Profilo", "url": "/profile/", "icon": "user"},
 ]
 
 APP_OPTION_BY_KEY = {item["key"]: item for item in DEFAULT_APP_OPTIONS}
@@ -117,10 +117,12 @@ def selected_app_key_for_path(path: str, app_options):
 
 def build_site_nav_context(path: str, raw_config):
     normalized = normalize_nav_config(raw_config)
-    selected_key = selected_app_key_for_path(path or "", normalized["app_options"])
+    selected_key = selected_app_key_for_path(path or "", DEFAULT_APP_OPTIONS)
+    selected_app = APP_OPTION_BY_KEY.get(selected_key)
     return {
         "app_options": normalized["app_options"],
         "selected_app_key": selected_key,
+        "selected_app": selected_app,
         "custom_links": normalized["custom_links"],
         # Foundation for future personal widgets. For now we only store/preview this config.
         "widgets": normalized["widgets"],

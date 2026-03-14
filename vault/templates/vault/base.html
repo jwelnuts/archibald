@@ -5,20 +5,22 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}MIO - Vault{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'vault/styles.css' %}">
+    {% include "core/partials/uikit_head.html" %}
   </head>
   <body>
-    <main class="shell">
-      <header class="top">
-        <h1>Vault</h1>
-        <nav class="top-nav">
-          <a class="btn" href="/">Dashboard</a>
-          <a class="btn" href="/vault/">Vault</a>
-          <a class="btn" href="/vault/unlock">Unlock</a>
-          <a class="btn danger" href="/vault/lock">Lock</a>
-        </nav>
-      </header>
-      {% block content %}{% endblock %}
-    </main>
+    <div class="page uk-container uk-container-large uk-margin">
+      {% include "core/partials/site_header.html" with module_subtitle="Vault" %}
+      <div class="uk-flex uk-flex-wrap uk-flex-middle uk-margin-small-bottom">
+        <a class="uk-button uk-button-default uk-button-small" href="/vault/">Vault</a>
+        <a class="uk-button uk-button-default uk-button-small uk-margin-small-left" href="/vault/unlock">Unlock</a>
+        <a class="uk-button uk-button-danger uk-button-small uk-margin-small-left" href="/vault/lock">Lock</a>
+      </div>
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    {{ hero_actions_config|json_script:"hero-actions-config" }}
+    {% include "core/partials/uikit_body.html" %}
+    <script type="module" src="{% static 'core/app.js' %}"></script>
   </body>
 </html>
