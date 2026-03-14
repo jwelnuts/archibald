@@ -18,6 +18,14 @@ def default_timezone_name() -> str:
     return str(getattr(settings, "TIME_ZONE", "UTC") or "UTC")
 
 
+def _env_first(*keys: str) -> str:
+    for key in keys:
+        value = (os.getenv(key) or "").strip()
+        if value:
+            return value
+    return ""
+
+
 class ArchibaldMailboxConfig(OwnedModel, TimeStampedModel):
     inbox_address = models.EmailField(default=default_inbox_address)
     timezone_name = models.CharField(max_length=64, default=default_timezone_name)
@@ -88,23 +96,53 @@ class ArchibaldMailboxConfig(OwnedModel, TimeStampedModel):
     def __str__(self):
         return f"ArchibaldMailboxConfig({self.owner_id})"
 
+    def resolved_imap_host(self) -> str:
+        return (self.imap_host or _env_first("ARCHIBALD_MAIL_IMAP_HOST", "IMAP_HOST")).strip()
+
+    def resolved_imap_port(self) -> int:
+        raw = _env_first("ARCHIBALD_MAIL_IMAP_PORT", "IMAP_PORT")
+        if raw.isdigit() and (not self.imap_port or self.imap_port == 993):
+            return int(raw)
+        return self.imap_port or 993
+
+    def resolved_imap_username(self) -> str:
+        return (self.imap_username or _env_first("ARCHIBALD_MAIL_IMAP_USERNAME", "IMAP_USERNAME")).strip()
+
     def resolved_imap_password(self) -> str:
-        return (self.imap_password or os.getenv("ARCHIBALD_MAIL_IMAP_PASSWORD", "")).strip()
+        return (self.imap_password or _env_first("ARCHIBALD_MAIL_IMAP_PASSWORD", "IMAP_PASSWORD")).strip()
+
+    def resolved_smtp_host(self) -> str:
+        return (self.smtp_host or _env_first("ARCHIBALD_MAIL_SMTP_HOST", "SMTP_HOST")).strip()
+
+    def resolved_smtp_port(self) -> int:
+        raw = _env_first("ARCHIBALD_MAIL_SMTP_PORT", "SMTP_PORT")
+        if raw.isdigit() and (not self.smtp_port or self.smtp_port == 587):
+            return int(raw)
+        return self.smtp_port or 587
+
+    def resolved_smtp_username(self) -> str:
+        return (self.smtp_username or _env_first("ARCHIBALD_MAIL_SMTP_USERNAME", "SMTP_USERNAME")).strip()
 
     def resolved_smtp_password(self) -> str:
-        return (self.smtp_password or os.getenv("ARCHIBALD_MAIL_SMTP_PASSWORD", "")).strip()
+        return (self.smtp_password or _env_first("ARCHIBALD_MAIL_SMTP_PASSWORD", "SMTP_PASSWORD")).strip()
 
     def smtp_sender(self) -> str:
-        return (self.smtp_from_email or self.inbox_address or self.smtp_username).strip()
+        sender = _env_first("ARCHIBALD_MAIL_SMTP_FROM", "SMTP_FROM")
+        return (self.smtp_from_email or sender or self.inbox_address or self.resolved_smtp_username()).strip()
 
     def notification_target(self) -> str:
         return (self.notification_recipient or self.owner.email or self.inbox_address).strip()
 
     def is_imap_configured(self) -> bool:
-        return bool(self.imap_host and self.imap_username and self.resolved_imap_password())
+        return bool(self.resolved_imap_host() and self.resolved_imap_username() and self.resolved_imap_password())
 
     def is_smtp_configured(self) -> bool:
-        return bool(self.smtp_host and self.smtp_username and self.resolved_smtp_password() and self.smtp_sender())
+        return bool(
+            self.resolved_smtp_host()
+            and self.resolved_smtp_username()
+            and self.resolved_smtp_password()
+            and self.smtp_sender()
+        )
 
 
 class ArchibaldEmailMessage(OwnedModel, TimeStampedModel):

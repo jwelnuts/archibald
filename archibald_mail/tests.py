@@ -16,7 +16,7 @@ class ArchibaldMailFormTests(TestCase):
             email="owner@example.com",
         )
 
-    def test_form_keeps_existing_passwords_when_left_blank(self):
+    def test_form_excludes_server_login_fields_and_saves_user_controls(self):
         config = ArchibaldMailboxConfig.objects.create(
             owner=self.user,
             inbox_address="archibald@miorganizzo.ovh",
@@ -38,6 +38,14 @@ class ArchibaldMailFormTests(TestCase):
             max_inbox_emails_per_run=10,
         )
 
+        initial_form = ArchibaldMailboxConfigForm(instance=config)
+        self.assertNotIn("imap_host", initial_form.fields)
+        self.assertNotIn("imap_username", initial_form.fields)
+        self.assertNotIn("imap_password", initial_form.fields)
+        self.assertNotIn("smtp_host", initial_form.fields)
+        self.assertNotIn("smtp_username", initial_form.fields)
+        self.assertNotIn("smtp_password", initial_form.fields)
+
         form = ArchibaldMailboxConfigForm(
             data={
                 "inbox_address": config.inbox_address,
@@ -48,25 +56,11 @@ class ArchibaldMailFormTests(TestCase):
                 "auto_reply_signature": "",
                 "allowed_sender_regex": "",
                 "max_inbox_emails_per_run": "12",
-                "imap_host": config.imap_host,
-                "imap_port": "993",
-                "imap_use_ssl": "on",
-                "imap_username": config.imap_username,
-                "imap_password": "",
-                "imap_mailbox": "INBOX",
-                "smtp_host": config.smtp_host,
-                "smtp_port": "587",
-                "smtp_use_tls": "on",
-                "smtp_use_ssl": "",
-                "smtp_username": config.smtp_username,
-                "smtp_password": "",
-                "smtp_from_email": config.smtp_from_email,
-                "smtp_reply_to": "",
-                "notifications_enabled": "",
+                "notifications_enabled": "on",
                 "notification_recipient": "",
-                "notification_hour": "8",
-                "notification_minute": "30",
-                "notification_days_ahead": "2",
+                "notification_hour": "9",
+                "notification_minute": "15",
+                "notification_days_ahead": "3",
                 "notification_include_tasks": "on",
                 "notification_include_planner": "on",
                 "notification_include_subscriptions": "on",
@@ -77,7 +71,15 @@ class ArchibaldMailFormTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         saved = form.save()
 
+        self.assertEqual(saved.max_inbox_emails_per_run, 12)
+        self.assertEqual(saved.notification_hour, 9)
+        self.assertEqual(saved.notification_minute, 15)
+        self.assertEqual(saved.notification_days_ahead, 3)
+        self.assertEqual(saved.imap_host, "imap.example.com")
+        self.assertEqual(saved.imap_username, "archibald@miorganizzo.ovh")
         self.assertEqual(saved.imap_password, "imap-secret")
+        self.assertEqual(saved.smtp_host, "smtp.example.com")
+        self.assertEqual(saved.smtp_username, "archibald@miorganizzo.ovh")
         self.assertEqual(saved.smtp_password, "smtp-secret")
 
 
@@ -151,3 +153,53 @@ class ArchibaldMailServicesTests(TestCase):
         self.assertEqual(parsed.recipient, "archibald@miorganizzo.ovh")
         self.assertEqual(parsed.subject, "Test rapido")
         self.assertIn("Ciao Archibald", parsed.body_text)
+
+    @patch.dict(
+        "os.environ",
+        {
+            "ARCHIBALD_MAIL_IMAP_HOST": "",
+            "ARCHIBALD_MAIL_IMAP_USERNAME": "",
+            "ARCHIBALD_MAIL_IMAP_PASSWORD": "",
+            "IMAP_HOST": "imap.env.test",
+            "IMAP_USERNAME": "env-user@example.com",
+            "IMAP_PASSWORD": "env-pass",
+        },
+        clear=False,
+    )
+    def test_imap_fallback_reads_generic_env_variables(self):
+        self.config.imap_host = ""
+        self.config.imap_username = ""
+        self.config.imap_password = ""
+        self.config.save(update_fields=["imap_host", "imap_username", "imap_password", "updated_at"])
+
+        self.assertEqual(self.config.resolved_imap_host(), "imap.env.test")
+        self.assertEqual(self.config.resolved_imap_username(), "env-user@example.com")
+        self.assertEqual(self.config.resolved_imap_password(), "env-pass")
+        self.assertTrue(self.config.is_imap_configured())
+
+    @patch.dict(
+        "os.environ",
+        {
+            "ARCHIBALD_MAIL_SMTP_HOST": "",
+            "ARCHIBALD_MAIL_SMTP_USERNAME": "",
+            "ARCHIBALD_MAIL_SMTP_PASSWORD": "",
+            "ARCHIBALD_MAIL_SMTP_FROM": "",
+            "SMTP_HOST": "smtp.env.test",
+            "SMTP_USERNAME": "smtp-user@example.com",
+            "SMTP_PASSWORD": "smtp-pass",
+            "SMTP_FROM": "archibald-env@example.com",
+        },
+        clear=False,
+    )
+    def test_smtp_fallback_reads_generic_env_variables(self):
+        self.config.smtp_host = ""
+        self.config.smtp_username = ""
+        self.config.smtp_password = ""
+        self.config.smtp_from_email = ""
+        self.config.save(update_fields=["smtp_host", "smtp_username", "smtp_password", "smtp_from_email", "updated_at"])
+
+        self.assertEqual(self.config.resolved_smtp_host(), "smtp.env.test")
+        self.assertEqual(self.config.resolved_smtp_username(), "smtp-user@example.com")
+        self.assertEqual(self.config.resolved_smtp_password(), "smtp-pass")
+        self.assertEqual(self.config.smtp_sender(), "archibald-env@example.com")
+        self.assertTrue(self.config.is_smtp_configured())

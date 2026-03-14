@@ -190,16 +190,19 @@ def send_email_via_smtp(
     message.set_content((body or "").strip() or "Messaggio vuoto.")
 
     password = config.resolved_smtp_password()
+    smtp_host = config.resolved_smtp_host()
+    smtp_port = config.resolved_smtp_port()
+    smtp_username = config.resolved_smtp_username()
     if config.smtp_use_ssl:
-        client = smtplib.SMTP_SSL(config.smtp_host, config.smtp_port, timeout=20)
+        client = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=20)
     else:
-        client = smtplib.SMTP(config.smtp_host, config.smtp_port, timeout=20)
+        client = smtplib.SMTP(smtp_host, smtp_port, timeout=20)
     try:
         client.ehlo()
         if not config.smtp_use_ssl and config.smtp_use_tls:
             client.starttls()
             client.ehlo()
-        client.login(config.smtp_username, password)
+        client.login(smtp_username, password)
         client.send_message(message)
     except Exception as exc:  # pragma: no cover - depends on SMTP network
         raise ArchibaldMailError(f"Invio SMTP fallito: {exc}") from exc
@@ -250,15 +253,18 @@ def process_inbox_for_config(
         "errors": [],
     }
 
+    imap_host = config.resolved_imap_host()
+    imap_port = config.resolved_imap_port()
+    imap_username = config.resolved_imap_username()
     password = config.resolved_imap_password()
     mailbox = None
     try:
         if config.imap_use_ssl:
-            mailbox = imaplib.IMAP4_SSL(config.imap_host, config.imap_port)
+            mailbox = imaplib.IMAP4_SSL(imap_host, imap_port)
         else:
-            mailbox = imaplib.IMAP4(config.imap_host, config.imap_port)
+            mailbox = imaplib.IMAP4(imap_host, imap_port)
 
-        mailbox.login(config.imap_username, password)
+        mailbox.login(imap_username, password)
         select_status, _ = mailbox.select(config.imap_mailbox or "INBOX")
         if select_status != "OK":
             raise ArchibaldMailError("Selezione mailbox IMAP fallita.")

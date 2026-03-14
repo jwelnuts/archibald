@@ -111,7 +111,8 @@ Note Stimulus:
   - arricchimento contesto automatico dai dati utente (`archibald/services.py`)
   - endpoint quick chat
 - `archibald_mail` (`/archibald-mail/`):
-  - pannello configurazione IMAP/SMTP per inbox dedicata (es. `archibald@miorganizzo.ovh`)
+  - pannello controllo email per inbox dedicata (es. `archibald@miorganizzo.ovh`)
+  - configurazione/login IMAP/SMTP gestiti da `.env` (nel pannello sono sola lettura)
   - auto-reply email con generazione risposta Archibald (OpenAI)
   - notifiche email automatiche su task/planner/subscriptions/routines
   - log completo email inbound/outbound/notification/test
@@ -199,7 +200,14 @@ Opzionali (feature specifiche):
 - `ARCHIBALD_REASONING_EFFORT` (es. `low|medium|high|xhigh`; default auto `high` su GPT-5)
 - `ARCHIBALD_USE_CONVERSATIONS` (`true|false`, default: `true`)
 - `ARCHIBALD_MAIL_DEFAULT_INBOX` (default inbox precompilata nel pannello, es. `archibald@miorganizzo.ovh`)
+- `ARCHIBALD_MAIL_IMAP_HOST` / `IMAP_HOST` (host IMAP fallback)
+- `ARCHIBALD_MAIL_IMAP_PORT` / `IMAP_PORT` (porta IMAP fallback)
+- `ARCHIBALD_MAIL_IMAP_USERNAME` / `IMAP_USERNAME` (username IMAP fallback)
 - `ARCHIBALD_MAIL_IMAP_PASSWORD` (fallback password IMAP se non salvata nel DB)
+- `ARCHIBALD_MAIL_SMTP_HOST` / `SMTP_HOST` (host SMTP fallback)
+- `ARCHIBALD_MAIL_SMTP_PORT` / `SMTP_PORT` (porta SMTP fallback)
+- `ARCHIBALD_MAIL_SMTP_USERNAME` / `SMTP_USERNAME` (username SMTP fallback)
+- `ARCHIBALD_MAIL_SMTP_FROM` / `SMTP_FROM` (mittente SMTP fallback)
 - `ARCHIBALD_MAIL_SMTP_PASSWORD` (fallback password SMTP se non salvata nel DB)
 - `VAULT_ENCRYPTION_KEY` (consigliata in prod)
 - `VAULT_TOTP_ISSUER` (default: `MIO Vault`)

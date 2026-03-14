@@ -67,6 +67,11 @@
     <div class="uk-width-2-3@l">
       <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
         <h2 class="uk-margin-remove">Configurazione</h2>
+        <div class="uk-alert-primary uk-margin-top">
+          Login server email non modificabile dal pannello.
+          Configura i valori solo da <code>.env</code> usando
+          <code>ARCHIBALD_MAIL_IMAP_*</code> e <code>ARCHIBALD_MAIL_SMTP_*</code>.
+        </div>
         <form method="post" action="" class="uk-margin-top uk-form-stacked">
           {% csrf_token %}
           <input type="hidden" name="action" value="save_config">
@@ -79,36 +84,6 @@
                 <div>
                   <label class="uk-form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
                   <div class="uk-form-controls">{{ field }}</div>
-                  {% if field.help_text %}<div class="uk-text-meta">{{ field.help_text }}</div>{% endif %}
-                  {{ field.errors }}
-                </div>
-              {% endif %}
-            {% endfor %}
-          </div>
-
-          <h3 class="uk-heading-line uk-margin-medium-top"><span>IMAP (ricezione)</span></h3>
-          <div class="uk-grid-small uk-child-width-1-2@m" uk-grid>
-            {% for field in config_form %}
-              {% if field.name in imap_field_names %}
-                <div>
-                  <label class="uk-form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                  <div class="uk-form-controls">{{ field }}</div>
-                  {% if field.name == 'imap_password' and imap_password_configured %}<div class="uk-text-meta">Password IMAP già impostata.</div>{% endif %}
-                  {% if field.help_text %}<div class="uk-text-meta">{{ field.help_text }}</div>{% endif %}
-                  {{ field.errors }}
-                </div>
-              {% endif %}
-            {% endfor %}
-          </div>
-
-          <h3 class="uk-heading-line uk-margin-medium-top"><span>SMTP (invio)</span></h3>
-          <div class="uk-grid-small uk-child-width-1-2@m" uk-grid>
-            {% for field in config_form %}
-              {% if field.name in smtp_field_names %}
-                <div>
-                  <label class="uk-form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-                  <div class="uk-form-controls">{{ field }}</div>
-                  {% if field.name == 'smtp_password' and smtp_password_configured %}<div class="uk-text-meta">Password SMTP già impostata.</div>{% endif %}
                   {% if field.help_text %}<div class="uk-text-meta">{{ field.help_text }}</div>{% endif %}
                   {{ field.errors }}
                 </div>
@@ -138,6 +113,26 @@
     </div>
 
     <aside class="uk-width-1-3@l">
+      <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+        <h3 class="uk-margin-remove">Server email (.env)</h3>
+        <div class="uk-margin-top">
+          <div class="uk-text-meta">IMAP</div>
+          <div><strong>Host:</strong> {{ imap_host_value|default:"-" }}</div>
+          <div><strong>Porta:</strong> {{ imap_port_value|default:"-" }}</div>
+          <div><strong>Username:</strong> {{ imap_username_value|default:"-" }}</div>
+          <div><strong>Password:</strong> {% if imap_password_configured %}Configurata{% else %}Mancante{% endif %}</div>
+        </div>
+        <hr>
+        <div>
+          <div class="uk-text-meta">SMTP</div>
+          <div><strong>Host:</strong> {{ smtp_host_value|default:"-" }}</div>
+          <div><strong>Porta:</strong> {{ smtp_port_value|default:"-" }}</div>
+          <div><strong>Username:</strong> {{ smtp_username_value|default:"-" }}</div>
+          <div><strong>From:</strong> {{ smtp_sender_value|default:"-" }}</div>
+          <div><strong>Password:</strong> {% if smtp_password_configured %}Configurata{% else %}Mancante{% endif %}</div>
+        </div>
+      </section>
+
       <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
         <h3 class="uk-margin-remove">Invio test</h3>
         <form method="post" action="" class="uk-form-stacked uk-margin-top">
