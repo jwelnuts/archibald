@@ -805,7 +805,7 @@ BASE_TEMPLATE = """{% load static %}
 <html lang="it">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=0.7">
     <title>__APP_TITLE__</title>
     <link rel="stylesheet" href="{% static '__APP_NAME__/styles.css' %}">
   </head>

@@ -132,7 +132,7 @@ class ArchibaldModesTests(TestCase):
             {
                 "response_id": "resp_123",
                 "conversation_id": "conv_123",
-                "model": "gpt-5.4",
+                "model": "gpt-5-mini",
             },
             {},
         ),
@@ -156,7 +156,7 @@ class ArchibaldModesTests(TestCase):
         self.assertIsNotNone(assistant)
         self.assertEqual(thread.openai_conversation_id, "conv_123")
         self.assertEqual(thread.openai_last_response_id, "resp_123")
-        self.assertEqual(thread.openai_model, "gpt-5.4")
+        self.assertEqual(thread.openai_model, "gpt-5-mini")
         self.assertEqual(assistant.openai_response_id, "resp_123")
 
     @patch(

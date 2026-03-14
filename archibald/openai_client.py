@@ -42,9 +42,9 @@ def _resolve_model() -> str:
         return archibald_model
 
     generic_model = os.getenv("OPENAI_MODEL", "").strip()
-    # Safety default: Archibald should not silently inherit mini models.
+    # Safety default: keep an explicit Archibald model even if OPENAI_MODEL is generic.
     if generic_model.lower() in {"", "gpt-4o-mini", "gpt4mini", "gpt-4-mini"}:
-        return "gpt-5.4"
+        return "gpt-5-mini"
     return generic_model
 
 
