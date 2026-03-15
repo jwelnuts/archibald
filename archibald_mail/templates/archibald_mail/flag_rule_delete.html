@@ -1,0 +1,15 @@
+{% extends "archibald_mail/base.html" %}
+
+{% block content %}
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <h1 class="uk-heading-bullet uk-margin-remove">Rimuovi flag inbound</h1>
+    <p class="uk-text-meta uk-margin-small-top">
+      Confermi la rimozione del flag <code>{{ row.flag_token }}</code> associato a <code>{{ row.action_key }}</code>?
+    </p>
+    <form method="post" action="" class="uk-flex uk-flex-wrap uk-gap-small uk-margin-top">
+      {% csrf_token %}
+      <button class="uk-button uk-button-danger" type="submit">Conferma rimozione</button>
+      <a class="uk-button uk-button-default" href="/archibald-mail/flags/">Annulla</a>
+    </form>
+  </section>
+{% endblock %}

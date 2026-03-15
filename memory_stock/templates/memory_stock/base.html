@@ -1,0 +1,21 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=0.7">
+    <title>Memory Stock</title>
+    {% include "core/partials/uikit_head.html" %}
+  </head>
+  <body>
+    <div class="page uk-container uk-container-large uk-margin">
+      {% include "core/partials/site_header.html" with module_subtitle="Memory Stock" %}
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    {{ hero_actions_config|json_script:"hero-actions-config" }}
+    {% include "core/partials/uikit_body.html" %}
+    <script type="module" src="{% static 'core/app.js' %}"></script>
+  </body>
+</html>

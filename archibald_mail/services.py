@@ -22,6 +22,7 @@ from routines.models import RoutineCheck, RoutineItem
 from subscriptions.models import SubscriptionOccurrence
 from todo.models import Task
 
+from .actions import execute_action_from_email
 from .models import ArchibaldEmailMessage, ArchibaldMailboxConfig
 
 
@@ -228,15 +229,6 @@ def process_inbox_for_config(
 ) -> dict:
     if not config.is_enabled and not force:
         return {"status": "disabled", "fetched": 0, "processed": 0, "replied": 0, "skipped": 0, "failed": 0}
-    if not config.auto_reply_enabled and not force:
-        return {
-            "status": "auto_reply_disabled",
-            "fetched": 0,
-            "processed": 0,
-            "replied": 0,
-            "skipped": 0,
-            "failed": 0,
-        }
     if not config.is_imap_configured():
         raise ArchibaldMailError("IMAP non configurato: host/utente/password mancanti.")
     if not config.is_smtp_configured():
@@ -339,7 +331,26 @@ def process_inbox_for_config(
                     continue
 
                 try:
-                    reply_body = _openai_email_reply(config.owner, incoming)
+                    action_outcome = execute_action_from_email(
+                        owner=config.owner,
+                        incoming=incoming,
+                        inbound_message=inbound,
+                    )
+
+                    if action_outcome.handled:
+                        reply_body = action_outcome.reply_text.strip() or "Azione completata."
+                    elif not config.auto_reply_enabled:
+                        inbound.status = ArchibaldEmailMessage.Status.SKIPPED
+                        inbound.processed_at = timezone.now()
+                        inbound.error_text = "Nessuna azione riconosciuta e auto-reply disattivato."
+                        inbound.save(update_fields=["status", "processed_at", "error_text", "updated_at"])
+                        result["processed"] += 1
+                        result["skipped"] += 1
+                        _mark_seen(mailbox, uid)
+                        continue
+                    else:
+                        reply_body = _openai_email_reply(config.owner, incoming)
+
                     reply_body = _append_signature(reply_body, config.auto_reply_signature)
                     reply_subject = _reply_subject(config, incoming.subject)
 
@@ -370,7 +381,23 @@ def process_inbox_for_config(
                     inbound.status = ArchibaldEmailMessage.Status.REPLIED
                     inbound.processed_at = timezone.now()
                     inbound.ai_response_text = reply_body
-                    inbound.save(update_fields=["status", "processed_at", "ai_response_text", "updated_at"])
+                    if action_outcome.handled:
+                        inbound.selected_action_key = action_outcome.action_key
+                        inbound.classification_label = action_outcome.action_key
+                        inbound.review_status = ArchibaldEmailMessage.ReviewStatus.APPLIED
+                        inbound.reviewed_at = timezone.now()
+                    inbound.save(
+                        update_fields=[
+                            "status",
+                            "processed_at",
+                            "ai_response_text",
+                            "selected_action_key",
+                            "classification_label",
+                            "review_status",
+                            "reviewed_at",
+                            "updated_at",
+                        ]
+                    )
                     result["processed"] += 1
                     result["replied"] += 1
                 except Exception as exc:
@@ -644,7 +671,7 @@ def send_test_email(config: ArchibaldMailboxConfig, *, recipient: str, subject: 
 
 def process_inbox_for_all(*, limit: int | None = None) -> list[tuple[ArchibaldMailboxConfig, dict]]:
     rows = []
-    configs = ArchibaldMailboxConfig.objects.filter(is_enabled=True, auto_reply_enabled=True).select_related("owner")
+    configs = ArchibaldMailboxConfig.objects.filter(is_enabled=True).select_related("owner")
     for config in configs:
         try:
             result = process_inbox_for_config(config, limit=limit, force=False)

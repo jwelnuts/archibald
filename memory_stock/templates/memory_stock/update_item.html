@@ -1,0 +1,15 @@
+{% extends 'memory_stock/base.html' %}
+
+{% block content %}
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <h2 class="uk-margin-remove">Modifica memoria</h2>
+    <form class="uk-form-stacked uk-margin-small-top" method="post" action="">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <div class="uk-flex uk-flex-wrap uk-gap-small">
+        <button class="uk-button uk-button-primary" type="submit">Aggiorna</button>
+        <a class="uk-button uk-button-default" href="/memory-stock/">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

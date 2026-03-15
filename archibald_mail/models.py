@@ -1,4 +1,5 @@
 import os
+import re
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -24,6 +25,9 @@ def _env_first(*keys: str) -> str:
         if value:
             return value
     return ""
+
+
+FLAG_TOKEN_RE = re.compile(r"^[A-Z0-9][A-Z0-9_-]{0,31}$")
 
 
 class ArchibaldMailboxConfig(OwnedModel, TimeStampedModel):
@@ -145,6 +149,48 @@ class ArchibaldMailboxConfig(OwnedModel, TimeStampedModel):
         )
 
 
+class ArchibaldEmailFlagRule(OwnedModel, TimeStampedModel):
+    class ActionKey(models.TextChoices):
+        MEMORY_STOCK_SAVE = "memory_stock.save", "Memory Stock"
+        TODO_CAPTURE = "todo.capture", "Todo (fallback Memory Stock)"
+        TRANSACTION_CAPTURE = "transaction.capture", "Transaction (fallback Memory Stock)"
+        REMINDER_CAPTURE = "reminder.capture", "Reminder (fallback Memory Stock)"
+
+    label = models.CharField(max_length=60)
+    flag_token = models.CharField(max_length=32)
+    action_key = models.CharField(max_length=64, choices=ActionKey.choices, default=ActionKey.MEMORY_STOCK_SAVE)
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "flag_token"],
+                name="archibald_mail_flag_owner_token_uniq",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["owner", "is_active", "flag_token"]),
+            models.Index(fields=["owner", "action_key", "is_active"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        token = (self.flag_token or "").strip().upper()
+        token = token.strip("[]# ")
+        if token.startswith("ACTION:"):
+            token = token.split(":", 1)[1].strip()
+        token = token.replace(" ", "_")
+        self.flag_token = token
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.flag_token} -> {self.action_key}"
+
+    @staticmethod
+    def is_valid_token(value: str) -> bool:
+        return bool(FLAG_TOKEN_RE.fullmatch((value or "").strip().upper()))
+
+
 class ArchibaldEmailMessage(OwnedModel, TimeStampedModel):
     class Direction(models.TextChoices):
         INBOUND = "INBOUND", "Inbound"
@@ -158,6 +204,11 @@ class ArchibaldEmailMessage(OwnedModel, TimeStampedModel):
         SENT = "SENT", "Sent"
         FAILED = "FAILED", "Failed"
         SKIPPED = "SKIPPED", "Skipped"
+
+    class ReviewStatus(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        APPLIED = "APPLIED", "Applied"
+        IGNORED = "IGNORED", "Ignored"
 
     config = models.ForeignKey(
         "archibald_mail.ArchibaldMailboxConfig",
@@ -185,6 +236,15 @@ class ArchibaldEmailMessage(OwnedModel, TimeStampedModel):
     ai_response_text = models.TextField(blank=True)
     raw_headers = models.TextField(blank=True)
     error_text = models.TextField(blank=True)
+    classification_label = models.CharField(max_length=80, blank=True)
+    selected_action_key = models.CharField(max_length=64, blank=True)
+    review_status = models.CharField(
+        max_length=16,
+        choices=ReviewStatus.choices,
+        default=ReviewStatus.PENDING,
+    )
+    review_notes = models.TextField(blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
 
     processed_at = models.DateTimeField(null=True, blank=True)
     sent_at = models.DateTimeField(null=True, blank=True)
@@ -194,6 +254,7 @@ class ArchibaldEmailMessage(OwnedModel, TimeStampedModel):
             models.Index(fields=["owner", "config", "direction", "created_at"]),
             models.Index(fields=["owner", "message_id"]),
             models.Index(fields=["owner", "status", "created_at"]),
+            models.Index(fields=["owner", "direction", "review_status", "created_at"]),
         ]
 
     def __str__(self):

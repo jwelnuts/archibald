@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ArchibaldEmailMessage, ArchibaldMailboxConfig
+from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldMailboxConfig
 
 
 @admin.register(ArchibaldMailboxConfig)
@@ -26,10 +26,34 @@ class ArchibaldEmailMessageAdmin(admin.ModelAdmin):
         "owner",
         "direction",
         "status",
+        "review_status",
+        "selected_action_key",
         "sender",
         "recipient",
         "subject",
     )
-    search_fields = ("owner__username", "sender", "recipient", "subject", "message_id")
-    list_filter = ("direction", "status")
+    search_fields = (
+        "owner__username",
+        "sender",
+        "recipient",
+        "subject",
+        "message_id",
+        "classification_label",
+        "selected_action_key",
+    )
+    list_filter = ("direction", "status", "review_status")
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(ArchibaldEmailFlagRule)
+class ArchibaldEmailFlagRuleAdmin(admin.ModelAdmin):
+    list_display = (
+        "owner",
+        "flag_token",
+        "label",
+        "action_key",
+        "is_active",
+        "updated_at",
+    )
+    list_filter = ("action_key", "is_active")
+    search_fields = ("owner__username", "flag_token", "label", "action_key")

@@ -1,0 +1,13 @@
+{% extends 'memory_stock/base.html' %}
+
+{% block content %}
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <h2 class="uk-margin-remove">Rimuovi memoria</h2>
+    <p class="uk-text-meta uk-margin-small-top">Confermi la rimozione di <strong>{{ item.title }}</strong>?</p>
+    <form class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top" method="post" action="">
+      {% csrf_token %}
+      <button class="uk-button uk-button-danger" type="submit">Conferma</button>
+      <a class="uk-button uk-button-default" href="/memory-stock/">Annulla</a>
+    </form>
+  </section>
+{% endblock %}

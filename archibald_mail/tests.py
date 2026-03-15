@@ -1,11 +1,14 @@
 from unittest.mock import patch
+from types import SimpleNamespace
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from .forms import ArchibaldMailboxConfigForm
-from .models import ArchibaldEmailMessage, ArchibaldMailboxConfig
-from .services import parse_inbound_email, process_inbox_for_config, send_notification_for_config
+from memory_stock.models import MemoryStockItem
+from .actions import EmailActionOutcome, detect_action_from_subject, execute_action_from_email, execute_action_manually
+from .forms import ArchibaldEmailFlagRuleForm, ArchibaldMailboxConfigForm
+from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldMailboxConfig
+from .services import ParsedInboundEmail, parse_inbound_email, process_inbox_for_config, send_notification_for_config
 
 
 class ArchibaldMailFormTests(TestCase):
@@ -82,6 +85,19 @@ class ArchibaldMailFormTests(TestCase):
         self.assertEqual(saved.smtp_username, "archibald@miorganizzo.ovh")
         self.assertEqual(saved.smtp_password, "smtp-secret")
 
+    def test_flag_rule_form_normalizes_token(self):
+        form = ArchibaldEmailFlagRuleForm(
+            data={
+                "label": "Ricordi",
+                "flag_token": "[ memory ]",
+                "action_key": "memory_stock.save",
+                "is_active": "on",
+                "notes": "",
+            }
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data["flag_token"], "MEMORY")
+
 
 class ArchibaldMailServicesTests(TestCase):
     def setUp(self):
@@ -116,6 +132,76 @@ class ArchibaldMailServicesTests(TestCase):
         result = process_inbox_for_config(self.config)
         self.assertEqual(result["status"], "disabled")
         self.assertEqual(result["fetched"], 0)
+
+    @patch("archibald_mail.services.send_email_via_smtp")
+    @patch("archibald_mail.services.execute_action_from_email")
+    @patch("archibald_mail.services.parse_inbound_email")
+    @patch("archibald_mail.services.imaplib.IMAP4_SSL")
+    def test_process_inbox_executes_actions_even_with_auto_reply_disabled(
+        self,
+        mock_imap_cls,
+        mock_parse,
+        mock_execute_action,
+        mock_smtp,
+    ):
+        class FakeMailbox:
+            def login(self, *_args, **_kwargs):
+                return "OK", [b""]
+
+            def select(self, *_args, **_kwargs):
+                return "OK", [b"1"]
+
+            def search(self, *_args, **_kwargs):
+                return "OK", [b"1"]
+
+            def fetch(self, *_args, **_kwargs):
+                return "OK", [(b"1", b"raw")]
+
+            def store(self, *_args, **_kwargs):
+                return "OK", [b""]
+
+            def close(self):
+                return "OK", [b""]
+
+            def logout(self):
+                return "BYE", [b""]
+
+        mock_imap_cls.return_value = FakeMailbox()
+        mock_parse.return_value = ParsedInboundEmail(
+            message_id="<msg-1@example.com>",
+            in_reply_to="",
+            sender="sender@example.com",
+            recipient="archibald@miorganizzo.ovh",
+            subject="[MEMORY] Link utile",
+            body_text="https://example.com/post",
+            raw_headers="",
+        )
+        mock_execute_action.return_value = EmailActionOutcome(
+            handled=True,
+            action_key="memory_stock.save",
+            reply_text="Memoria salvata.",
+        )
+
+        self.config.is_enabled = True
+        self.config.auto_reply_enabled = False
+        self.config.save(update_fields=["is_enabled", "auto_reply_enabled", "updated_at"])
+
+        result = process_inbox_for_config(self.config)
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["fetched"], 1)
+        self.assertEqual(result["processed"], 1)
+        self.assertEqual(result["replied"], 1)
+        self.assertEqual(result["failed"], 0)
+        self.assertTrue(mock_execute_action.called)
+        self.assertTrue(mock_smtp.called)
+
+        inbound = ArchibaldEmailMessage.objects.filter(
+            owner=self.user,
+            direction=ArchibaldEmailMessage.Direction.INBOUND,
+        ).first()
+        self.assertIsNotNone(inbound)
+        self.assertEqual(inbound.status, ArchibaldEmailMessage.Status.REPLIED)
 
     @patch("archibald_mail.services.send_email_via_smtp")
     @patch("archibald_mail.services._openai_notification_body", return_value="Reminder body")
@@ -203,3 +289,188 @@ class ArchibaldMailServicesTests(TestCase):
         self.assertEqual(self.config.resolved_smtp_password(), "smtp-pass")
         self.assertEqual(self.config.smtp_sender(), "archibald-env@example.com")
         self.assertTrue(self.config.is_smtp_configured())
+
+
+class ArchibaldMailActionsTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="mail_action_user",
+            password="pwd12345",
+            email="action-owner@example.com",
+        )
+
+    def test_detect_action_from_subject(self):
+        self.assertEqual(detect_action_from_subject("[MEMORY] Articolo"), "memory_stock.save")
+        self.assertEqual(detect_action_from_subject("[TODO] Task rapido"), "todo.capture")
+        self.assertEqual(detect_action_from_subject("#TRANSACTION Spesa"), "transaction.capture")
+        self.assertEqual(detect_action_from_subject("[REMINDER] Evento"), "reminder.capture")
+        self.assertEqual(detect_action_from_subject("ACTION:memory_stock.save nota"), "memory_stock.save")
+        self.assertEqual(detect_action_from_subject("ACTION:TODO nota"), "todo.capture")
+        self.assertEqual(detect_action_from_subject("ACTION:TRANSACTION nota"), "transaction.capture")
+        self.assertEqual(detect_action_from_subject("ACTION:REMINDER nota"), "reminder.capture")
+        self.assertEqual(detect_action_from_subject("ACTION:planner.pin prova"), "planner.pin")
+        self.assertEqual(detect_action_from_subject("Nessuna azione"), "")
+
+    def test_detect_action_from_subject_uses_custom_rule_for_owner(self):
+        ArchibaldEmailFlagRule.objects.create(
+            owner=self.user,
+            label="Interesting Link",
+            flag_token="IDEA",
+            action_key=ArchibaldEmailFlagRule.ActionKey.MEMORY_STOCK_SAVE,
+            is_active=True,
+        )
+        self.assertEqual(detect_action_from_subject("[IDEA] Link", owner=self.user), "memory_stock.save")
+
+    def test_execute_action_saves_memory_stock_item(self):
+        incoming = SimpleNamespace(
+            sender="mario@example.com",
+            subject="[MEMORY] Articolo interessante",
+            body_text="Salva questo link https://example.com/post/1",
+            message_id="<msg-memory-1@example.com>",
+        )
+
+        outcome = execute_action_from_email(owner=self.user, incoming=incoming, inbound_message=None)
+        self.assertTrue(outcome.handled)
+        self.assertEqual(outcome.action_key, "memory_stock.save")
+
+        row = MemoryStockItem.objects.get(owner=self.user, source_message_id="<msg-memory-1@example.com>")
+        self.assertEqual(row.title, "Articolo interessante")
+        self.assertEqual(row.source_url, "https://example.com/post/1")
+        self.assertEqual(row.source_sender, "mario@example.com")
+
+    def test_execute_todo_action_uses_memory_stock_fallback(self):
+        incoming = SimpleNamespace(
+            sender="mario@example.com",
+            subject="[TODO] Chiamare fornitore",
+            body_text="Dettaglio task https://example.com/todo/fornitore",
+            message_id="<msg-todo-1@example.com>",
+        )
+
+        outcome = execute_action_from_email(owner=self.user, incoming=incoming, inbound_message=None)
+        self.assertTrue(outcome.handled)
+        self.assertEqual(outcome.action_key, "todo.capture")
+
+        row = MemoryStockItem.objects.get(owner=self.user, source_message_id="<msg-todo-1@example.com>")
+        self.assertEqual(row.title, "Chiamare fornitore")
+        self.assertEqual(row.source_action, "todo.capture")
+
+    def test_execute_action_manually_works_for_reminder(self):
+        inbound = ArchibaldEmailMessage.objects.create(
+            owner=self.user,
+            config=ArchibaldMailboxConfig.objects.create(owner=self.user),
+            direction=ArchibaldEmailMessage.Direction.INBOUND,
+            status=ArchibaldEmailMessage.Status.RECEIVED,
+            sender="shop@example.com",
+            recipient="archibald@miorganizzo.ovh",
+            subject="Promemoria bolletta",
+            body_text="Scadenza 2026-03-30 https://example.com/bill/123",
+            message_id="<msg-reminder-1@example.com>",
+        )
+        outcome = execute_action_manually(owner=self.user, message=inbound, action_key="reminder.capture")
+        self.assertTrue(outcome.handled)
+        row = MemoryStockItem.objects.get(owner=self.user, source_message_id="<msg-reminder-1@example.com>")
+        self.assertEqual(row.source_action, "reminder.capture")
+
+
+class ArchibaldMailFlagCrudViewsTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="mail_flag_user",
+            password="pwd12345",
+            email="flags@example.com",
+        )
+        self.client.login(username="mail_flag_user", password="pwd12345")
+
+    def test_flag_rules_page_renders(self):
+        response = self.client.get("/archibald-mail/flags/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "CRUD Flag Inbound")
+
+    def test_create_update_delete_flag_rule(self):
+        create_resp = self.client.post(
+            "/archibald-mail/flags/add",
+            data={
+                "label": "Ticket",
+                "flag_token": "SUPPORT",
+                "action_key": "todo.capture",
+                "is_active": "on",
+                "notes": "Da telefono",
+            },
+        )
+        self.assertEqual(create_resp.status_code, 302)
+
+        row = ArchibaldEmailFlagRule.objects.get(owner=self.user, flag_token="SUPPORT")
+        self.assertEqual(row.action_key, "todo.capture")
+
+        edit_resp = self.client.post(
+            f"/archibald-mail/flags/{row.id}/edit",
+            data={
+                "label": "Ticket aggiornato",
+                "flag_token": "SUPPORT",
+                "action_key": "transaction.capture",
+                "notes": "modifica",
+            },
+        )
+        self.assertEqual(edit_resp.status_code, 302)
+        row.refresh_from_db()
+        self.assertEqual(row.label, "Ticket aggiornato")
+        self.assertEqual(row.action_key, "transaction.capture")
+        self.assertFalse(row.is_active)
+
+        delete_resp = self.client.post(f"/archibald-mail/flags/{row.id}/remove", data={})
+        self.assertEqual(delete_resp.status_code, 302)
+        self.assertFalse(ArchibaldEmailFlagRule.objects.filter(id=row.id).exists())
+
+
+class ArchibaldMailInboundQueueViewsTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="mail_inbox_user",
+            password="pwd12345",
+            email="inbox@example.com",
+        )
+        self.config = ArchibaldMailboxConfig.objects.create(owner=self.user)
+        self.client.login(username="mail_inbox_user", password="pwd12345")
+        self.inbound = ArchibaldEmailMessage.objects.create(
+            owner=self.user,
+            config=self.config,
+            direction=ArchibaldEmailMessage.Direction.INBOUND,
+            status=ArchibaldEmailMessage.Status.RECEIVED,
+            sender="portal@example.com",
+            recipient="archibald@miorganizzo.ovh",
+            subject="Conferma pagamento",
+            body_text="Pagamento online effettuato https://example.com/payments/1",
+            message_id="<msg-inbox-1@example.com>",
+        )
+
+    def test_inbound_queue_page_renders(self):
+        response = self.client.get("/archibald-mail/inbox/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Inbox Da Gestire")
+        self.assertContains(response, "Conferma pagamento")
+
+    def test_apply_inbound_message_sets_review_status(self):
+        response = self.client.post(
+            f"/archibald-mail/inbox/{self.inbound.id}/apply",
+            data={
+                "classification_label": "Pagamento",
+                "action_key": "transaction.capture",
+                "review_notes": "Confermato da portale esterno",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.inbound.refresh_from_db()
+        self.assertEqual(self.inbound.review_status, ArchibaldEmailMessage.ReviewStatus.APPLIED)
+        self.assertEqual(self.inbound.selected_action_key, "transaction.capture")
+        self.assertEqual(self.inbound.classification_label, "Pagamento")
+
+    def test_ignore_and_reopen_inbound_message(self):
+        ignore_resp = self.client.post(f"/archibald-mail/inbox/{self.inbound.id}/ignore", data={})
+        self.assertEqual(ignore_resp.status_code, 302)
+        self.inbound.refresh_from_db()
+        self.assertEqual(self.inbound.review_status, ArchibaldEmailMessage.ReviewStatus.IGNORED)
+
+        reopen_resp = self.client.post(f"/archibald-mail/inbox/{self.inbound.id}/reopen", data={})
+        self.assertEqual(reopen_resp.status_code, 302)
+        self.inbound.refresh_from_db()
+        self.assertEqual(self.inbound.review_status, ArchibaldEmailMessage.ReviewStatus.PENDING)

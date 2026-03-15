@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import ArchibaldMailboxConfig
+from .models import ArchibaldEmailFlagRule, ArchibaldMailboxConfig
 
 
 class ArchibaldMailboxConfigForm(forms.ModelForm):
@@ -62,3 +62,27 @@ class SendTestEmailForm(forms.Form):
     recipient = forms.EmailField(required=False, label="Destinatario test")
     subject = forms.CharField(max_length=180, label="Oggetto")
     body = forms.CharField(widget=forms.Textarea(attrs={"rows": 4}), label="Messaggio")
+
+
+class ArchibaldEmailFlagRuleForm(forms.ModelForm):
+    class Meta:
+        model = ArchibaldEmailFlagRule
+        fields = ("label", "flag_token", "action_key", "is_active", "notes")
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 3}),
+        }
+        help_texts = {
+            "flag_token": "Token senza parentesi: es. MEMORY, TODO, TRANSACTION, TX.",
+            "action_key": "Categoria/azione da applicare quando il flag e presente nell'oggetto.",
+            "is_active": "Se disattivato il flag non viene considerato nel processamento inbox.",
+        }
+
+    def clean_flag_token(self):
+        token = (self.cleaned_data.get("flag_token") or "").strip().upper()
+        token = token.strip("[]# ")
+        if token.startswith("ACTION:"):
+            token = token.split(":", 1)[1].strip()
+        token = token.replace(" ", "_")
+        if not ArchibaldEmailFlagRule.is_valid_token(token):
+            raise forms.ValidationError("Formato flag non valido. Usa lettere, numeri, underscore o trattino.")
+        return token

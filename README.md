@@ -113,12 +113,19 @@ Note Stimulus:
 - `archibald_mail` (`/archibald-mail/`):
   - pannello controllo email per inbox dedicata (es. `archibald@miorganizzo.ovh`)
   - configurazione/login IMAP/SMTP gestiti da `.env` (nel pannello sono sola lettura)
+  - CRUD flag inbound da pannello (`/archibald-mail/flags/`) per categorizzare email in ingresso
+  - inbox triage manuale (`/archibald-mail/inbox/`) per classificare email esterne senza flag
   - auto-reply email con generazione risposta Archibald (OpenAI)
+  - routing azioni da oggetto email (es. `[MEMORY]`, `#MEMORY`, `ACTION:MEMORY`)
   - notifiche email automatiche su task/planner/subscriptions/routines
   - log completo email inbound/outbound/notification/test
   - comandi management per automazione cron:
     - `python manage.py process_archibald_inbox`
     - `python manage.py send_archibald_notifications`
+- `memory_stock` (`/memory-stock/`):
+  - archivio personale di contenuti interessanti (titolo, URL, nota)
+  - cattura automatica via email quando l'oggetto contiene flag memoria
+  - gestione manuale da pannello (aggiungi/modifica/archivia/elimina)
 - `ai_lab` (`/ai-lab/`):
   - tracking studio/esperimenti AI (area, status, prompt, result, next_step, resource_url)
 - `link_storage` (`/link_storage/`):
@@ -226,6 +233,29 @@ Comandi principali:
 python manage.py process_archibald_inbox
 python manage.py send_archibald_notifications
 ```
+
+Flag azione email disponibili:
+
+- `memory_stock.save` tramite oggetto con uno dei pattern:
+  - `[MEMORY]`
+  - `#MEMORY`
+  - `ACTION:MEMORY` (accetta anche `ACTION:MEMORY_STOCK.SAVE`)
+- `todo.capture` tramite oggetto con:
+  - `[TODO]`
+  - `#TODO`
+  - `ACTION:TODO`
+  - stato attuale: salvataggio temporaneo in `Memory Stock`
+- `transaction.capture` tramite oggetto con:
+  - `[TRANSACTION]`
+  - `#TRANSACTION`
+  - `#TX`
+  - `ACTION:TRANSACTION`
+  - stato attuale: salvataggio temporaneo in `Memory Stock`
+- `reminder.capture` tramite oggetto con:
+  - `[REMINDER]`
+  - `#REMINDER`
+  - `ACTION:REMINDER`
+  - stato attuale: salvataggio temporaneo in `Memory Stock`
 
 Esempio `cron` (ogni 5 minuti inbox, notifiche giornaliere con controllo orario interno):
 
@@ -335,6 +365,7 @@ mio_master/
   routines/          # routine settimanali con check
   archibald/         # assistente AI contestuale
   archibald_mail/    # inbox email Archibald + notifiche
+  memory_stock/      # archivio memorie salvate anche da email
   ai_lab/            # tracking studi/esperimenti AI
   vault/             # vault cifrato + TOTP
   link_storage/      # archivio link rapido

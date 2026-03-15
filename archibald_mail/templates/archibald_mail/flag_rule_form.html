@@ -1,0 +1,29 @@
+{% extends "archibald_mail/base.html" %}
+
+{% block content %}
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <h1 class="uk-heading-bullet uk-margin-remove">{{ title }}</h1>
+    <p class="uk-text-meta uk-margin-small-top">
+      Definisci un token (es. MEMORY, TODO, TX). Verranno riconosciuti i formati <code>[TOKEN]</code>, <code>#TOKEN</code>, <code>ACTION:TOKEN</code>.
+    </p>
+
+    <form method="post" action="" class="uk-form-stacked uk-margin-top">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      <div class="uk-grid-small uk-child-width-1-2@m" uk-grid>
+        {% for field in form %}
+          <div>
+            <label class="uk-form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            <div class="uk-form-controls">{{ field }}</div>
+            {% if field.help_text %}<div class="uk-text-meta">{{ field.help_text }}</div>{% endif %}
+            {{ field.errors }}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="uk-margin-medium-top uk-flex uk-flex-wrap uk-gap-small">
+        <button class="uk-button uk-button-primary" type="submit">{% if is_edit %}Aggiorna{% else %}Crea{% endif %} flag</button>
+        <a class="uk-button uk-button-default" href="/archibald-mail/flags/">Annulla</a>
+      </div>
+    </form>
+  </section>
+{% endblock %}

@@ -80,6 +80,7 @@ INSTALLED_APPS = [
     'routines',
     'archibald',
     'archibald_mail',
+    'memory_stock',
     'ai_lab',
     'vault',
     'link_storage',

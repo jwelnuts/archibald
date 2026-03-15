@@ -1,0 +1,81 @@
+{% extends 'memory_stock/base.html' %}
+
+{% block content %}
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <h1 class="uk-heading-bullet uk-margin-remove">Memory Stock</h1>
+    <p class="uk-text-meta uk-margin-small-top">
+      Invia dal telefono una email ad Archibald con oggetto <code>[MEMORY]</code>, <code>[TODO]</code>, <code>[TRANSACTION]</code> o <code>[REMINDER]</code> (anche con <code>#...</code> o <code>ACTION:...</code>) per salvare automaticamente.
+    </p>
+    <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top">
+      <a class="uk-button uk-button-primary uk-button-small" href="./api/add">Nuova memoria</a>
+      <a class="uk-button uk-button-default uk-button-small" href="/archibald-mail/">Apri Archibald Mail</a>
+    </div>
+    <form method="get" action="" class="uk-grid-small uk-margin-small-top" uk-grid>
+      <div class="uk-width-expand">
+        <input class="uk-input uk-form-small" type="search" name="q" placeholder="Cerca per titolo..." value="{{ query }}">
+      </div>
+      <div class="uk-width-auto">
+        <label><input class="uk-checkbox" type="checkbox" name="archived" value="1" {% if show_archived %}checked{% endif %}> Mostra archiviate</label>
+      </div>
+      <div class="uk-width-auto">
+        <button class="uk-button uk-button-default uk-button-small" type="submit">Filtra</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    {% if rows %}
+      <div class="uk-overflow-auto">
+        <table class="uk-table uk-table-small uk-table-divider">
+          <thead>
+            <tr>
+              <th>Titolo</th>
+              <th>URL</th>
+              <th>Origine</th>
+              <th>Creata</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td>
+                  <div><strong>{{ row.title }}</strong></div>
+                  {% if row.note %}<div class="uk-text-meta">{{ row.note|truncatechars:120 }}</div>{% endif %}
+                  {% if row.source_action %}<div class="uk-label">{{ row.source_action }}</div>{% endif %}
+                </td>
+                <td>
+                  {% if row.source_url %}
+                    <a href="{{ row.source_url }}" target="_blank" rel="noopener noreferrer">{{ row.source_url|truncatechars:80 }}</a>
+                  {% else %}
+                    <span class="uk-text-meta">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <div>{{ row.source_sender|default:"-" }}</div>
+                  <div class="uk-text-meta">{{ row.source_subject|default:"-"|truncatechars:90 }}</div>
+                </td>
+                <td>{{ row.created_at|date:"d/m/Y H:i" }}</td>
+                <td>
+                  <div class="uk-flex uk-flex-wrap uk-gap-small">
+                    <a class="uk-button uk-button-default uk-button-small" href="./api/update?id={{ row.id }}">Modifica</a>
+                    <a class="uk-button uk-button-danger uk-button-small" href="./api/remove?id={{ row.id }}">Rimuovi</a>
+                    <form method="post" action="./api/archive" class="uk-margin-remove">
+                      {% csrf_token %}
+                      <input type="hidden" name="id" value="{{ row.id }}">
+                      <button class="uk-button uk-button-default uk-button-small" type="submit">
+                        {% if row.is_archived %}Ripristina{% else %}Archivia{% endif %}
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessuna memoria disponibile.</div>
+    {% endif %}
+  </section>
+{% endblock %}

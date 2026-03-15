@@ -21,6 +21,7 @@
         </p>
       </div>
       <div class="uk-flex uk-flex-wrap uk-gap-small">
+        <a class="uk-button uk-button-secondary uk-button-small" href="/archibald-mail/inbox/">Inbox da gestire ({{ inbound_pending_count }})</a>
         <form method="post" action="" class="uk-margin-remove">
           {% csrf_token %}
           <input type="hidden" name="action" value="process_inbox">
@@ -34,7 +35,7 @@
       </div>
     </div>
 
-    <div class="uk-grid-small uk-child-width-1-4@m uk-margin-top" uk-grid>
+    <div class="uk-grid-small uk-child-width-1-5@m uk-margin-top" uk-grid>
       <div>
         <div class="uk-card uk-card-secondary uk-card-small uk-card-body">
           <div class="uk-text-meta">Auto-reply</div>
@@ -58,6 +59,12 @@
         <div class="uk-card uk-card-secondary uk-card-small uk-card-body">
           <div class="uk-text-meta">Ultima notifica</div>
           <div class="uk-text-bold">{% if config.last_notification_sent_at %}{{ config.last_notification_sent_at|date:"d/m H:i" }}{% else %}Mai{% endif %}</div>
+        </div>
+      </div>
+      <div>
+        <div class="uk-card uk-card-secondary uk-card-small uk-card-body">
+          <div class="uk-text-meta">Inbox pending</div>
+          <div class="uk-text-bold">{{ inbound_pending_count }}</div>
         </div>
       </div>
     </div>
@@ -131,6 +138,33 @@
           <div><strong>From:</strong> {{ smtp_sender_value|default:"-" }}</div>
           <div><strong>Password:</strong> {% if smtp_password_configured %}Configurata{% else %}Mancante{% endif %}</div>
         </div>
+      </section>
+
+      <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+        <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+          <h3 class="uk-margin-remove">Flag inbound</h3>
+          <a class="uk-button uk-button-primary uk-button-small" href="/archibald-mail/flags/">Gestisci flag</a>
+        </div>
+        <p class="uk-text-meta uk-margin-small-top">Lista regole flag disponibili per oggetto email.</p>
+        <ul class="uk-list uk-list-divider uk-margin-small-top">
+          {% for action in available_email_actions %}
+            <li>
+              <div class="uk-flex uk-flex-between uk-flex-middle">
+                <strong>{{ action.label }}</strong>
+                <span class="uk-label">{{ action.status }}</span>
+              </div>
+              <div class="uk-text-meta">{{ action.key }}</div>
+              <div class="uk-text-meta">Token: {{ action.flag_token }}</div>
+              <div>
+                {% for flag in action.flags %}
+                  <code>{{ flag }}</code>{% if not forloop.last %} {% endif %}
+                {% endfor %}
+              </div>
+              <div class="uk-text-meta">Destinazione: {{ action.destination }}</div>
+            </li>
+          {% endfor %}
+        </ul>
+        <a class="uk-button uk-button-default uk-button-small" href="/memory-stock/">Apri Memory Stock</a>
       </section>
 
       <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">

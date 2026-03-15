@@ -110,6 +110,13 @@ DEFAULT_DASHBOARD_WIDGETS = [
         "group": "ops",
     },
     {
+        "id": "memory_stock",
+        "title": "Memory Stock",
+        "description": "Catture rapide da email e link interessanti.",
+        "url": "/memory-stock/",
+        "group": "ops",
+    },
+    {
         "id": "ai_lab",
         "title": "AI Lab",
         "description": "Esperimenti e appunti AI.",

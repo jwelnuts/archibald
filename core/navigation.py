@@ -14,6 +14,7 @@ DEFAULT_APP_OPTIONS = [
     {"key": "routines", "label": "Routines", "url": "/routines/", "icon": "clock"},
     {"key": "archibald", "label": "Archibald", "url": "/archibald/", "icon": "commenting"},
     {"key": "archibald_mail", "label": "Archibald Mail", "url": "/archibald-mail/", "icon": "mail"},
+    {"key": "memory_stock", "label": "Memory Stock", "url": "/memory-stock/", "icon": "bookmark"},
     {"key": "ai_lab", "label": "AI Lab", "url": "/ai-lab/", "icon": "bolt"},
     {"key": "personal_lab", "label": "Personal Lab", "url": "/ai-lab/personal-lab/", "icon": "code"},
     {"key": "vault", "label": "Vault", "url": "/vault/", "icon": "lock"},
