@@ -50,9 +50,9 @@
               <ul class="uk-nav uk-dropdown-nav">
                 {% for action in hidden_actions %}
                   {% if action.key == "back" %}
-                    <li><a href="/projects/view?id={{ project.id }}" data-action="{{ action.key }}">{{ action.label }}</a></li>
+                    <li><a href="/projects/view?id={{ project.id }}">{{ action.label }}</a></li>
                   {% elif action.key == "edit" %}
-                    <li><a href="/projects/api/update?id={{ project.id }}" data-action="{{ action.key }}">{{ action.label }}</a></li>
+                    <li><a href="/projects/api/update?id={{ project.id }}">{{ action.label }}</a></li>
                   {% endif %}
                 {% endfor %}
               </ul>

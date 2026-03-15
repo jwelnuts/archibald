@@ -10,7 +10,7 @@ from subscriptions.models import Account, Currency, Subscription
 from todo.models import Task
 from transactions.models import Transaction
 
-from .models import Category, Customer, Project, ProjectNote
+from .models import Category, Customer, Project, ProjectNote, SubProject, SubProjectActivity
 
 
 class ProjectStoryboardFormsTests(TestCase):
@@ -226,3 +226,167 @@ class ProjectDashboardContextTests(TestCase):
         rows = response.context["project_rows"]
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0]["project"].id, self.archived_project.id)
+
+
+class SubProjectFlowTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="subproj_user", password="test1234")
+        self.client.login(username="subproj_user", password="test1234")
+        self.project = Project.objects.create(owner=self.user, name="Project Parent")
+
+    def test_add_subproject(self):
+        response = self.client.post(
+            f"/projects/subprojects/add?project={self.project.id}",
+            {
+                "project_id": str(self.project.id),
+                "title": "Roadmap Fase 1",
+                "description": "Sottofase con task dedicati",
+                "status": SubProject.Status.IN_PROGRESS,
+                "priority": SubProject.Priority.HIGH,
+                "completion_percent": 35,
+                "start_date": "2026-03-15",
+                "due_date": "2026-04-15",
+                "is_archived": "",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        subproject = SubProject.objects.get(owner=self.user, project=self.project, title="Roadmap Fase 1")
+        self.assertEqual(subproject.status, SubProject.Status.IN_PROGRESS)
+        self.assertEqual(subproject.priority, SubProject.Priority.HIGH)
+
+    def test_create_and_update_activity(self):
+        subproject = SubProject.objects.create(owner=self.user, project=self.project, title="Delivery stream")
+        create_response = self.client.post(
+            f"/projects/subprojects/view?id={subproject.id}",
+            {
+                "action": "create_activity",
+                "activity-title": "Analisi requisiti",
+                "activity-description": "Raccolta e validazione",
+                "activity-status": SubProjectActivity.Status.TODO,
+                "activity-due_date": "2026-03-20",
+                "activity-ordering": 1,
+            },
+        )
+        self.assertEqual(create_response.status_code, 302)
+        activity = SubProjectActivity.objects.get(owner=self.user, subproject=subproject, title="Analisi requisiti")
+        self.assertEqual(activity.status, SubProjectActivity.Status.TODO)
+
+        update_response = self.client.post(
+            f"/projects/subprojects/view?id={subproject.id}",
+            {
+                "action": "update_activity_status",
+                "activity_id": str(activity.id),
+                "status": SubProjectActivity.Status.DONE,
+            },
+        )
+        self.assertEqual(update_response.status_code, 302)
+        activity.refresh_from_db()
+        self.assertEqual(activity.status, SubProjectActivity.Status.DONE)
+
+
+class ProjectDetailPlannerModalTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="proj_modal_user", password="test1234")
+        self.client.login(username="proj_modal_user", password="test1234")
+        self.project = Project.objects.create(owner=self.user, name="Project Modal")
+
+    def test_project_detail_adds_planner_item_via_post(self):
+        response = self.client.post(
+            f"/projects/view?id={self.project.id}",
+            {
+                "action": "add_project_planner_item",
+                "title": "Reminder da modal",
+                "due_date": "2026-03-28",
+                "status": PlannerItem.Status.PLANNED,
+                "amount": "",
+                "category": "",
+                "note": "Creato dalla page detail",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        item = PlannerItem.objects.get(owner=self.user, project=self.project, title="Reminder da modal")
+        self.assertEqual(item.status, PlannerItem.Status.PLANNED)
+
+    def test_project_detail_can_confirm_planner_item(self):
+        item = PlannerItem.objects.create(
+            owner=self.user,
+            project=self.project,
+            title="Reminder da confermare",
+            status=PlannerItem.Status.PLANNED,
+        )
+        response = self.client.post(
+            f"/projects/view?id={self.project.id}",
+            {
+                "action": "update_project_planner_status",
+                "planner_item_id": str(item.id),
+                "status": PlannerItem.Status.DONE,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        item.refresh_from_db()
+        self.assertEqual(item.status, PlannerItem.Status.DONE)
+
+    def test_project_detail_shows_planner_modify_link(self):
+        item = PlannerItem.objects.create(
+            owner=self.user,
+            project=self.project,
+            title="Reminder da modificare",
+            status=PlannerItem.Status.PLANNED,
+        )
+        response = self.client.get(f"/projects/view?id={self.project.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, f"/planner/update?id={item.id}")
+
+    def test_project_detail_can_toggle_subscription_status(self):
+        currency, _ = Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
+        account = Account.objects.create(
+            owner=self.user,
+            name="Conto Sub Test",
+            kind=Account.Kind.BANK,
+            currency=currency,
+            opening_balance=Decimal("0.00"),
+            is_active=True,
+        )
+        sub = Subscription.objects.create(
+            owner=self.user,
+            name="Sub rapida",
+            account=account,
+            currency=currency,
+            amount=Decimal("19.99"),
+            start_date=date(2026, 3, 1),
+            next_due_date=date(2026, 4, 1),
+            interval=1,
+            interval_unit=Subscription.IntervalUnit.MONTH,
+            status=Subscription.Status.ACTIVE,
+            project=self.project,
+        )
+        response = self.client.post(
+            f"/projects/view?id={self.project.id}",
+            {
+                "action": "update_project_subscription_status",
+                "subscription_id": str(sub.id),
+                "status": Subscription.Status.PAUSED,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        sub.refresh_from_db()
+        self.assertEqual(sub.status, Subscription.Status.PAUSED)
+
+    def test_project_detail_can_toggle_subproject_status(self):
+        subproject = SubProject.objects.create(
+            owner=self.user,
+            project=self.project,
+            title="Subproject quick",
+            status=SubProject.Status.IN_PROGRESS,
+        )
+        response = self.client.post(
+            f"/projects/view?id={self.project.id}",
+            {
+                "action": "update_project_subproject_status",
+                "subproject_id": str(subproject.id),
+                "status": SubProject.Status.DONE,
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        subproject.refresh_from_db()
+        self.assertEqual(subproject.status, SubProject.Status.DONE)

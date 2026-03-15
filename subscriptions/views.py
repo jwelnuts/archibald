@@ -8,10 +8,18 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from projects.models import Project
 from transactions.models import Transaction
 
 from .forms import SubscriptionForm
 from .models import Account, Subscription, SubscriptionOccurrence
+
+
+def _safe_next_url(value: str) -> str:
+    value = (value or "").strip()
+    if value.startswith("/"):
+        return value
+    return ""
 
 
 def _add_months(anchor: date, months: int) -> date:
@@ -115,6 +123,7 @@ def dashboard_board(request):
 
 @login_required
 def add_sub(request):
+    next_url = _safe_next_url(request.GET.get("next") or request.POST.get("next"))
     if request.method == "POST":
         form = SubscriptionForm(request.POST, owner=request.user)
         if form.is_valid():
@@ -125,10 +134,16 @@ def add_sub(request):
                 sub.currency, _ = Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
             sub.save()
             form.save_m2m()
-            return redirect("/subs/")
+            return redirect(next_url or "/subs/")
     else:
-        form = SubscriptionForm(owner=request.user)
-    return render(request, "subscriptions/add_sub.html", {"form": form})
+        initial = {}
+        project_id = (request.GET.get("project") or "").strip()
+        if project_id:
+            project = Project.objects.filter(id=project_id, owner=request.user).first()
+            if project:
+                initial["project"] = project
+        form = SubscriptionForm(owner=request.user, initial=initial)
+    return render(request, "subscriptions/add_sub.html", {"form": form, "next": next_url})
 
 @login_required
 def remove_sub(request):

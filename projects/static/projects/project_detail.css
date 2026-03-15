@@ -1,0 +1,85 @@
+.project-detail-shell {
+  border-top: 4px solid rgba(30, 135, 240, 0.35);
+}
+
+.project-detail-head {
+  gap: 12px;
+}
+
+.project-detail-kicker {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.project-detail-breadcrumb {
+  letter-spacing: 0.02em;
+}
+
+.project-detail-meta {
+  justify-content: flex-end;
+}
+
+.project-detail-description {
+  max-width: 900px;
+}
+
+.project-detail-kpi {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(155deg, #ffffff, #f6f9ff);
+}
+
+.project-detail-kpi-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5a6473;
+}
+
+.project-detail-kpi-value {
+  margin-top: 4px;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #111827;
+}
+
+.project-detail-card {
+  border: 1px solid rgba(15, 23, 42, 0.1);
+}
+
+.project-breakdown-list .uk-progress {
+  margin: 8px 0 0;
+  height: 8px;
+}
+
+.project-breakdown-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-compact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.project-row-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+@media (max-width: 960px) {
+  .project-detail-meta {
+    justify-content: flex-start;
+  }
+
+  .project-detail-kpi-value {
+    font-size: 1.35rem;
+  }
+}

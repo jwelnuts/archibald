@@ -41,6 +41,73 @@ class Project(OwnedModel, TimeStampedModel):
         return self.name
 
 
+class SubProject(OwnedModel, TimeStampedModel):
+    class Status(models.TextChoices):
+        PLANNED = "planned", "Planned"
+        IN_PROGRESS = "in_progress", "In progress"
+        BLOCKED = "blocked", "Blocked"
+        DONE = "done", "Done"
+
+    class Priority(models.TextChoices):
+        LOW = "low", "Bassa"
+        MEDIUM = "medium", "Media"
+        HIGH = "high", "Alta"
+        CRITICAL = "critical", "Critica"
+
+    project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.CASCADE,
+        related_name="subprojects",
+    )
+    title = models.CharField(max_length=140)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PLANNED)
+    priority = models.CharField(max_length=20, choices=Priority.choices, default=Priority.MEDIUM)
+    start_date = models.DateField(null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    completion_percent = models.PositiveSmallIntegerField(default=0)
+    is_archived = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["owner", "project", "status"]),
+            models.Index(fields=["owner", "project", "is_archived"]),
+        ]
+        unique_together = [("owner", "project", "title")]
+
+    def __str__(self):
+        return self.title
+
+
+class SubProjectActivity(OwnedModel, TimeStampedModel):
+    class Status(models.TextChoices):
+        TODO = "todo", "Da fare"
+        IN_PROGRESS = "in_progress", "In corso"
+        BLOCKED = "blocked", "Bloccata"
+        DONE = "done", "Completata"
+
+    subproject = models.ForeignKey(
+        "projects.SubProject",
+        on_delete=models.CASCADE,
+        related_name="activities",
+    )
+    title = models.CharField(max_length=160)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.TODO)
+    due_date = models.DateField(null=True, blank=True)
+    ordering = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["owner", "subproject", "status"]),
+            models.Index(fields=["owner", "subproject", "ordering"]),
+        ]
+        ordering = ["ordering", "id"]
+
+    def __str__(self):
+        return self.title
+
+
 class ProjectNote(OwnedModel, TimeStampedModel):
     project = models.ForeignKey(
         "projects.Project",

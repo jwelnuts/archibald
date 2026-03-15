@@ -11,8 +11,16 @@ from django.utils.html import strip_tags
 from contacts.models import Contact
 from .category_forms import CategoryForm
 from .note_forms import ProjectNoteForm
-from .forms import ProjectForm
-from .models import Category, Customer, Project, ProjectNote, ProjectHeroActionsConfig
+from .forms import ProjectForm, ProjectPlannerQuickForm, SubProjectActivityForm, SubProjectForm
+from .models import (
+    Category,
+    Customer,
+    Project,
+    ProjectHeroActionsConfig,
+    ProjectNote,
+    SubProject,
+    SubProjectActivity,
+)
 from .storyboard_forms import StoryboardPlannerForm, StoryboardTaskForm
 from core.hero_actions import HERO_ACTIONS
 from core.models import UserHeroActionsConfig
@@ -252,6 +260,15 @@ def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80
     }
 
 
+def _subproject_counts(queryset):
+    return {
+        "total": queryset.count(),
+        "active": queryset.filter(is_archived=False).exclude(status=SubProject.Status.DONE).count(),
+        "done": queryset.filter(status=SubProject.Status.DONE).count(),
+        "blocked": queryset.filter(status=SubProject.Status.BLOCKED).count(),
+    }
+
+
 # Create your views here.
 @login_required
 def dashboard(request):
@@ -454,10 +471,96 @@ def project_detail(request):
     from transactions.models import Transaction
     from routines.models import RoutineItem
 
+    planner_modal_open = False
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "add_project_planner_item":
+            planner_quick_form = ProjectPlannerQuickForm(request.POST, owner=request.user)
+            if planner_quick_form.is_valid():
+                planner_item = planner_quick_form.save(commit=False)
+                planner_item.owner = request.user
+                planner_item.project = project
+                planner_item.save()
+                due = planner_item.due_date.strftime("%d/%m/%Y") if planner_item.due_date else "senza scadenza"
+                note_parts = [
+                    f"Promemoria creato: {planner_item.title}",
+                    f"Scadenza: {due}",
+                    f"Stato: {planner_item.get_status_display()}",
+                ]
+                if planner_item.note:
+                    note_parts.append(f"Note: {planner_item.note}")
+                ProjectNote.objects.create(
+                    owner=request.user,
+                    project=project,
+                    content="<br>".join(note_parts),
+                )
+                return redirect(f"/projects/view?id={project.id}")
+            planner_modal_open = True
+        elif action == "update_project_planner_status":
+            planner_item_id = request.POST.get("planner_item_id")
+            status = (request.POST.get("status") or "").strip()
+            allowed_status = {value for value, _label in PlannerItem.Status.choices}
+            planner_item = get_object_or_404(
+                PlannerItem,
+                id=planner_item_id,
+                owner=request.user,
+                project=project,
+            )
+            if status in allowed_status and planner_item.status != status:
+                planner_item.status = status
+                planner_item.save(update_fields=["status", "updated_at"])
+            return redirect(f"/projects/view?id={project.id}")
+        elif action == "update_project_subscription_status":
+            sub_id = request.POST.get("subscription_id")
+            status = (request.POST.get("status") or "").strip()
+            allowed_status = {value for value, _label in Subscription.Status.choices}
+            subscription = get_object_or_404(
+                Subscription,
+                id=sub_id,
+                owner=request.user,
+                project=project,
+            )
+            if status in allowed_status and subscription.status != status:
+                subscription.status = status
+                subscription.save(update_fields=["status", "updated_at"])
+            return redirect(f"/projects/view?id={project.id}")
+        elif action == "update_project_subproject_status":
+            subproject_id = request.POST.get("subproject_id")
+            status = (request.POST.get("status") or "").strip()
+            allowed_status = {value for value, _label in SubProject.Status.choices}
+            subproject = get_object_or_404(
+                SubProject,
+                id=subproject_id,
+                owner=request.user,
+                project=project,
+            )
+            if status in allowed_status and subproject.status != status:
+                subproject.status = status
+                subproject.save(update_fields=["status", "updated_at"])
+            return redirect(f"/projects/view?id={project.id}")
+        else:
+            planner_quick_form = ProjectPlannerQuickForm(owner=request.user)
+    else:
+        planner_quick_form = ProjectPlannerQuickForm(
+            owner=request.user,
+            initial={"status": PlannerItem.Status.PLANNED},
+        )
+
     tx_qs = Transaction.objects.filter(owner=request.user, project=project)
     sub_qs = Subscription.objects.filter(owner=request.user, project=project)
     planner_qs = PlannerItem.objects.filter(owner=request.user, project=project)
     routine_qs = RoutineItem.objects.filter(owner=request.user, project=project, is_active=True)
+    subproject_qs = (
+        SubProject.objects.filter(owner=request.user, project=project)
+        .annotate(
+            activities_total=Count("activities"),
+            activities_done=Count(
+                "activities",
+                filter=Q(activities__status=SubProjectActivity.Status.DONE),
+            ),
+        )
+        .order_by("is_archived", "due_date", "title")
+    )
 
     override = ProjectHeroActionsConfig.objects.filter(user=request.user, project=project).first()
     override_config = override.config if override else {}
@@ -480,15 +583,139 @@ def project_detail(request):
             "subscriptions": sub_qs.count(),
             "planner_items": planner_qs.count(),
             "routine_items": routine_qs.count(),
+            "subprojects": subproject_qs.count(),
         },
         "tx_type_counts": _choice_counts(tx_qs, "tx_type", Transaction.Type),
         "sub_status_counts": _choice_counts(sub_qs, "status", Subscription.Status),
         "planner_status_counts": _choice_counts(planner_qs, "status", PlannerItem.Status),
+        "subprojects": subproject_qs[:6],
+        "subproject_counts": _subproject_counts(subproject_qs),
+        "planner_quick_form": planner_quick_form,
+        "planner_modal_open": planner_modal_open,
         "hero_actions_override": override_config,
         "allowed_actions": allowed_actions,
         "hidden_actions": hidden_actions,
     }
     return render(request, "projects/project_detail.html", context)
+
+
+@login_required
+def add_subproject(request):
+    project_id = request.GET.get("project") or request.POST.get("project_id")
+    if not project_id:
+        return redirect("/projects/")
+    project = get_object_or_404(Project, id=project_id, owner=request.user)
+
+    if request.method == "POST":
+        form = SubProjectForm(request.POST)
+        if form.is_valid():
+            subproject = form.save(commit=False)
+            subproject.owner = request.user
+            subproject.project = project
+            subproject.save()
+            return redirect(f"/projects/subprojects/view?id={subproject.id}")
+    else:
+        form = SubProjectForm()
+
+    return render(
+        request,
+        "projects/subproject_form.html",
+        {
+            "project": project,
+            "form": form,
+            "mode": "add",
+        },
+    )
+
+
+@login_required
+def update_subproject(request):
+    subproject_id = request.GET.get("id") or request.POST.get("subproject_id")
+    if not subproject_id:
+        return redirect("/projects/")
+    subproject = get_object_or_404(
+        SubProject.objects.select_related("project"),
+        id=subproject_id,
+        owner=request.user,
+    )
+
+    if request.method == "POST":
+        form = SubProjectForm(request.POST, instance=subproject)
+        if form.is_valid():
+            form.save()
+            return redirect(f"/projects/subprojects/view?id={subproject.id}")
+    else:
+        form = SubProjectForm(instance=subproject)
+
+    return render(
+        request,
+        "projects/subproject_form.html",
+        {
+            "project": subproject.project,
+            "subproject": subproject,
+            "form": form,
+            "mode": "update",
+        },
+    )
+
+
+@login_required
+def subproject_detail(request):
+    subproject_id = request.GET.get("id")
+    if not subproject_id:
+        return redirect("/projects/")
+    subproject = get_object_or_404(
+        SubProject.objects.select_related("project"),
+        id=subproject_id,
+        owner=request.user,
+    )
+
+    activity_form = SubProjectActivityForm(prefix="activity")
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        if action == "create_activity":
+            activity_form = SubProjectActivityForm(request.POST, prefix="activity")
+            if activity_form.is_valid():
+                activity = activity_form.save(commit=False)
+                activity.owner = request.user
+                activity.subproject = subproject
+                activity.save()
+                return redirect(f"/projects/subprojects/view?id={subproject.id}")
+        elif action == "update_activity_status":
+            activity_id = request.POST.get("activity_id")
+            status = (request.POST.get("status") or "").strip()
+            allowed_status = {value for value, _label in SubProjectActivity.Status.choices}
+            activity = get_object_or_404(
+                SubProjectActivity,
+                id=activity_id,
+                owner=request.user,
+                subproject=subproject,
+            )
+            if status in allowed_status and activity.status != status:
+                activity.status = status
+                activity.save(update_fields=["status", "updated_at"])
+            return redirect(f"/projects/subprojects/view?id={subproject.id}")
+        elif action == "remove_activity":
+            activity_id = request.POST.get("activity_id")
+            activity = get_object_or_404(
+                SubProjectActivity,
+                id=activity_id,
+                owner=request.user,
+                subproject=subproject,
+            )
+            activity.delete()
+            return redirect(f"/projects/subprojects/view?id={subproject.id}")
+
+    activities_qs = SubProjectActivity.objects.filter(owner=request.user, subproject=subproject).order_by("ordering", "id")
+    context = {
+        "subproject": subproject,
+        "project": subproject.project,
+        "activity_form": activity_form,
+        "activities": activities_qs,
+        "activity_status_choices": SubProjectActivity.Status.choices,
+        "activity_status_counts": _choice_counts(activities_qs, "status", SubProjectActivity.Status),
+    }
+    return render(request, "projects/subproject_detail.html", context)
 
 
 @login_required

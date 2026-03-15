@@ -21,6 +21,9 @@
     {% endif %}
     <form class="form form-compact" method="post" action="">
       {% csrf_token %}
+      {% if next %}
+        <input type="hidden" name="next" value="{{ next }}">
+      {% endif %}
       <div class="field">
         <label for="id_name">Nome</label>
         {{ form.name }}
@@ -91,7 +94,7 @@
       </details>
       <div class="actions">
         <button class="btn primary" type="submit">Salva</button>
-        <a class="btn" href="/subs/">Annulla</a>
+        <a class="btn" href="{% if next %}{{ next }}{% else %}/subs/{% endif %}">Annulla</a>
       </div>
     </form>
     <script>

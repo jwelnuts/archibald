@@ -1,0 +1,143 @@
+{% extends "projects/base.html" %}
+{% load static %}
+
+{% block title %}MIO - {{ subproject.title }}{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'projects/subproject.css' %}">
+{% endblock %}
+
+{% block content %}
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin subproject-shell">
+    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+      <div>
+        <p class="uk-text-meta subproject-kicker uk-margin-remove">Sub-project cockpit</p>
+        <h1 class="uk-margin-small-top uk-margin-remove-bottom">{{ subproject.title }}</h1>
+        <p class="uk-text-meta uk-margin-small-top">
+          Progetto padre:
+          <a href="/projects/view?id={{ project.id }}">{{ project.name }}</a>
+        </p>
+      </div>
+      <div class="uk-flex uk-flex-wrap uk-gap-small">
+        <a class="uk-button uk-button-default uk-button-small" href="/projects/view?id={{ project.id }}">Torna al progetto</a>
+        <a class="uk-button uk-button-primary uk-button-small" href="/projects/subprojects/update?id={{ subproject.id }}">Modifica sub-progetto</a>
+      </div>
+    </div>
+
+    <div class="subproject-meta uk-margin-small-top">
+      <span class="uk-label">{{ subproject.get_status_display }}</span>
+      <span class="uk-label">Priorità: {{ subproject.get_priority_display }}</span>
+      <span class="uk-label">Progresso: {{ subproject.completion_percent }}%</span>
+      {% if subproject.start_date %}<span class="uk-label">Inizio: {{ subproject.start_date|date:"d/m/Y" }}</span>{% endif %}
+      {% if subproject.due_date %}<span class="uk-label">Fine: {{ subproject.due_date|date:"d/m/Y" }}</span>{% endif %}
+      {% if subproject.is_archived %}<span class="uk-label uk-label-warning">Archiviato</span>{% endif %}
+    </div>
+
+    {% if subproject.description %}
+      <div class="uk-alert-primary uk-margin-top">{{ subproject.description }}</div>
+    {% endif %}
+  </section>
+
+  <section class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@l uk-margin" uk-grid>
+    {% for row in activity_status_counts %}
+      <div>
+        <article class="subproject-stats-card">
+          <div class="subproject-stats-label">{{ row.label }}</div>
+          <div class="subproject-stats-value">{{ row.total }}</div>
+        </article>
+      </div>
+    {% endfor %}
+  </section>
+
+  <section class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@l uk-margin" uk-grid>
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body subproject-card">
+        <h2 class="uk-margin-remove">Attività</h2>
+        {% if activities %}
+          <ul class="uk-list uk-list-divider uk-margin-top">
+            {% for activity in activities %}
+              <li class="subproject-activity-row">
+                <div>
+                  <div class="project-row-title">{{ activity.title }}</div>
+                  <div class="uk-text-meta">
+                    {% if activity.due_date %}Scadenza {{ activity.due_date|date:"d/m/Y" }} · {% endif %}
+                    Ordine {{ activity.ordering }}
+                  </div>
+                  {% if activity.description %}
+                    <div class="uk-text-small uk-margin-small-top">{{ activity.description }}</div>
+                  {% endif %}
+                </div>
+                <div>
+                  <form method="post" class="subproject-status-form">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_activity_status">
+                    <input type="hidden" name="activity_id" value="{{ activity.id }}">
+                    <select name="status" class="uk-select uk-form-small">
+                      {% for key, label in activity_status_choices %}
+                        <option value="{{ key }}" {% if activity.status == key %}selected{% endif %}>{{ label }}</option>
+                      {% endfor %}
+                    </select>
+                    <button class="uk-button uk-button-default uk-button-small" type="submit">Aggiorna</button>
+                  </form>
+                  <form method="post" class="uk-margin-small-top">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="remove_activity">
+                    <input type="hidden" name="activity_id" value="{{ activity.id }}">
+                    <button class="uk-button uk-button-danger uk-button-small" type="submit">Rimuovi</button>
+                  </form>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-margin-top">Nessuna attività ancora inserita.</div>
+        {% endif %}
+      </article>
+    </div>
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body subproject-card">
+        <h2 class="uk-margin-remove">Nuova attività</h2>
+        <form method="post" class="uk-form-stacked uk-margin-top" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="action" value="create_activity">
+
+          {% if activity_form.non_field_errors %}
+            <div class="uk-alert-danger">{{ activity_form.non_field_errors }}</div>
+          {% endif %}
+
+          <div class="uk-margin-small">
+            <label class="uk-form-label" for="{{ activity_form.title.id_for_label }}">Titolo</label>
+            <div class="uk-form-controls">{{ activity_form.title }}</div>
+            {% if activity_form.title.errors %}<div class="uk-text-danger uk-text-small">{{ activity_form.title.errors|join:", " }}</div>{% endif %}
+          </div>
+          <div class="uk-margin-small">
+            <label class="uk-form-label" for="{{ activity_form.status.id_for_label }}">Stato</label>
+            <div class="uk-form-controls">{{ activity_form.status }}</div>
+            {% if activity_form.status.errors %}<div class="uk-text-danger uk-text-small">{{ activity_form.status.errors|join:", " }}</div>{% endif %}
+          </div>
+          <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+            <div>
+              <label class="uk-form-label" for="{{ activity_form.due_date.id_for_label }}">Scadenza</label>
+              <div class="uk-form-controls">{{ activity_form.due_date }}</div>
+              {% if activity_form.due_date.errors %}<div class="uk-text-danger uk-text-small">{{ activity_form.due_date.errors|join:", " }}</div>{% endif %}
+            </div>
+            <div>
+              <label class="uk-form-label" for="{{ activity_form.ordering.id_for_label }}">Ordine</label>
+              <div class="uk-form-controls">{{ activity_form.ordering }}</div>
+              {% if activity_form.ordering.errors %}<div class="uk-text-danger uk-text-small">{{ activity_form.ordering.errors|join:", " }}</div>{% endif %}
+            </div>
+          </div>
+          <div class="uk-margin-small">
+            <label class="uk-form-label" for="{{ activity_form.description.id_for_label }}">Descrizione</label>
+            <div class="uk-form-controls">{{ activity_form.description }}</div>
+            {% if activity_form.description.errors %}<div class="uk-text-danger uk-text-small">{{ activity_form.description.errors|join:", " }}</div>{% endif %}
+          </div>
+
+          <div class="uk-flex uk-flex-wrap uk-gap-small">
+            <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi attività</button>
+          </div>
+        </form>
+      </article>
+    </div>
+  </section>
+{% endblock %}

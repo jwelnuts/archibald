@@ -1,0 +1,93 @@
+{% extends "projects/base.html" %}
+{% load static %}
+
+{% block title %}
+  {% if mode == "update" %}MIO - Modifica sub-progetto{% else %}MIO - Nuovo sub-progetto{% endif %}
+{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'projects/subproject.css' %}">
+{% endblock %}
+
+{% block content %}
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin subproject-shell">
+    <p class="uk-text-meta subproject-kicker uk-margin-remove">Sub-project setup</p>
+    <h1 class="uk-margin-small-top uk-margin-remove-bottom">
+      {% if mode == "update" %}Modifica sub-progetto{% else %}Nuovo sub-progetto{% endif %}
+    </h1>
+    <p class="uk-text-meta uk-margin-small-top">
+      Progetto padre:
+      <a href="/projects/view?id={{ project.id }}">{{ project.name }}</a>
+    </p>
+  </section>
+
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin subproject-card">
+    <form method="post" class="uk-form-stacked" novalidate>
+      {% csrf_token %}
+      {% if mode == "add" %}
+        <input type="hidden" name="project_id" value="{{ project.id }}">
+      {% else %}
+        <input type="hidden" name="subproject_id" value="{{ subproject.id }}">
+      {% endif %}
+
+      {% if form.non_field_errors %}
+        <div class="uk-alert-danger">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@m" uk-grid>
+        <div>
+          <label class="uk-form-label" for="{{ form.title.id_for_label }}">Titolo</label>
+          <div class="uk-form-controls">{{ form.title }}</div>
+          {% if form.title.errors %}<div class="uk-text-danger uk-text-small">{{ form.title.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div>
+          <label class="uk-form-label" for="{{ form.priority.id_for_label }}">Priorità</label>
+          <div class="uk-form-controls">{{ form.priority }}</div>
+          {% if form.priority.errors %}<div class="uk-text-danger uk-text-small">{{ form.priority.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div>
+          <label class="uk-form-label" for="{{ form.status.id_for_label }}">Stato</label>
+          <div class="uk-form-controls">{{ form.status }}</div>
+          {% if form.status.errors %}<div class="uk-text-danger uk-text-small">{{ form.status.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div>
+          <label class="uk-form-label" for="{{ form.completion_percent.id_for_label }}">Progresso (%)</label>
+          <div class="uk-form-controls">{{ form.completion_percent }}</div>
+          {% if form.completion_percent.errors %}<div class="uk-text-danger uk-text-small">{{ form.completion_percent.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div>
+          <label class="uk-form-label" for="{{ form.start_date.id_for_label }}">Data inizio</label>
+          <div class="uk-form-controls">{{ form.start_date }}</div>
+          {% if form.start_date.errors %}<div class="uk-text-danger uk-text-small">{{ form.start_date.errors|join:", " }}</div>{% endif %}
+        </div>
+        <div>
+          <label class="uk-form-label" for="{{ form.due_date.id_for_label }}">Data fine</label>
+          <div class="uk-form-controls">{{ form.due_date }}</div>
+          {% if form.due_date.errors %}<div class="uk-text-danger uk-text-small">{{ form.due_date.errors|join:", " }}</div>{% endif %}
+        </div>
+      </div>
+
+      <div class="uk-margin">
+        <label class="uk-form-label" for="{{ form.description.id_for_label }}">Descrizione</label>
+        <div class="uk-form-controls">{{ form.description }}</div>
+        {% if form.description.errors %}<div class="uk-text-danger uk-text-small">{{ form.description.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="uk-margin">
+        <label>{{ form.is_archived }} Archiviato</label>
+        {% if form.is_archived.errors %}<div class="uk-text-danger uk-text-small">{{ form.is_archived.errors|join:", " }}</div>{% endif %}
+      </div>
+
+      <div class="uk-flex uk-flex-wrap uk-gap-small">
+        <button class="uk-button uk-button-primary uk-button-small" type="submit">
+          {% if mode == "update" %}Salva modifiche{% else %}Crea sub-progetto{% endif %}
+        </button>
+        {% if mode == "update" %}
+          <a class="uk-button uk-button-default uk-button-small" href="/projects/subprojects/view?id={{ subproject.id }}">Annulla</a>
+        {% else %}
+          <a class="uk-button uk-button-default uk-button-small" href="/projects/view?id={{ project.id }}">Annulla</a>
+        {% endif %}
+      </div>
+    </form>
+  </section>
+{% endblock %}

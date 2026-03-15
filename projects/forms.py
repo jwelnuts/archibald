@@ -2,8 +2,9 @@ from django import forms
 
 from contacts.models import Contact
 from contacts.services import ensure_legacy_records_for_contact, sync_contacts_from_legacy, upsert_contact
+from planner.models import PlannerItem
 
-from .models import Category, Customer, Project
+from .models import Category, Customer, Project, SubProject, SubProjectActivity
 from .quick_create import create_quick_category
 
 
@@ -95,3 +96,65 @@ class ProjectForm(forms.ModelForm):
         if category_choice == "__new__" and not category_name:
             self.add_error("category_name", "Inserisci il nome della nuova categoria.")
         return cleaned
+
+
+class SubProjectForm(forms.ModelForm):
+    class Meta:
+        model = SubProject
+        fields = (
+            "title",
+            "description",
+            "status",
+            "priority",
+            "start_date",
+            "due_date",
+            "completion_percent",
+            "is_archived",
+        )
+        widgets = {
+            "start_date": forms.DateInput(attrs={"type": "date"}),
+            "due_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def clean_completion_percent(self):
+        value = self.cleaned_data.get("completion_percent")
+        if value is None:
+            return 0
+        if value < 0 or value > 100:
+            raise forms.ValidationError("Il progresso deve essere tra 0 e 100.")
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+        start_date = cleaned.get("start_date")
+        due_date = cleaned.get("due_date")
+        if start_date and due_date and start_date > due_date:
+            self.add_error("due_date", "La data fine deve essere successiva alla data inizio.")
+        return cleaned
+
+
+class SubProjectActivityForm(forms.ModelForm):
+    class Meta:
+        model = SubProjectActivity
+        fields = ("title", "description", "status", "due_date", "ordering")
+        widgets = {
+            "due_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+
+class ProjectPlannerQuickForm(forms.ModelForm):
+    class Meta:
+        model = PlannerItem
+        fields = ("title", "due_date", "amount", "category", "status", "note")
+        widgets = {
+            "due_date": forms.DateInput(attrs={"type": "date"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        owner = kwargs.pop("owner", None)
+        super().__init__(*args, **kwargs)
+        self.fields["status"].initial = self.initial.get("status", PlannerItem.Status.PLANNED)
+        if owner is not None:
+            self.fields["category"].queryset = Category.objects.filter(owner=owner).order_by("name")
+        else:
+            self.fields["category"].queryset = Category.objects.none()

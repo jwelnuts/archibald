@@ -3,319 +3,505 @@
 
 {% block title %}MIO - {{ project.name }}{% endblock %}
 
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'projects/project_detail.css' %}">
+{% endblock %}
+
 {% block content %}
-  <section class="hero projects-hero" id="project-head">
-    
-    <div class="hero-copy project-topbar" id="project-head-topbar">
-      <div class="project-topbar-main">
-        <div class="hero-tag">Project cockpit</div>
-        <div class="project-title-row">
-          <div class="project-title-group">
-            <div class="project-breadcrumb">Projects · {{ project.name }}</div>
-            <h1>{{ project.name }}</h1>
-          </div>
-          <div class="project-meta">
-            <span class="badge {% if project.is_archived %}warn{% else %}ok{% endif %}">
-              {% if project.is_archived %}Archiviato{% else %}Attivo{% endif %}
-            </span>
-            <span class="meta-pill">
-              Cliente: {% if project.customer %}{{ project.customer.name }}{% else %}-{% endif %}
-            </span>
-            <span class="meta-pill">Aggiornato: {{ project.updated_at|date:"d/m/Y" }}</span>
-          </div>
-        </div>
-        <p class="project-desc">
-          {% if project.description %}
-            {{ project.description }}
-          {% else %}
-            <span class="muted">Nessuna descrizione per questo progetto.</span>
-          {% endif %}
-        </p>
-        <div class="projects-kpi-inline">
-          <span class="projects-kpi-chip"><strong>{{ counts.transactions }}</strong> transazioni</span>
-          <span class="projects-kpi-chip"><strong>{{ counts.subscriptions }}</strong> abbonamenti</span>
-          <span class="projects-kpi-chip"><strong>{{ counts.planner_items }}</strong> planner</span>
-          <span class="projects-kpi-chip"><strong>{{ counts.routine_items }}</strong> routine</span>
-        </div>
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin project-detail-shell">
+    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap project-detail-head">
+      <div>
+        <p class="uk-text-meta project-detail-kicker uk-margin-remove">Project cockpit</p>
+        <h1 class="uk-margin-small-top uk-margin-remove-bottom">{{ project.name }}</h1>
+        <p class="uk-text-meta uk-margin-small-top project-detail-breadcrumb">Projects / View / {{ project.name }}</p>
       </div>
-      <div class="project-actions">
-        <div class="hero-actions" data-module="projects_detail">
-        {% if "back" in allowed_actions %}
-          <a class="btn" href="/projects/" data-action="back">Torna ai progetti</a>
+      <div class="uk-flex uk-flex-wrap uk-gap-small project-detail-meta">
+        {% if project.is_archived %}
+          <span class="uk-label uk-label-warning">Archiviato</span>
+        {% else %}
+          <span class="uk-label uk-label-success">Attivo</span>
         {% endif %}
-        {% if "edit" in allowed_actions %}
-          <a class="btn primary" href="/projects/api/update?id={{ project.id }}" data-action="edit">Modifica</a>
-        {% endif %}
-        {% if "expense" in allowed_actions %}
-          <a class="btn" href="/transactions/?open=new&tx_type=OUT&project={{ project.id }}" data-action="expense">Inserisci spesa</a>
-        {% endif %}
-        {% if "income" in allowed_actions %}
-          <a class="btn" href="/transactions/?open=new&tx_type=IN&project={{ project.id }}" data-action="income">Inserisci guadagno</a>
-        {% endif %}
-        {% if "planner" in allowed_actions %}
-          <a class="btn" href="/planner/add?project={{ project.id }}" data-action="planner">Aggiungi promemoria</a>
-        {% endif %}
-        {% if "routine_item" in allowed_actions %}
-          <a class="btn" href="/routines/items/add?project={{ project.id }}" data-action="routine_item">Aggiungi routine</a>
-        {% endif %}
-        {% if "storyboard" in allowed_actions %}
-          <a class="btn" href="/projects/storyboard?id={{ project.id }}" data-action="storyboard">Storyboard</a>
-        {% endif %}
-        {% if "config" in allowed_actions %}
-          <a class="btn" href="/projects/hero-actions?id={{ project.id }}" data-action="config">Configura tasti</a>
-        {% endif %}
-        </div>
-        {% if hidden_actions %}
-          <div class="floating-menu-wrap">
-            <button id="hidden-actions-trigger" class="btn" type="button" aria-haspopup="menu" aria-expanded="false">
-              Azioni nascoste ({{ hidden_actions|length }})
-            </button>
-            <div id="hidden-actions-menu" class="floating-menu" role="menu" hidden>
+        <span class="uk-label">Cliente: {% if project.customer %}{{ project.customer.name }}{% else %}-{% endif %}</span>
+        <span class="uk-label">Categoria: {% if project.category %}{{ project.category.name }}{% else %}-{% endif %}</span>
+        <span class="uk-label">Aggiornato: {{ project.updated_at|date:"d/m/Y" }}</span>
+      </div>
+    </div>
+
+    <p class="uk-margin-small-top project-detail-description">
+      {% if project.description %}
+        {{ project.description }}
+      {% else %}
+        <span class="uk-text-meta">Nessuna descrizione inserita.</span>
+      {% endif %}
+    </p>
+
+    <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-top hero-actions" data-module="projects_detail">
+      {% if "back" in allowed_actions %}
+        <a class="uk-button uk-button-default uk-button-small" href="/projects/" data-action="back">
+          <span uk-icon="icon: arrow-left"></span>
+          <span class="uk-margin-small-left">Torna ai progetti</span>
+        </a>
+      {% endif %}
+      {% if "edit" in allowed_actions %}
+        <a class="uk-button uk-button-primary uk-button-small" href="/projects/api/update?id={{ project.id }}" data-action="edit">
+          <span uk-icon="icon: file-edit"></span>
+          <span class="uk-margin-small-left">Modifica</span>
+        </a>
+      {% endif %}
+      {% if "expense" in allowed_actions %}
+        <a class="uk-button uk-button-default uk-button-small" href="/transactions/?open=new&tx_type=OUT&project={{ project.id }}" data-action="expense">
+          Inserisci spesa
+        </a>
+      {% endif %}
+      {% if "income" in allowed_actions %}
+        <a class="uk-button uk-button-default uk-button-small" href="/transactions/?open=new&tx_type=IN&project={{ project.id }}" data-action="income">
+          Inserisci guadagno
+        </a>
+      {% endif %}
+      {% if "planner" in allowed_actions %}
+        <button
+          class="uk-button uk-button-default uk-button-small"
+          type="button"
+          uk-toggle="target: #project-planner-modal"
+          data-action="planner"
+        >
+          Aggiungi promemoria
+        </button>
+      {% endif %}
+      {% if "routine_item" in allowed_actions %}
+        <a class="uk-button uk-button-default uk-button-small" href="/routines/items/add?project={{ project.id }}" data-action="routine_item">
+          Aggiungi routine
+        </a>
+      {% endif %}
+      {% if "storyboard" in allowed_actions %}
+        <a class="uk-button uk-button-default uk-button-small" href="/projects/storyboard?id={{ project.id }}" data-action="storyboard">
+          Storyboard
+        </a>
+      {% endif %}
+      {% if "config" in allowed_actions %}
+        <a class="uk-button uk-button-default uk-button-small" href="/projects/hero-actions?id={{ project.id }}" data-action="config">
+          Configura tasti
+        </a>
+      {% endif %}
+      {% if hidden_actions %}
+        <div class="uk-inline">
+          <button class="uk-button uk-button-default uk-button-small" type="button">
+            Azioni nascoste ({{ hidden_actions|length }})
+          </button>
+          <div uk-dropdown="mode: click; pos: bottom-right">
+            <ul class="uk-nav uk-dropdown-nav">
               {% for action in hidden_actions %}
                 {% if action.key == "back" %}
-                  <a class="btn" href="/projects/" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                  <li><a href="/projects/">{{ action.label }}</a></li>
                 {% elif action.key == "edit" %}
-                  <a class="btn" href="/projects/api/update?id={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                  <li><a href="/projects/api/update?id={{ project.id }}">{{ action.label }}</a></li>
                 {% elif action.key == "expense" %}
-                  <a class="btn" href="/transactions/?open=new&tx_type=OUT&project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                  <li><a href="/transactions/?open=new&tx_type=OUT&project={{ project.id }}">{{ action.label }}</a></li>
                 {% elif action.key == "income" %}
-                  <a class="btn" href="/transactions/?open=new&tx_type=IN&project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                  <li><a href="/transactions/?open=new&tx_type=IN&project={{ project.id }}">{{ action.label }}</a></li>
                 {% elif action.key == "planner" %}
-                  <a class="btn" href="/planner/add?project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                  <li><a href="#project-planner-modal" uk-toggle>{{ action.label }}</a></li>
                 {% elif action.key == "routine_item" %}
-                  <a class="btn" href="/routines/items/add?project={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                  <li><a href="/routines/items/add?project={{ project.id }}">{{ action.label }}</a></li>
                 {% elif action.key == "storyboard" %}
-                  <a class="btn" href="/projects/storyboard?id={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                  <li><a href="/projects/storyboard?id={{ project.id }}">{{ action.label }}</a></li>
                 {% elif action.key == "config" %}
-                  <a class="btn" href="/projects/hero-actions?id={{ project.id }}" role="menuitem" data-action="{{ action.key }}">{{ action.label }}</a>
+                  <li><a href="/projects/hero-actions?id={{ project.id }}">{{ action.label }}</a></li>
                 {% endif %}
               {% endfor %}
-            </div>
+            </ul>
           </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-5@xl uk-margin-top" uk-grid>
+      <div>
+        <article class="project-detail-kpi">
+          <div class="project-detail-kpi-label">Transazioni</div>
+          <div class="project-detail-kpi-value">{{ counts.transactions }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="project-detail-kpi">
+          <div class="project-detail-kpi-label">Abbonamenti</div>
+          <div class="project-detail-kpi-value">{{ counts.subscriptions }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="project-detail-kpi">
+          <div class="project-detail-kpi-label">Planner</div>
+          <div class="project-detail-kpi-value">{{ counts.planner_items }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="project-detail-kpi">
+          <div class="project-detail-kpi-label">Routine</div>
+          <div class="project-detail-kpi-value">{{ counts.routine_items }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="project-detail-kpi">
+          <div class="project-detail-kpi-label">Sub-progetti</div>
+          <div class="project-detail-kpi-value">{{ counts.subprojects }}</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="uk-grid-small uk-child-width-1-1 uk-child-width-1-3@l uk-margin" uk-grid id="project-stats-grid">
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body project-detail-card">
+        <h2 class="uk-margin-remove">Transazioni per tipo</h2>
+        {% if counts.transactions > 0 %}
+          <ul class="uk-list uk-list-divider uk-margin-top project-breakdown-list">
+            {% for item in tx_type_counts %}
+              <li>
+                <div class="project-breakdown-row">
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.total }}</strong>
+                </div>
+                <progress class="uk-progress" value="{% widthratio item.total counts.transactions 100 %}" max="100"></progress>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-margin-top">Nessuna transazione collegata.</div>
         {% endif %}
-      </div>
+      </article>
     </div>
-    
-    <div class="hero-card projects-hero-card">
-      <div class="card-title">Dettagli progetto</div>
-      <ul class="list">
-        <li>
-          <span class="muted">Categoria</span>
-          <span>{% if project.category %}{{ project.category.name }}{% else %}-{% endif %}</span>
-        </li>
-        <li>
-          <span class="muted">Cliente</span>
-          <span>{% if project.customer %}{{ project.customer.name }}{% else %}-{% endif %}</span>
-        </li>
-        <li>
-          <span class="muted">Stato</span>
-          <span>{% if project.is_archived %}Archiviato{% else %}Attivo{% endif %}</span>
-        </li>
-        <li>
-          <span class="muted">Creato</span>
-          <span>{{ project.created_at|date:"d/m/Y H:i" }}</span>
-        </li>
-        <li>
-          <span class="muted">Aggiornato</span>
-          <span>{{ project.updated_at|date:"d/m/Y H:i" }}</span>
-        </li>
-      </ul>
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body project-detail-card">
+        <h2 class="uk-margin-remove">Abbonamenti per stato</h2>
+        {% if counts.subscriptions > 0 %}
+          <ul class="uk-list uk-list-divider uk-margin-top project-breakdown-list">
+            {% for item in sub_status_counts %}
+              <li>
+                <div class="project-breakdown-row">
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.total }}</strong>
+                </div>
+                <progress class="uk-progress" value="{% widthratio item.total counts.subscriptions 100 %}" max="100"></progress>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-margin-top">Nessun abbonamento collegato.</div>
+        {% endif %}
+      </article>
+    </div>
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body project-detail-card">
+        <h2 class="uk-margin-remove">Planner per stato</h2>
+        {% if counts.planner_items > 0 %}
+          <ul class="uk-list uk-list-divider uk-margin-top project-breakdown-list">
+            {% for item in planner_status_counts %}
+              <li>
+                <div class="project-breakdown-row">
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.total }}</strong>
+                </div>
+                <progress class="uk-progress" value="{% widthratio item.total counts.planner_items 100 %}" max="100"></progress>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-margin-top">Nessun item planner collegato.</div>
+        {% endif %}
+      </article>
     </div>
   </section>
 
-  <section class="grid projects-detail-grid" id="project-stats-grid">
-    <article class="panel">
-      <h2>Riepilogo</h2>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-label">Transazioni</div>
-          <div class="stat-value">{{ counts.transactions }}</div>
+  <section class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@l uk-margin" uk-grid id="project-related-grid">
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body project-detail-card">
+        <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+          <h2 class="uk-margin-remove">Ultime transazioni</h2>
+          <a class="uk-button uk-button-primary uk-button-small" href="/transactions/?open=new&project={{ project.id }}">
+            Aggiungi transazione
+          </a>
         </div>
-        <div class="stat">
-          <div class="stat-label">Abbonamenti</div>
-          <div class="stat-value">{{ counts.subscriptions }}</div>
+        {% if transactions %}
+          <ul class="uk-list uk-list-divider uk-margin-top">
+            {% for tx in transactions %}
+              <li class="project-compact-row">
+                <div>
+                  <div class="project-row-title">{{ tx.get_tx_type_display }}</div>
+                  <div class="uk-text-meta">{{ tx.date|date:"d/m/Y" }}</div>
+                </div>
+                <div class="uk-text-right">
+                  <strong>{{ tx.amount }} {{ tx.currency.code }}</strong>
+                  <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top uk-flex-right">
+                    <a class="uk-button uk-button-default uk-button-small" href="/transactions/?open=edit&id={{ tx.id }}">Modifica</a>
+                    <a class="uk-button uk-button-danger uk-button-small" href="/transactions/?open=delete&id={{ tx.id }}">Rimuovi</a>
+                  </div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-margin-top">Nessuna transazione collegata.</div>
+        {% endif %}
+      </article>
+    </div>
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body project-detail-card">
+        <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+          <h2 class="uk-margin-remove">Abbonamenti collegati</h2>
+          <a
+            class="uk-button uk-button-primary uk-button-small"
+            href="/subs/api/add?project={{ project.id }}&next=/projects/view?id={{ project.id }}"
+          >
+            Aggiungi abbonamento
+          </a>
         </div>
-        <div class="stat">
-          <div class="stat-label">Planner</div>
-          <div class="stat-value">{{ counts.planner_items }}</div>
+        {% if subscriptions %}
+          <ul class="uk-list uk-list-divider uk-margin-top">
+            {% for sub in subscriptions %}
+              <li class="project-compact-row">
+                <div>
+                  <div class="project-row-title">{{ sub.name }}</div>
+                  <div class="uk-text-meta">{{ sub.get_status_display }}</div>
+                </div>
+                <div class="uk-text-right">
+                  <strong>{{ sub.amount }} {{ sub.currency.code }}</strong>
+                  <div class="uk-text-meta">{% if sub.next_due_date %}{{ sub.next_due_date|date:"d/m/Y" }}{% else %}-{% endif %}</div>
+                  <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top uk-flex-right">
+                    <form method="post" class="uk-margin-remove">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="update_project_subscription_status">
+                      <input type="hidden" name="subscription_id" value="{{ sub.id }}">
+                      {% if sub.status == "ACTIVE" %}
+                        <input type="hidden" name="status" value="PAUSED">
+                        <button class="uk-button uk-button-default uk-button-small" type="submit">Pausa</button>
+                      {% elif sub.status == "PAUSED" %}
+                        <input type="hidden" name="status" value="ACTIVE">
+                        <button class="uk-button uk-button-primary uk-button-small" type="submit">Attiva</button>
+                      {% else %}
+                        <input type="hidden" name="status" value="ACTIVE">
+                        <button class="uk-button uk-button-primary uk-button-small" type="submit">Riattiva</button>
+                      {% endif %}
+                    </form>
+                    <a class="uk-button uk-button-default uk-button-small" href="/subs/api/update?id={{ sub.id }}">Modifica</a>
+                  </div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-margin-top">Nessun abbonamento collegato.</div>
+        {% endif %}
+      </article>
+    </div>
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body project-detail-card">
+        <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+          <h2 class="uk-margin-remove">Planner items</h2>
+          <button class="uk-button uk-button-primary uk-button-small" type="button" uk-toggle="target: #project-planner-modal">
+            Aggiungi planner item
+          </button>
         </div>
-      </div>
-    </article>
-
-    <article class="panel">
-      <h2>Transazioni per tipo</h2>
-      <ul class="list">
-        {% for item in tx_type_counts %}
-          <li>
-            <span>{{ item.label }}</span>
-            <span class="muted">{{ item.total }}</span>
-          </li>
-        {% endfor %}
-      </ul>
-    </article>
-
-    <article class="panel">
-      <h2>Abbonamenti per stato</h2>
-      <ul class="list">
-        {% for item in sub_status_counts %}
-          <li>
-            <span>{{ item.label }}</span>
-            <span class="muted">{{ item.total }}</span>
-          </li>
-        {% endfor %}
-      </ul>
-    </article>
-
-    <article class="panel">
-      <h2>Planner per stato</h2>
-      <ul class="list">
-        {% for item in planner_status_counts %}
-          <li>
-            <span>{{ item.label }}</span>
-            <span class="muted">{{ item.total }}</span>
-          </li>
-        {% endfor %}
-      </ul>
-    </article>
+        {% if planner_items %}
+          <ul class="uk-list uk-list-divider uk-margin-top">
+            {% for item in planner_items %}
+              <li class="project-compact-row">
+                <div>
+                  <div class="project-row-title">{{ item.title }}</div>
+                  <div class="uk-text-meta">
+                    {{ item.get_status_display }}
+                    {% if item.due_date %} · {{ item.due_date|date:"d/m/Y" }}{% endif %}
+                  </div>
+                </div>
+                <div class="uk-flex uk-flex-wrap uk-gap-small uk-flex-middle">
+                  <form method="post" class="uk-margin-remove">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update_project_planner_status">
+                    <input type="hidden" name="planner_item_id" value="{{ item.id }}">
+                    {% if item.status == "DONE" %}
+                      <input type="hidden" name="status" value="PLANNED">
+                      <button class="uk-button uk-button-default uk-button-small" type="submit">Riapri</button>
+                    {% else %}
+                      <input type="hidden" name="status" value="DONE">
+                      <button class="uk-button uk-button-primary uk-button-small" type="submit">Conferma</button>
+                    {% endif %}
+                  </form>
+                  <a class="uk-button uk-button-default uk-button-small" href="/planner/update?id={{ item.id }}">
+                    Modifica
+                  </a>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-margin-top">Nessun item in planner collegato.</div>
+        {% endif %}
+      </article>
+    </div>
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body project-detail-card">
+        <h2 class="uk-margin-remove">Routine collegate</h2>
+        {% if routine_items %}
+          <ul class="uk-list uk-list-divider uk-margin-top">
+            {% for item in routine_items %}
+              <li class="project-compact-row">
+                <div>
+                  <div class="project-row-title">{{ item.title }}</div>
+                  <div class="uk-text-meta">{{ item.routine.name }}</div>
+                </div>
+                <div class="uk-text-right">
+                  <div class="uk-text-meta">
+                    {{ item.get_weekday_display }}{% if item.time_start %}<br>{{ item.time_start|time:"H:i" }}{% if item.time_end %}-{{ item.time_end|time:"H:i" }}{% endif %}{% endif %}
+                  </div>
+                  <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top uk-flex-right">
+                    <a class="uk-button uk-button-default uk-button-small" href="/routines/items/update?id={{ item.id }}">Modifica</a>
+                  </div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-margin-top">Nessuna routine collegata.</div>
+        {% endif %}
+      </article>
+    </div>
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body project-detail-card">
+        <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+          <h2 class="uk-margin-remove">Sub-progetti</h2>
+          <a class="uk-button uk-button-primary uk-button-small" href="/projects/subprojects/add?project={{ project.id }}">
+            Nuovo sub-progetto
+          </a>
+        </div>
+        <div class="uk-grid-small uk-child-width-1-3 uk-margin-top" uk-grid>
+          <div>
+            <div class="uk-text-meta">Attivi</div>
+            <strong>{{ subproject_counts.active }}</strong>
+          </div>
+          <div>
+            <div class="uk-text-meta">Completati</div>
+            <strong>{{ subproject_counts.done }}</strong>
+          </div>
+          <div>
+            <div class="uk-text-meta">Bloccati</div>
+            <strong>{{ subproject_counts.blocked }}</strong>
+          </div>
+        </div>
+        {% if subprojects %}
+          <ul class="uk-list uk-list-divider uk-margin-top">
+            {% for sp in subprojects %}
+              <li class="project-compact-row">
+                <div>
+                  <div class="project-row-title">{{ sp.title }}</div>
+                  <div class="uk-text-meta">
+                    {{ sp.get_status_display }} · {{ sp.get_priority_display }}
+                    {% if sp.due_date %} · Scadenza {{ sp.due_date|date:"d/m/Y" }}{% endif %}
+                  </div>
+                </div>
+                <div class="uk-text-right">
+                  <div class="uk-text-meta">{{ sp.activities_done }}/{{ sp.activities_total }} attività</div>
+                  <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top uk-flex-right">
+                    <form method="post" class="uk-margin-remove">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="update_project_subproject_status">
+                      <input type="hidden" name="subproject_id" value="{{ sp.id }}">
+                      {% if sp.status == "done" %}
+                        <input type="hidden" name="status" value="in_progress">
+                        <button class="uk-button uk-button-default uk-button-small" type="submit">Riapri</button>
+                      {% else %}
+                        <input type="hidden" name="status" value="done">
+                        <button class="uk-button uk-button-primary uk-button-small" type="submit">Conferma</button>
+                      {% endif %}
+                    </form>
+                    <a class="uk-button uk-button-default uk-button-small" href="/projects/subprojects/update?id={{ sp.id }}">Modifica</a>
+                    <a class="uk-button uk-button-default uk-button-small" href="/projects/subprojects/view?id={{ sp.id }}">Gestisci</a>
+                  </div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-margin-top">Nessun sub-progetto associato.</div>
+        {% endif %}
+      </article>
+    </div>
   </section>
 
-  <section class="grid projects-detail-grid" id="project-related-grid">
-    <article class="panel">
-      <h2>Ultime transazioni</h2>
-      {% if transactions %}
-        <ul class="list">
-          {% for tx in transactions %}
-            <li>
-              <span>{{ tx.date|date:"d/m/Y" }} · {{ tx.get_tx_type_display }}</span>
-              <span class="muted">{{ tx.amount }} {{ tx.currency.code }}</span>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <div class="note">Nessuna transazione collegata.</div>
-      {% endif %}
-    </article>
+  <div id="project-planner-modal" uk-modal>
+    <div class="uk-modal-dialog uk-modal-body">
+      <button class="uk-modal-close-default" type="button" uk-close></button>
+      <h3 class="uk-modal-title">Aggiungi promemoria al progetto</h3>
+      <p class="uk-text-meta">
+        Il promemoria verrà associato a <strong>{{ project.name }}</strong>.
+      </p>
 
-    <article class="panel">
-      <h2>Abbonamenti collegati</h2>
-      {% if subscriptions %}
-        <ul class="list">
-          {% for sub in subscriptions %}
-            <li>
-              <span>{{ sub.name }} · {{ sub.get_status_display }}</span>
-              <span class="muted">{{ sub.amount }} {{ sub.currency.code }} · {{ sub.next_due_date|date:"d/m/Y" }}</span>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <div class="note">Nessun abbonamento collegato.</div>
-      {% endif %}
-    </article>
+      <form method="post" class="uk-form-stacked">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add_project_planner_item">
 
-    <article class="panel">
-      <h2>Planner items</h2>
-      {% if planner_items %}
-        <ul class="list">
-          {% for item in planner_items %}
-            <li>
-              <span>{{ item.title }}</span>
-              <span class="muted">
-                {% if item.due_date %}{{ item.due_date|date:"d/m/Y" }} · {% endif %}
-                {{ item.get_status_display }}
-              </span>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <div class="note">Nessun item in planner collegato.</div>
-      {% endif %}
-    </article>
+        {% if planner_quick_form.non_field_errors %}
+          <div class="uk-alert-danger">{{ planner_quick_form.non_field_errors }}</div>
+        {% endif %}
 
-    <article class="panel">
-      <h2>Routine collegate</h2>
-      {% if routine_items %}
-        <ul class="list">
-          {% for item in routine_items %}
-            <li>
-              <span>{{ item.title }}</span>
-              <span class="muted">{{ item.routine.name }} · {{ item.get_weekday_display }}{% if item.time_start %} · {{ item.time_start|time:"H:i" }}{% endif %}{% if item.time_end %}-{{ item.time_end|time:"H:i" }}{% endif %}</span>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <div class="note">Nessuna routine collegata.</div>
-      {% endif %}
-    </article>
-  </section>
-{% if hidden_actions %}
-  <script src="{% static 'core/vendor/floating-ui/floating-ui.core.umd.min.js' %}"></script>
-  <script src="{% static 'core/vendor/floating-ui/floating-ui.dom.umd.min.js' %}"></script>
-  <script>
-    (function () {
-      var floating = window.FloatingUIDOM;
-      if (!floating) return;
-      var computePosition = floating.computePosition;
-      var autoUpdate = floating.autoUpdate;
-      var offset = floating.offset;
-      var flip = floating.flip;
-      var shift = floating.shift;
+        <div class="uk-margin-small">
+          <label class="uk-form-label" for="{{ planner_quick_form.title.id_for_label }}">Titolo</label>
+          <div class="uk-form-controls">{{ planner_quick_form.title }}</div>
+          {% if planner_quick_form.title.errors %}<div class="uk-text-danger uk-text-small">{{ planner_quick_form.title.errors|join:", " }}</div>{% endif %}
+        </div>
 
-      var trigger = document.getElementById("hidden-actions-trigger");
-      var menu = document.getElementById("hidden-actions-menu");
-      if (trigger && menu) {
-        var cleanup = null;
+        <div class="uk-grid-small uk-child-width-1-3@m" uk-grid>
+          <div>
+            <label class="uk-form-label" for="{{ planner_quick_form.due_date.id_for_label }}">Scadenza</label>
+            <div class="uk-form-controls">{{ planner_quick_form.due_date }}</div>
+            {% if planner_quick_form.due_date.errors %}<div class="uk-text-danger uk-text-small">{{ planner_quick_form.due_date.errors|join:", " }}</div>{% endif %}
+          </div>
+          <div>
+            <label class="uk-form-label" for="{{ planner_quick_form.status.id_for_label }}">Stato</label>
+            <div class="uk-form-controls">{{ planner_quick_form.status }}</div>
+            {% if planner_quick_form.status.errors %}<div class="uk-text-danger uk-text-small">{{ planner_quick_form.status.errors|join:", " }}</div>{% endif %}
+          </div>
+          <div>
+            <label class="uk-form-label" for="{{ planner_quick_form.amount.id_for_label }}">Importo</label>
+            <div class="uk-form-controls">{{ planner_quick_form.amount }}</div>
+            {% if planner_quick_form.amount.errors %}<div class="uk-text-danger uk-text-small">{{ planner_quick_form.amount.errors|join:", " }}</div>{% endif %}
+          </div>
+        </div>
 
-        function update() {
-          return computePosition(trigger, menu, {
-            placement: "bottom-start",
-            middleware: [offset(8), flip(), shift({padding: 8})],
-          }).then(function (result) {
-            Object.assign(menu.style, {
-              left: result.x + "px",
-              top: result.y + "px",
-            });
-          });
+        <div class="uk-margin-small">
+          <label class="uk-form-label" for="{{ planner_quick_form.category.id_for_label }}">Categoria</label>
+          <div class="uk-form-controls">{{ planner_quick_form.category }}</div>
+          {% if planner_quick_form.category.errors %}<div class="uk-text-danger uk-text-small">{{ planner_quick_form.category.errors|join:", " }}</div>{% endif %}
+        </div>
+
+        <div class="uk-margin-small">
+          <label class="uk-form-label" for="{{ planner_quick_form.note.id_for_label }}">Note</label>
+          <div class="uk-form-controls">{{ planner_quick_form.note }}</div>
+          {% if planner_quick_form.note.errors %}<div class="uk-text-danger uk-text-small">{{ planner_quick_form.note.errors|join:", " }}</div>{% endif %}
+        </div>
+
+        <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-top">
+          <button class="uk-button uk-button-primary uk-button-small" type="submit">Salva promemoria</button>
+          <button class="uk-button uk-button-default uk-button-small uk-modal-close" type="button">Annulla</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  {% if planner_modal_open %}
+    <script>
+      (function () {
+        function openPlannerModal() {
+          if (!window.UIkit || !window.UIkit.modal) return;
+          var modal = window.UIkit.modal("#project-planner-modal");
+          if (modal) modal.show();
         }
-
-        function openMenu() {
-          menu.hidden = false;
-          menu.style.display = "grid";
-          trigger.setAttribute("aria-expanded", "true");
-          menu.style.width = "max-content";
-          cleanup = autoUpdate(trigger, menu, update);
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", openPlannerModal);
+        } else {
+          openPlannerModal();
         }
-
-        function closeMenu() {
-          menu.hidden = true;
-          menu.style.display = "none";
-          trigger.setAttribute("aria-expanded", "false");
-          if (cleanup) {
-            cleanup();
-            cleanup = null;
-          }
-        }
-
-        trigger.addEventListener("click", function () {
-          if (menu.hidden) {
-            openMenu();
-          } else {
-            closeMenu();
-          }
-        });
-
-        menu.addEventListener("click", function () {
-          closeMenu();
-        });
-
-        document.addEventListener("click", function (event) {
-          if (!menu.hidden && !menu.contains(event.target) && !trigger.contains(event.target)) {
-            closeMenu();
-          }
-        });
-      }
-    })();
-  </script>
-{% endif %}
+      })();
+    </script>
+  {% endif %}
   {% if hero_actions_override %}
     {{ hero_actions_override|json_script:"hero-actions-override" }}
   {% endif %}
