@@ -7,7 +7,7 @@ from django.test import TestCase
 from memory_stock.models import MemoryStockItem
 from .actions import EmailActionOutcome, detect_action_from_subject, execute_action_from_email, execute_action_manually
 from .forms import ArchibaldEmailFlagRuleForm, ArchibaldMailboxConfigForm
-from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldMailboxConfig
+from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldInboundCategory, ArchibaldMailboxConfig
 from .services import ParsedInboundEmail, parse_inbound_email, process_inbox_for_config, send_notification_for_config
 
 
@@ -450,10 +450,11 @@ class ArchibaldMailInboundQueueViewsTests(TestCase):
         self.assertContains(response, "Conferma pagamento")
 
     def test_apply_inbound_message_sets_review_status(self):
+        existing_category = ArchibaldInboundCategory.objects.create(owner=self.user, label="Pagamento")
         response = self.client.post(
             f"/archibald-mail/inbox/{self.inbound.id}/apply",
             data={
-                "classification_label": "Pagamento",
+                "classification_category_id": str(existing_category.id),
                 "action_key": "transaction.capture",
                 "review_notes": "Confermato da portale esterno",
             },
@@ -463,6 +464,24 @@ class ArchibaldMailInboundQueueViewsTests(TestCase):
         self.assertEqual(self.inbound.review_status, ArchibaldEmailMessage.ReviewStatus.APPLIED)
         self.assertEqual(self.inbound.selected_action_key, "transaction.capture")
         self.assertEqual(self.inbound.classification_label, "Pagamento")
+        self.assertEqual(self.inbound.classification_category_id, existing_category.id)
+
+    def test_apply_inbound_message_creates_new_category_when_requested(self):
+        response = self.client.post(
+            f"/archibald-mail/inbox/{self.inbound.id}/apply",
+            data={
+                "classification_category_id": "__new__",
+                "new_category_label": "Rimborso",
+                "action_key": "",
+                "review_notes": "In attesa verifica",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.inbound.refresh_from_db()
+        created_category = ArchibaldInboundCategory.objects.get(owner=self.user, label="Rimborso")
+        self.assertEqual(self.inbound.classification_category_id, created_category.id)
+        self.assertEqual(self.inbound.classification_label, "Rimborso")
+        self.assertEqual(self.inbound.review_status, ArchibaldEmailMessage.ReviewStatus.PENDING)
 
     def test_ignore_and_reopen_inbound_message(self):
         ignore_resp = self.client.post(f"/archibald-mail/inbox/{self.inbound.id}/ignore", data={})

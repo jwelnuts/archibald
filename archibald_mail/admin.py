@@ -1,6 +1,11 @@
 from django.contrib import admin
 
-from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldMailboxConfig
+from .models import (
+    ArchibaldEmailFlagRule,
+    ArchibaldEmailMessage,
+    ArchibaldInboundCategory,
+    ArchibaldMailboxConfig,
+)
 
 
 @admin.register(ArchibaldMailboxConfig)
@@ -27,6 +32,7 @@ class ArchibaldEmailMessageAdmin(admin.ModelAdmin):
         "direction",
         "status",
         "review_status",
+        "classification_category",
         "selected_action_key",
         "sender",
         "recipient",
@@ -38,6 +44,7 @@ class ArchibaldEmailMessageAdmin(admin.ModelAdmin):
         "recipient",
         "subject",
         "message_id",
+        "classification_category__label",
         "classification_label",
         "selected_action_key",
     )
@@ -57,3 +64,10 @@ class ArchibaldEmailFlagRuleAdmin(admin.ModelAdmin):
     )
     list_filter = ("action_key", "is_active")
     search_fields = ("owner__username", "flag_token", "label", "action_key")
+
+
+@admin.register(ArchibaldInboundCategory)
+class ArchibaldInboundCategoryAdmin(admin.ModelAdmin):
+    list_display = ("owner", "label", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("owner__username", "label")

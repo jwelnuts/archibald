@@ -69,9 +69,10 @@
                 <td>
                   <div><strong>{{ row.subject|default:"(senza oggetto)" }}</strong></div>
                   <div class="uk-text-meta">{{ row.body_text|default:"-"|truncatechars:220 }}</div>
-                  {% if row.classification_label or row.selected_action_key %}
+                  {% if row.classification_category or row.classification_label or row.selected_action_key %}
                     <div class="uk-margin-small-top">
-                      {% if row.classification_label %}<span class="uk-label">{{ row.classification_label }}</span>{% endif %}
+                      {% if row.classification_category %}<span class="uk-label">{{ row.classification_category.label }}</span>{% endif %}
+                      {% if row.classification_label and not row.classification_category %}<span class="uk-label">{{ row.classification_label }}</span>{% endif %}
                       {% if row.selected_action_key %}<span class="uk-label uk-label-success">{{ row.selected_action_key }}</span>{% endif %}
                     </div>
                   {% endif %}
@@ -80,7 +81,30 @@
                   <form method="post" action="/archibald-mail/inbox/{{ row.id }}/apply" class="uk-form-stacked">
                     {% csrf_token %}
                     <div class="uk-margin-small-bottom">
-                      <input class="uk-input uk-form-small" type="text" name="classification_label" value="{{ row.classification_label }}" placeholder="Categoria (es. pagamento, reminder)">
+                      <select
+                        class="uk-select uk-form-small"
+                        name="classification_category_id"
+                        data-category-selector
+                        data-new-category-target="new-category-box-{{ row.id }}"
+                      >
+                        <option value="">Nessuna categoria</option>
+                        {% for category in categories %}
+                          <option value="{{ category.id }}" {% if row.classification_category_id == category.id %}selected{% endif %}>{{ category.label }}</option>
+                        {% endfor %}
+                        <option value="__new__" {% if not row.classification_category and row.classification_label %}selected{% endif %}>+ nuova categoria</option>
+                      </select>
+                    </div>
+                    <div
+                      id="new-category-box-{{ row.id }}"
+                      class="uk-margin-small-bottom {% if row.classification_category or not row.classification_label %}uk-hidden{% endif %}"
+                    >
+                      <input
+                        class="uk-input uk-form-small"
+                        type="text"
+                        name="new_category_label"
+                        value="{% if not row.classification_category %}{{ row.classification_label }}{% endif %}"
+                        placeholder="Nuova categoria..."
+                      >
                     </div>
                     <div class="uk-margin-small-bottom">
                       <select class="uk-select uk-form-small" name="action_key">
@@ -95,16 +119,10 @@
                     </div>
                     <div class="uk-flex uk-flex-wrap uk-gap-small">
                       <button class="uk-button uk-button-primary uk-button-small" type="submit">Applica</button>
-                  </form>
-                      <form method="post" action="/archibald-mail/inbox/{{ row.id }}/ignore" class="uk-margin-remove">
-                        {% csrf_token %}
-                        <button class="uk-button uk-button-default uk-button-small" type="submit">Ignora</button>
-                      </form>
-                      <form method="post" action="/archibald-mail/inbox/{{ row.id }}/reopen" class="uk-margin-remove">
-                        {% csrf_token %}
-                        <button class="uk-button uk-button-default uk-button-small" type="submit">Riapri</button>
-                      </form>
+                      <button class="uk-button uk-button-default uk-button-small" type="submit" formaction="/archibald-mail/inbox/{{ row.id }}/ignore">Ignora</button>
+                      <button class="uk-button uk-button-default uk-button-small" type="submit" formaction="/archibald-mail/inbox/{{ row.id }}/reopen">Riapri</button>
                     </div>
+                  </form>
                 </td>
               </tr>
             {% endfor %}
@@ -115,4 +133,25 @@
       <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessuna email inbound nel filtro selezionato.</div>
     {% endif %}
   </section>
+
+  <script>
+    (function () {
+      const selectors = document.querySelectorAll("[data-category-selector]");
+      selectors.forEach((select) => {
+        const targetId = select.getAttribute("data-new-category-target");
+        const box = document.getElementById(targetId);
+        if (!box) return;
+        const toggle = () => {
+          const show = select.value === "__new__";
+          box.classList.toggle("uk-hidden", !show);
+          if (!show) {
+            const input = box.querySelector("input[name='new_category_label']");
+            if (input) input.value = "";
+          }
+        };
+        select.addEventListener("change", toggle);
+        toggle();
+      });
+    })();
+  </script>
 {% endblock %}

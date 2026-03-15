@@ -11,13 +11,65 @@ from .actions import (
     list_supported_email_actions,
 )
 from .forms import ArchibaldEmailFlagRuleForm, ArchibaldMailboxConfigForm, SendTestEmailForm
-from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldMailboxConfig
+from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldInboundCategory, ArchibaldMailboxConfig
 from .services import (
     ArchibaldMailError,
     process_inbox_for_config,
     send_notification_for_config,
     send_test_email,
 )
+
+
+DEFAULT_INBOUND_CATEGORIES = (
+    "Pagamento",
+    "Reminder",
+    "Scadenza",
+    "Evento",
+    "Altro",
+)
+
+
+def ensure_default_inbound_categories(owner) -> None:
+    if owner is None:
+        return
+    for label in DEFAULT_INBOUND_CATEGORIES:
+        ArchibaldInboundCategory.objects.get_or_create(
+            owner=owner,
+            label=label,
+            defaults={"is_active": True},
+        )
+
+
+def _resolve_inbound_category(owner, *, category_id: str, new_label: str, fallback_label: str = ""):
+    normalized_category_id = (category_id or "").strip()
+    normalized_new_label = (new_label or "").strip()[:80]
+    normalized_fallback = (fallback_label or "").strip()[:80]
+
+    if normalized_category_id and normalized_category_id != "__new__":
+        row = ArchibaldInboundCategory.objects.filter(owner=owner, id=normalized_category_id).first()
+        if row:
+            return row
+
+    if normalized_new_label:
+        row, _ = ArchibaldInboundCategory.objects.get_or_create(
+            owner=owner,
+            label=normalized_new_label,
+            defaults={"is_active": True},
+        )
+        if not row.is_active:
+            row.is_active = True
+            row.save(update_fields=["is_active", "updated_at"])
+        return row
+
+    if normalized_fallback:
+        row, _ = ArchibaldInboundCategory.objects.get_or_create(
+            owner=owner,
+            label=normalized_fallback,
+            defaults={"is_active": True},
+        )
+        return row
+
+    return None
 
 
 @login_required
@@ -202,13 +254,14 @@ def remove_flag_rule(request, rule_id: int):
 
 @login_required
 def inbound_queue(request):
+    ensure_default_inbound_categories(request.user)
     status_filter = (request.GET.get("status") or ArchibaldEmailMessage.ReviewStatus.PENDING).strip().upper()
     query = (request.GET.get("q") or "").strip()
 
     qs = ArchibaldEmailMessage.objects.filter(
         owner=request.user,
         direction=ArchibaldEmailMessage.Direction.INBOUND,
-    )
+    ).select_related("classification_category")
     if status_filter in {
         ArchibaldEmailMessage.ReviewStatus.PENDING,
         ArchibaldEmailMessage.ReviewStatus.APPLIED,
@@ -219,6 +272,9 @@ def inbound_queue(request):
         qs = qs.filter(subject__icontains=query)
 
     rows = list(qs.order_by("-created_at")[:120])
+    categories = list(
+        ArchibaldInboundCategory.objects.filter(owner=request.user, is_active=True).order_by("label")
+    )
     counts = {
         "pending": ArchibaldEmailMessage.objects.filter(
             owner=request.user,
@@ -246,6 +302,7 @@ def inbound_queue(request):
             "query": query,
             "counts": counts,
             "action_choices": list_action_choices(request.user),
+            "categories": categories,
         },
     )
 
@@ -262,13 +319,22 @@ def apply_inbound_message(request, message_id: int):
         direction=ArchibaldEmailMessage.Direction.INBOUND,
     )
     action_key = (request.POST.get("action_key") or "").strip()
-    category = (request.POST.get("classification_label") or "").strip()
+    category_id = request.POST.get("classification_category_id")
+    new_category_label = request.POST.get("new_category_label")
+    category_text_fallback = (request.POST.get("classification_label") or "").strip()
+    category = _resolve_inbound_category(
+        request.user,
+        category_id=category_id,
+        new_label=new_category_label,
+        fallback_label=category_text_fallback,
+    )
     notes = (request.POST.get("review_notes") or "").strip()
 
     if not action_key:
-        row.classification_label = category[:80]
+        row.classification_category = category
+        row.classification_label = (category.label if category else category_text_fallback)[:80]
         row.review_notes = notes[:3000]
-        row.save(update_fields=["classification_label", "review_notes", "updated_at"])
+        row.save(update_fields=["classification_category", "classification_label", "review_notes", "updated_at"])
         django_messages.success(request, "Classificazione salvata (nessuna azione applicata).")
         return redirect("/archibald-mail/inbox/")
 
@@ -282,13 +348,15 @@ def apply_inbound_message(request, message_id: int):
         return redirect("/archibald-mail/inbox/")
 
     row.selected_action_key = outcome.action_key
-    row.classification_label = (category or outcome.action_key)[:80]
+    row.classification_category = category
+    row.classification_label = ((category.label if category else category_text_fallback) or outcome.action_key)[:80]
     row.review_notes = notes[:3000]
     row.review_status = ArchibaldEmailMessage.ReviewStatus.APPLIED
     row.reviewed_at = timezone.now()
     row.save(
         update_fields=[
             "selected_action_key",
+            "classification_category",
             "classification_label",
             "review_notes",
             "review_status",
@@ -310,11 +378,31 @@ def ignore_inbound_message(request, message_id: int):
         owner=request.user,
         direction=ArchibaldEmailMessage.Direction.INBOUND,
     )
+    category_id = request.POST.get("classification_category_id")
+    new_category_label = request.POST.get("new_category_label")
+    category_text_fallback = (request.POST.get("classification_label") or row.classification_label or "").strip()
+    category = _resolve_inbound_category(
+        request.user,
+        category_id=category_id,
+        new_label=new_category_label,
+        fallback_label=category_text_fallback,
+    )
+
     row.review_status = ArchibaldEmailMessage.ReviewStatus.IGNORED
     row.reviewed_at = timezone.now()
     row.review_notes = (request.POST.get("review_notes") or row.review_notes or "").strip()[:3000]
-    row.classification_label = (request.POST.get("classification_label") or row.classification_label or "").strip()[:80]
-    row.save(update_fields=["review_status", "reviewed_at", "review_notes", "classification_label", "updated_at"])
+    row.classification_category = category
+    row.classification_label = ((category.label if category else category_text_fallback) or "").strip()[:80]
+    row.save(
+        update_fields=[
+            "review_status",
+            "reviewed_at",
+            "review_notes",
+            "classification_category",
+            "classification_label",
+            "updated_at",
+        ]
+    )
     django_messages.success(request, "Email marcata come ignorata.")
     return redirect("/archibald-mail/inbox/")
 

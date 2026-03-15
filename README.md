@@ -114,6 +114,7 @@ Note Stimulus:
   - pannello controllo email per inbox dedicata (es. `archibald@miorganizzo.ovh`)
   - configurazione/login IMAP/SMTP gestiti da `.env` (nel pannello sono sola lettura)
   - CRUD flag inbound da pannello (`/archibald-mail/flags/`) per categorizzare email in ingresso
+  - tabella categorie inbound con scelta da select e opzione `+nuova categoria` in triage inbox
   - inbox triage manuale (`/archibald-mail/inbox/`) per classificare email esterne senza flag
   - auto-reply email con generazione risposta Archibald (OpenAI)
   - routing azioni da oggetto email (es. `[MEMORY]`, `#MEMORY`, `ACTION:MEMORY`)

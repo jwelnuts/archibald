@@ -191,6 +191,30 @@ class ArchibaldEmailFlagRule(OwnedModel, TimeStampedModel):
         return bool(FLAG_TOKEN_RE.fullmatch((value or "").strip().upper()))
 
 
+class ArchibaldInboundCategory(OwnedModel, TimeStampedModel):
+    label = models.CharField(max_length=80)
+    is_active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "label"],
+                name="archibald_mail_inbound_category_owner_label_uniq",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["owner", "is_active", "label"]),
+        ]
+
+    def save(self, *args, **kwargs):
+        self.label = (self.label or "").strip()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.label
+
+
 class ArchibaldEmailMessage(OwnedModel, TimeStampedModel):
     class Direction(models.TextChoices):
         INBOUND = "INBOUND", "Inbound"
@@ -236,6 +260,13 @@ class ArchibaldEmailMessage(OwnedModel, TimeStampedModel):
     ai_response_text = models.TextField(blank=True)
     raw_headers = models.TextField(blank=True)
     error_text = models.TextField(blank=True)
+    classification_category = models.ForeignKey(
+        "archibald_mail.ArchibaldInboundCategory",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="messages",
+    )
     classification_label = models.CharField(max_length=80, blank=True)
     selected_action_key = models.CharField(max_length=64, blank=True)
     review_status = models.CharField(
