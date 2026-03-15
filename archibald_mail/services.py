@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import imaplib
+import os
 import re
 import smtplib
 from dataclasses import dataclass
@@ -132,12 +133,25 @@ def _append_signature(text: str, signature: str) -> str:
     return f"{text.rstrip()}\n\n{signature.strip()}"
 
 
+def _env_allowed_senders() -> set[str]:
+    raw = (os.getenv("ARCHIBALD_MAIL_ALLOWED_SENDERS") or "").strip()
+    if not raw:
+        return set()
+    parts = re.split(r"[,\n;]+", raw)
+    return {part.strip().lower() for part in parts if part and part.strip()}
+
+
 def _sender_allowed(config: ArchibaldMailboxConfig, sender: str) -> bool:
     sender = (sender or "").strip().lower()
     if not sender:
         return False
     if sender == (config.inbox_address or "").strip().lower():
         return False
+
+    env_whitelist = _env_allowed_senders()
+    if env_whitelist:
+        return sender in env_whitelist
+
     pattern = (config.allowed_sender_regex or "").strip()
     if not pattern:
         return True
@@ -313,6 +327,7 @@ def process_inbox_for_config(
     *,
     limit: int | None = None,
     force: bool = False,
+    search_criteria: tuple[str, ...] | None = None,
 ) -> dict:
     if not config.is_enabled and not force:
         return {"status": "disabled", "fetched": 0, "processed": 0, "replied": 0, "skipped": 0, "failed": 0}
@@ -348,9 +363,10 @@ def process_inbox_for_config(
         if select_status != "OK":
             raise ArchibaldMailError("Selezione mailbox IMAP fallita.")
 
-        search_status, data = mailbox.search(None, "UNSEEN")
+        criteria = tuple(search_criteria or ("UNSEEN",))
+        search_status, data = mailbox.search(None, *criteria)
         if search_status != "OK":
-            raise ArchibaldMailError("Ricerca messaggi UNSEEN fallita.")
+            raise ArchibaldMailError("Ricerca messaggi IMAP fallita.")
 
         all_ids = data[0].split() if data and data[0] else []
         selected_ids = all_ids[-max_items:]

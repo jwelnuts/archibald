@@ -52,7 +52,10 @@ class ArchibaldMailboxConfigForm(forms.ModelForm):
         }
         help_texts = {
             "auto_reply_signature": "Firma opzionale aggiunta in fondo alla risposta.",
-            "allowed_sender_regex": "Opzionale: rispondi solo ai mittenti che matchano questa regex.",
+            "allowed_sender_regex": (
+                "Opzionale: rispondi solo ai mittenti che matchano questa regex. "
+                "Se ARCHIBALD_MAIL_ALLOWED_SENDERS e configurato in .env, la whitelist ha priorita."
+            ),
             "max_inbox_emails_per_run": "Limite email processate per singolo run.",
             "notification_recipient": "Email destinatario riepilogo ogni 24 ore (configurabile da pannello).",
         }

@@ -47,7 +47,9 @@ services:
     command: >
       sh -c "python manage.py run_archibald_mail_worker
       --interval-seconds ${ARCHIBALD_MAIL_POLL_SECONDS:-300}
-      --limit ${ARCHIBALD_MAIL_POLL_LIMIT:-0}"
+      --limit ${ARCHIBALD_MAIL_POLL_LIMIT:-0}
+      --archi-fast-seconds ${ARCHIBALD_MAIL_ARCHI_FAST_POLL_SECONDS:-5}
+      --archi-fast-limit ${ARCHIBALD_MAIL_ARCHI_FAST_LIMIT:-3}"
 
   caddy:
     image: caddy:2.8-alpine

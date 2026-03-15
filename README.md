@@ -218,6 +218,12 @@ Opzionali (feature specifiche):
 - `ARCHIBALD_MAIL_SMTP_USERNAME` / `SMTP_USERNAME` (username SMTP fallback)
 - `ARCHIBALD_MAIL_SMTP_FROM` / `SMTP_FROM` (mittente SMTP fallback)
 - `ARCHIBALD_MAIL_SMTP_PASSWORD` (fallback password SMTP se non salvata nel DB)
+- `ARCHIBALD_MAIL_ALLOWED_SENDERS` (whitelist mittenti autorizzati, separati da virgola; se valorizzata ha priorita su `allowed_sender_regex`)
+- `ARCHIBALD_MAIL_POLL_SECONDS` (ciclo standard worker, default `300`)
+- `ARCHIBALD_MAIL_POLL_LIMIT` (limite email per ciclo standard, default `10`)
+- `ARCHIBALD_MAIL_ARCHI_FAST_ENABLED` (abilita corsia veloce subject `ARCHI`, default `true`)
+- `ARCHIBALD_MAIL_ARCHI_FAST_POLL_SECONDS` (intervallo corsia veloce ARCHI, default `5`)
+- `ARCHIBALD_MAIL_ARCHI_FAST_LIMIT` (limite email per ciclo veloce ARCHI, default `3`)
 - `VAULT_ENCRYPTION_KEY` (consigliata in prod)
 - `VAULT_TOTP_ISSUER` (default: `MIO Vault`)
 - `VAULT_SESSION_TIMEOUT_SECONDS` (default: `600`)
@@ -259,6 +265,11 @@ Flag azione email disponibili:
   - `#REMINDER`
   - `ACTION:REMINDER`
   - stato attuale: salvataggio temporaneo in `Memory Stock`
+- `archi.reply` tramite oggetto con:
+  - `[ARCHI]`
+  - `#ARCHI`
+  - `ACTION:ARCHI`
+  - risposta AI immediata (corsia veloce worker)
 
 Esempio `cron` (ogni 5 minuti inbox, notifiche giornaliere con controllo orario interno):
 
@@ -278,6 +289,9 @@ Opzioni utili:
 - `--run-once` esegue un solo ciclo (debug).
 - `--user <username|email>` limita il polling a un utente.
 - `--force` ignora `is_enabled`.
+- `--archi-fast-seconds` imposta la cadenza della corsia veloce `[ARCHI]`.
+- `--archi-fast-limit` imposta il limite email per ciclo veloce `[ARCHI]`.
+- `--disable-archi-fast` disabilita la corsia veloce `[ARCHI]`.
 
 ## Deploy VPS (Docker)
 
@@ -345,6 +359,9 @@ Note:
 - `mail_worker` usa:
   - `ARCHIBALD_MAIL_POLL_SECONDS` (default `300`)
   - `ARCHIBALD_MAIL_POLL_LIMIT` (default `10`)
+  - `ARCHIBALD_MAIL_ARCHI_FAST_ENABLED` (default `true`)
+  - `ARCHIBALD_MAIL_ARCHI_FAST_POLL_SECONDS` (default `5`)
+  - `ARCHIBALD_MAIL_ARCHI_FAST_LIMIT` (default `3`)
 
 ## Test
 

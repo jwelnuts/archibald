@@ -12,6 +12,7 @@ from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldInbo
 from .services import (
     ParsedInboundEmail,
     _openai_email_reply,
+    _sender_allowed,
     parse_inbound_email,
     process_inbox_for_config,
     send_notification_for_config,
@@ -140,6 +141,127 @@ class ArchibaldMailServicesTests(TestCase):
         result = process_inbox_for_config(self.config)
         self.assertEqual(result["status"], "disabled")
         self.assertEqual(result["fetched"], 0)
+
+    @patch("archibald_mail.services.imaplib.IMAP4_SSL")
+    def test_process_inbox_uses_custom_search_criteria(self, mock_imap_cls):
+        class FakeMailbox:
+            def __init__(self):
+                self.searched_criteria = None
+
+            def login(self, *_args, **_kwargs):
+                return "OK", [b""]
+
+            def select(self, *_args, **_kwargs):
+                return "OK", [b"0"]
+
+            def search(self, _charset, *criteria):
+                self.searched_criteria = criteria
+                return "OK", [b""]
+
+            def close(self):
+                return "OK", [b""]
+
+            def logout(self):
+                return "BYE", [b""]
+
+        fake_mailbox = FakeMailbox()
+        mock_imap_cls.return_value = fake_mailbox
+        self.config.is_enabled = True
+        self.config.save(update_fields=["is_enabled", "updated_at"])
+
+        result = process_inbox_for_config(
+            self.config,
+            force=False,
+            search_criteria=("UNSEEN", "SUBJECT", "ARCHI"),
+        )
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["fetched"], 0)
+        self.assertEqual(fake_mailbox.searched_criteria, ("UNSEEN", "SUBJECT", "ARCHI"))
+
+    @patch.dict(
+        "os.environ",
+        {"ARCHIBALD_MAIL_ALLOWED_SENDERS": "allowed@example.com, second@example.com"},
+        clear=False,
+    )
+    def test_sender_allowed_uses_env_whitelist_when_configured(self):
+        self.config.allowed_sender_regex = r".*@example\.com$"
+        self.assertTrue(_sender_allowed(self.config, "allowed@example.com"))
+        self.assertFalse(_sender_allowed(self.config, "blocked@example.com"))
+
+    @patch.dict(
+        "os.environ",
+        {"ARCHIBALD_MAIL_ALLOWED_SENDERS": "allowed@example.com"},
+        clear=False,
+    )
+    @patch("archibald_mail.services.send_email_via_smtp")
+    @patch("archibald_mail.services.execute_action_from_email")
+    @patch("archibald_mail.services.parse_inbound_email")
+    @patch("archibald_mail.services.imaplib.IMAP4_SSL")
+    def test_process_inbox_skips_sender_not_in_env_whitelist(
+        self,
+        mock_imap_cls,
+        mock_parse,
+        mock_execute_action,
+        mock_smtp,
+    ):
+        class FakeMailbox:
+            def login(self, *_args, **_kwargs):
+                return "OK", [b""]
+
+            def select(self, *_args, **_kwargs):
+                return "OK", [b"1"]
+
+            def search(self, *_args, **_kwargs):
+                return "OK", [b"1"]
+
+            def fetch(self, *_args, **_kwargs):
+                return "OK", [(b"1", b"raw")]
+
+            def store(self, *_args, **_kwargs):
+                return "OK", [b""]
+
+            def close(self):
+                return "OK", [b""]
+
+            def logout(self):
+                return "BYE", [b""]
+
+        mock_imap_cls.return_value = FakeMailbox()
+        mock_parse.return_value = ParsedInboundEmail(
+            message_id="<msg-whitelist-1@example.com>",
+            in_reply_to="",
+            sender="blocked@example.com",
+            recipient="archibald@miorganizzo.ovh",
+            subject="[ARCHI] Test",
+            body_text="Ciao",
+            raw_headers="",
+        )
+        mock_execute_action.return_value = EmailActionOutcome(
+            handled=False,
+            action_key="archi.reply",
+            force_ai_reply=True,
+        )
+
+        self.config.is_enabled = True
+        self.config.save(update_fields=["is_enabled", "updated_at"])
+
+        result = process_inbox_for_config(self.config)
+
+        self.assertEqual(result["status"], "ok")
+        self.assertEqual(result["processed"], 1)
+        self.assertEqual(result["skipped"], 1)
+        self.assertEqual(result["replied"], 0)
+        self.assertFalse(mock_execute_action.called)
+        self.assertFalse(mock_smtp.called)
+
+        inbound = ArchibaldEmailMessage.objects.filter(
+            owner=self.user,
+            direction=ArchibaldEmailMessage.Direction.INBOUND,
+        ).first()
+        self.assertIsNotNone(inbound)
+        self.assertEqual(inbound.status, ArchibaldEmailMessage.Status.SKIPPED)
+        self.assertIn("Mittente non autorizzato", inbound.error_text)
 
     @patch("archibald_mail.services.send_email_via_smtp")
     @patch("archibald_mail.services._openai_email_reply", return_value="Risposta AI forzata.")
