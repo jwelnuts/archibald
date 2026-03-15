@@ -1,0 +1,149 @@
+<section
+  id="subs-dashboard-board"
+  class="uk-grid-small uk-margin-small-top"
+  uk-grid
+  hx-get="{% url 'subs-board' %}"
+  hx-trigger="subs:refresh from:body"
+  hx-swap="outerHTML"
+>
+  <article class="uk-width-1-1 uk-width-2-5@m">
+    <div class="uk-card uk-card-default uk-card-small uk-card-body subs-card subs-card-kpi">
+      <div class="uk-text-meta">Cash out previsto</div>
+      {% if total_due %}
+        <div class="subs-kpi-value">{{ total_due }}</div>
+        <div class="uk-text-meta">Prossima scadenza: {{ next_due_date|date:"d/m/Y" }}</div>
+      {% else %}
+        <div class="subs-kpi-value">0</div>
+        <div class="uk-text-meta">Nessuna scadenza imminente</div>
+      {% endif %}
+    </div>
+  </article>
+
+  <article class="uk-width-1-1 uk-width-expand@m">
+    <div class="uk-card uk-card-default uk-card-small uk-card-body subs-card">
+      <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+        <h2 class="uk-h4 uk-margin-remove">Stato portafoglio abbonamenti</h2>
+        <button
+          class="uk-button uk-button-default uk-button-small"
+          type="button"
+          hx-get="{% url 'subs-board' %}"
+          hx-target="#subs-dashboard-board"
+          hx-swap="outerHTML"
+        >
+          Aggiorna
+        </button>
+      </div>
+      <div class="uk-grid-small uk-child-width-1-3@m uk-child-width-1-1" uk-grid>
+        <div><span class="subs-pill subs-pill-active">Attivi: {{ counts.active }}</span></div>
+        <div><span class="subs-pill subs-pill-paused">In pausa: {{ counts.paused }}</span></div>
+        <div><span class="subs-pill subs-pill-canceled">Cancellati: {{ counts.canceled }}</span></div>
+      </div>
+    </div>
+  </article>
+
+  <article class="uk-width-1-1 uk-width-1-2@l">
+    <div class="uk-card uk-card-default uk-card-small uk-card-body subs-card">
+      <h2 class="uk-h4 uk-margin-small-bottom">Prossime scadenze</h2>
+      {% if upcoming %}
+        <div class="uk-overflow-auto">
+          <table class="uk-table uk-table-divider uk-table-small subs-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Abbonamento</th>
+                <th class="uk-text-right">Importo</th>
+                <th class="uk-text-right">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for occ in upcoming %}
+                <tr>
+                  <td>{{ occ.due_date|default:occ.next_due_date|date:"d/m/Y" }}</td>
+                  <td>{{ occ.subscription.name|default:occ.name }}</td>
+                  <td class="uk-text-right">{{ occ.amount }} {{ occ.currency.code|default:"EUR" }}</td>
+                  <td class="uk-text-right">
+                    <div class="uk-button-group">
+                      <button
+                        class="uk-button uk-button-primary uk-button-small"
+                        type="button"
+                        data-subs-pay-trigger
+                        data-occurrence-id="{% if occ.subscription %}{{ occ.id }}{% endif %}"
+                        data-subscription-id="{% if not occ.subscription %}{{ occ.id }}{% endif %}"
+                        data-due-date="{{ occ.due_date|default:occ.next_due_date|date:'Y-m-d' }}"
+                        data-subscription-name="{{ occ.subscription.name|default:occ.name }}"
+                        data-amount="{{ occ.amount }} {{ occ.currency.code|default:'EUR' }}"
+                        {% if not accounts %}disabled{% endif %}
+                      >
+                        Pagato
+                      </button>
+                      {% if occ.subscription %}
+                        <a class="uk-button uk-button-default uk-button-small" href="/subs/api/update?id={{ occ.subscription.id }}">Modifica</a>
+                      {% else %}
+                        <a class="uk-button uk-button-default uk-button-small" href="/subs/api/update?id={{ occ.id }}">Modifica</a>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="uk-text-meta">Nessuna scadenza disponibile.</div>
+      {% endif %}
+    </div>
+  </article>
+
+  <article class="uk-width-1-1 uk-width-1-2@l">
+    <div class="uk-card uk-card-default uk-card-small uk-card-body subs-card">
+      <h2 class="uk-h4 uk-margin-small-bottom">Scaduti da gestire</h2>
+      {% if overdue %}
+        <div class="uk-overflow-auto">
+          <table class="uk-table uk-table-divider uk-table-small subs-table">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Abbonamento</th>
+                <th class="uk-text-right">Importo</th>
+                <th class="uk-text-right">Azioni</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for occ in overdue %}
+                <tr class="subs-row-overdue">
+                  <td>{{ occ.due_date|default:occ.next_due_date|date:"d/m/Y" }}</td>
+                  <td>{{ occ.subscription.name|default:occ.name }}</td>
+                  <td class="uk-text-right">{{ occ.amount }} {{ occ.currency.code|default:"EUR" }}</td>
+                  <td class="uk-text-right">
+                    <div class="uk-button-group">
+                      <button
+                        class="uk-button uk-button-danger uk-button-small"
+                        type="button"
+                        data-subs-pay-trigger
+                        data-occurrence-id="{% if occ.subscription %}{{ occ.id }}{% endif %}"
+                        data-subscription-id="{% if not occ.subscription %}{{ occ.id }}{% endif %}"
+                        data-due-date="{{ occ.due_date|default:occ.next_due_date|date:'Y-m-d' }}"
+                        data-subscription-name="{{ occ.subscription.name|default:occ.name }}"
+                        data-amount="{{ occ.amount }} {{ occ.currency.code|default:'EUR' }}"
+                        {% if not accounts %}disabled{% endif %}
+                      >
+                        Pagato
+                      </button>
+                      {% if occ.subscription %}
+                        <a class="uk-button uk-button-default uk-button-small" href="/subs/api/update?id={{ occ.subscription.id }}">Modifica</a>
+                      {% else %}
+                        <a class="uk-button uk-button-default uk-button-small" href="/subs/api/update?id={{ occ.id }}">Modifica</a>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="uk-text-meta">Nessun abbonamento scaduto.</div>
+      {% endif %}
+    </div>
+  </article>
+</section>

@@ -1,226 +1,87 @@
 {% extends "subscriptions/base.html" %}
 
-{% block title %}MIO - Subscriptions Dashboard{% endblock %}
+{% block title %}MIO - Subscriptions Control{% endblock %}
 
 {% block content %}
-  <section class="hero" id="app-head">
-    <div class="hero-copy" id="app-header">
-      <h1>Subscriptions control center</h1>
-      <p>
-        Qui puoi gestire abbonamenti, scadenze e pagamenti ricorrenti.
-        Questa pagina e un layout base, pronta per collegare i dati reali.
-      </p>
-      <div class="app-actions">
-        <a class="btn primary" href="/subs/api/add">Aggiungi abbonamento</a>
-        <a class="btn" href="/subs/api/update">Aggiorna scadenza</a>
-      </div>
-    </div>
+  <div class="subscriptions-dashboard" data-controller="subs-dashboard">
+    <section class="uk-grid-small" uk-grid>
+      <article class="uk-width-1-1 uk-width-expand@m">
+        <div class="uk-card uk-card-default uk-card-small uk-card-body subs-card">
+          <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+            <div>
+              <h1 class="uk-card-title uk-margin-remove-bottom">Subscriptions Command Center</h1>
+              <p class="uk-text-meta uk-margin-small-top">
+                Gestione operativa abbonamenti, scadenze e pagamenti in tempo reale.
+              </p>
+            </div>
+            <div class="uk-button-group">
+              <a class="uk-button uk-button-primary uk-button-small" href="/subs/api/add">Nuovo abbonamento</a>
+              <a class="uk-button uk-button-default uk-button-small" href="/subs/api/update">Anagrafica abbonamenti</a>
+            </div>
+          </div>
+        </div>
+      </article>
+    </section>
 
-    <div class="hero-card" id="subs-due-summary">
-      <div class="card-title">Totale da pagare</div>
-      {% if total_due %}
-        <div class="stat-value">{{ total_due }}</div>
-        <div class="muted">Prossima rata: {{ next_due_date }}</div>
-      {% else %}
-        <div class="muted">Nessuna scadenza in arrivo.</div>
-      {% endif %}
-    </div>
-  </section>
-
-  <div>
-    <div class="hero-card" id="subs-upcoming-panel">
-      <div class="card-title" id="upcoming-title">Prossime scadenze</div>
-      <ul class="list" id="subs-upcoming-list">
-        {% if upcoming %}
-          {% for occ in upcoming %}
-            <li>
-              <span class="dot dot-green"></span>
-              <span class="muted">{{ occ.due_date|default:occ.next_due_date }}</span>
-              <span>{{ occ.subscription.name|default:occ.name }}</span>
-              <span>{{ occ.amount }}</span>
-              <span class="actions">
-                <button
-                  type="button"
-                  class="btn primary js-open-pay-modal"
-                  data-occurrence-id="{% if occ.subscription %}{{ occ.id }}{% endif %}"
-                  data-subscription-id="{% if not occ.subscription %}{{ occ.id }}{% endif %}"
-                  data-due-date="{{ occ.due_date|default:occ.next_due_date|date:'Y-m-d' }}"
-                  data-subscription-name="{{ occ.subscription.name|default:occ.name }}"
-                  data-amount="{{ occ.amount }} {{ occ.currency.code }}"
-                  {% if not accounts %}disabled{% endif %}
-                >
-                  Pagato
-                </button>
-                {% if occ.subscription %}
-                  <a class="btn" href="/subs/api/update?id={{ occ.subscription.id }}">Modifica</a>
-                {% else %}
-                  <a class="btn" href="/subs/api/update?id={{ occ.id }}">Modifica</a>
-                {% endif %}
-              </span>
-            </li>
-          {% endfor %}
-        {% else %}
-          <li class="muted">Nessuna scadenza disponibile.</li>
-        {% endif %}
-      </ul>
-    </div>
+    {% include "subscriptions/partials/dashboard_board.html" %}
   </div>
 
-  <section class="panel" id="subs-overdue-panel">
-    <h2 id="subs-overdue-title">Abbonamenti scaduti</h2>
-    {% if overdue %}
-      <ul class="list" id="subs-overdue-list">
-        {% for occ in overdue %}
-          <li>
-            <span class="dot dot-red"></span>
-            <span class="muted">{{ occ.due_date|default:occ.next_due_date }}</span>
-            <span>{{ occ.subscription.name|default:occ.name }}</span>
-            <span>{{ occ.amount }}</span>
-            <span class="actions">
-              <button
-                type="button"
-                class="btn primary js-open-pay-modal"
-                data-occurrence-id="{% if occ.subscription %}{{ occ.id }}{% endif %}"
-                data-subscription-id="{% if not occ.subscription %}{{ occ.id }}{% endif %}"
-                data-due-date="{{ occ.due_date|default:occ.next_due_date|date:'Y-m-d' }}"
-                data-subscription-name="{{ occ.subscription.name|default:occ.name }}"
-                data-amount="{{ occ.amount }} {{ occ.currency.code }}"
-                {% if not accounts %}disabled{% endif %}
-              >
-                Pagato
-              </button>
-              {% if occ.subscription %}
-                <a class="btn" href="/subs/api/update?id={{ occ.subscription.id }}">Modifica</a>
-              {% else %}
-                <a class="btn" href="/subs/api/update?id={{ occ.id }}">Modifica</a>
-              {% endif %}
-            </span>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <div class="note">Nessun abbonamento scaduto.</div>
-    {% endif %}
-  </section>
+  <div id="subs-pay-modal" uk-modal>
+    <div class="uk-modal-dialog uk-modal-body">
+      <button class="uk-modal-close-default" type="button" aria-label="Chiudi" uk-close></button>
+      <h3 class="uk-margin-remove-top">Registra pagamento</h3>
+      <p class="uk-text-meta uk-margin-small-top">Conferma il pagamento e collega la transazione al conto.</p>
 
-  <section class="grid" id="subs-info-grid">
-    <article class="panel" id="subs-info-panel">
-      <h2 id="subs-stats-title">Stato abbonamenti</h2>
-      <div class="stat-row" id="subs-info">
-        <div class="stat">
-          <div class="stat-label">Attivi</div>
-          <div class="stat-value">{{ counts.active }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">In pausa</div>
-          <div class="stat-value">{{ counts.paused }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Cancellati</div>
-          <div class="stat-value">{{ counts.canceled }}</div>
-        </div>
-      </div>
-    </article>
-
-    <article class="panel" id="subs-notes-panel">
-      <h2 id="subs-notes-title">Note rapide</h2>
-      <div class="note">
-        Collega questa sezione a Category, Account e Project per filtrare per componente.
-      </div>
-      <div class="note">
-        Suggerimento: usa Transaction per collegare pagamenti reali alle scadenze.
-      </div>
-    </article>
-  </section>
-
-  <section class="modal" id="subs-pay-modal" hidden>
-    <div class="modal-backdrop" data-modal-close></div>
-    <div class="modal-card">
-      <div class="modal-head">
-        <h3>Registra pagamento abbonamento</h3>
-        <button type="button" class="modal-close" data-modal-close aria-label="Chiudi">x</button>
-      </div>
-      <form method="post" action="/subs/api/pay" class="form form-compact">
+      <form
+        method="post"
+        action="{% url 'subs-pay' %}"
+        hx-post="{% url 'subs-pay' %}"
+        hx-target="#subs-dashboard-board"
+        hx-swap="outerHTML"
+        class="uk-form-stacked uk-margin-top"
+        data-subs-dashboard-target="payForm"
+      >
         {% csrf_token %}
-        <input type="hidden" name="occurrence_id" id="pay-occurrence-id">
-        <input type="hidden" name="subscription_id" id="pay-subscription-id">
-        <input type="hidden" name="due_date" id="pay-due-date">
+        <input type="hidden" name="occurrence_id" data-subs-dashboard-target="occurrenceInput">
+        <input type="hidden" name="subscription_id" data-subs-dashboard-target="subscriptionInput">
+        <input type="hidden" name="due_date" data-subs-dashboard-target="dueDateInput">
 
-        <div class="field">
-          <label for="pay-subscription-name">Abbonamento</label>
-          <input type="text" id="pay-subscription-name" readonly>
-        </div>
-
-        <div class="field">
-          <label for="pay-amount">Importo</label>
-          <input type="text" id="pay-amount" readonly>
-        </div>
-
-        <div class="field">
-          <label for="pay-account-id">Conto di addebito</label>
-          <select id="pay-account-id" name="account_id" required>
-            <option value="">Seleziona conto...</option>
-            {% for account in accounts %}
-              <option value="{{ account.id }}">{{ account.name }} ({{ account.currency.code }})</option>
-            {% endfor %}
-          </select>
-        </div>
-
-        <div class="actions">
-          <button type="submit" class="btn primary">Conferma pagamento</button>
-          <button type="button" class="btn ghost" data-modal-close>Annulla</button>
+        <div class="uk-grid-small" uk-grid>
+          <div class="uk-width-1-1">
+            <label class="uk-form-label">Abbonamento</label>
+            <input class="uk-input" type="text" readonly data-subs-dashboard-target="nameInput">
+          </div>
+          <div class="uk-width-1-1 uk-width-1-2@m">
+            <label class="uk-form-label">Scadenza</label>
+            <input class="uk-input" type="text" readonly data-subs-dashboard-target="dateInput">
+          </div>
+          <div class="uk-width-1-1 uk-width-1-2@m">
+            <label class="uk-form-label">Importo</label>
+            <input class="uk-input" type="text" readonly data-subs-dashboard-target="amountInput">
+          </div>
+          <div class="uk-width-1-1">
+            <label class="uk-form-label" for="subs-pay-account">Conto di addebito</label>
+            <div class="uk-form-controls">
+              <select class="uk-select" id="subs-pay-account" name="account_id" required>
+                <option value="">Seleziona conto...</option>
+                {% for account in accounts %}
+                  <option value="{{ account.id }}">{{ account.name }} ({{ account.currency.code }})</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="uk-width-1-1">
+            <button class="uk-button uk-button-primary uk-button-small" type="submit">Conferma pagamento</button>
+            <button class="uk-button uk-button-default uk-button-small uk-modal-close" type="button">Annulla</button>
+          </div>
         </div>
       </form>
+
       {% if not accounts %}
-        <div class="note">
-          Nessun conto attivo disponibile. Crea o riattiva un conto prima di registrare il pagamento.
+        <div class="uk-alert-warning uk-margin-top">
+          Nessun conto attivo disponibile: crea o riattiva un conto per registrare i pagamenti.
         </div>
       {% endif %}
     </div>
-  </section>
-
-  <script>
-    (function () {
-      const modal = document.getElementById("subs-pay-modal");
-      if (!modal) {
-        return;
-      }
-
-      const occurrenceInput = document.getElementById("pay-occurrence-id");
-      const subscriptionInput = document.getElementById("pay-subscription-id");
-      const dueDateInput = document.getElementById("pay-due-date");
-      const nameInput = document.getElementById("pay-subscription-name");
-      const amountInput = document.getElementById("pay-amount");
-      const openButtons = document.querySelectorAll(".js-open-pay-modal");
-
-      const closeModal = () => {
-        modal.setAttribute("hidden", "");
-        document.body.classList.remove("modal-open");
-      };
-
-      const openModal = (button) => {
-        occurrenceInput.value = button.dataset.occurrenceId || "";
-        subscriptionInput.value = button.dataset.subscriptionId || "";
-        dueDateInput.value = button.dataset.dueDate || "";
-        nameInput.value = button.dataset.subscriptionName || "";
-        amountInput.value = button.dataset.amount || "";
-        modal.removeAttribute("hidden");
-        document.body.classList.add("modal-open");
-      };
-
-      openButtons.forEach((button) => {
-        button.addEventListener("click", () => openModal(button));
-      });
-
-      modal.querySelectorAll("[data-modal-close]").forEach((btn) => {
-        btn.addEventListener("click", closeModal);
-      });
-
-      document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && !modal.hasAttribute("hidden")) {
-          closeModal();
-        }
-      });
-    })();
-  </script>
+  </div>
 {% endblock %}

@@ -1,5 +1,6 @@
 from calendar import monthrange
 from datetime import date, timedelta
+import json
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -31,10 +32,12 @@ def _compute_next_due_date(subscription: Subscription, paid_due_date: date) -> d
         return _add_months(paid_due_date, step * 12)
     return _add_months(paid_due_date, step)
 
-# Create your views here.
-@login_required
-def dashboard(request):
-    user = request.user
+
+def _is_htmx(request) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+
+def _dashboard_context(user):
     today = timezone.now().date()
     upcoming = list(
         SubscriptionOccurrence.objects.filter(
@@ -42,16 +45,18 @@ def dashboard(request):
             subscription__status=Subscription.Status.ACTIVE,
             state=SubscriptionOccurrence.State.PLANNED,
         )
-        .select_related("subscription")
-        .order_by("due_date")[:5]
+        .select_related("subscription", "currency")
+        .order_by("due_date")[:8]
     )
     using_occurrences = True
     if not upcoming:
         upcoming = list(
             Subscription.objects.filter(owner=user, status=Subscription.Status.ACTIVE)
-            .order_by("next_due_date")[:5]
+            .select_related("currency")
+            .order_by("next_due_date")[:8]
         )
         using_occurrences = False
+
     overdue = list(
         SubscriptionOccurrence.objects.filter(
             owner=user,
@@ -59,8 +64,8 @@ def dashboard(request):
             subscription__status=Subscription.Status.ACTIVE,
             state=SubscriptionOccurrence.State.PLANNED,
         )
-        .select_related("subscription")
-        .order_by("-due_date")[:5]
+        .select_related("subscription", "currency")
+        .order_by("due_date")[:8]
     )
     if not overdue:
         overdue = list(
@@ -69,8 +74,10 @@ def dashboard(request):
                 next_due_date__lt=today,
                 status=Subscription.Status.ACTIVE,
             )
-            .order_by("-next_due_date")[:5]
+            .select_related("currency")
+            .order_by("next_due_date")[:8]
         )
+
     total_due = None
     next_due_date = None
     if upcoming:
@@ -80,24 +87,31 @@ def dashboard(request):
         else:
             total_due = sum([item.amount for item in upcoming])
             next_due_date = upcoming[0].next_due_date
+
     counts = {
         "active": Subscription.objects.filter(owner=user, status=Subscription.Status.ACTIVE).count(),
         "paused": Subscription.objects.filter(owner=user, status=Subscription.Status.PAUSED).count(),
         "canceled": Subscription.objects.filter(owner=user, status=Subscription.Status.CANCELED).count(),
     }
-    accounts = Account.objects.filter(owner=user, is_active=True).order_by("name")
-    return render(
-        request,
-        "subscriptions/dashboard.html",
-        {
-            "upcoming": upcoming,
-            "overdue": overdue,
-            "counts": counts,
-            "total_due": total_due,
-            "next_due_date": next_due_date,
-            "accounts": accounts,
-        },
-    )
+    accounts = Account.objects.filter(owner=user, is_active=True).select_related("currency").order_by("name")
+    return {
+        "upcoming": upcoming,
+        "overdue": overdue,
+        "counts": counts,
+        "total_due": total_due,
+        "next_due_date": next_due_date,
+        "accounts": accounts,
+    }
+
+# Create your views here.
+@login_required
+def dashboard(request):
+    return render(request, "subscriptions/dashboard.html", _dashboard_context(request.user))
+
+
+@login_required
+def dashboard_board(request):
+    return render(request, "subscriptions/partials/dashboard_board.html", _dashboard_context(request.user))
 
 @login_required
 def add_sub(request):
@@ -202,6 +216,10 @@ def pay_subscription(request):
         if occurrence.state != SubscriptionOccurrence.State.PAID:
             occurrence.state = SubscriptionOccurrence.State.PAID
             occurrence.save(update_fields=["state"])
+        if _is_htmx(request):
+            response = render(request, "subscriptions/partials/dashboard_board.html", _dashboard_context(user))
+            response["HX-Trigger"] = json.dumps({"subs:paid": {"message": "Pagamento gia registrato."}})
+            return response
         return redirect("/subs/")
 
     subscription = occurrence.subscription
@@ -230,4 +248,8 @@ def pay_subscription(request):
             subscription.next_due_date = _compute_next_due_date(subscription, occurrence.due_date)
             subscription.save(update_fields=["next_due_date"])
 
+    if _is_htmx(request):
+        response = render(request, "subscriptions/partials/dashboard_board.html", _dashboard_context(user))
+        response["HX-Trigger"] = json.dumps({"subs:paid": {"message": "Pagamento registrato."}})
+        return response
     return redirect("/subs/")

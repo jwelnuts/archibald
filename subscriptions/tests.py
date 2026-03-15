@@ -121,3 +121,25 @@ class SubscriptionPaymentsTests(TestCase):
         occurrence.refresh_from_db()
         self.assertEqual(occurrence.state, SubscriptionOccurrence.State.PLANNED)
         self.assertFalse(Transaction.objects.filter(owner=self.user).exists())
+
+    def test_pay_htmx_returns_dashboard_partial(self):
+        occurrence = SubscriptionOccurrence.objects.create(
+            owner=self.user,
+            subscription=self.subscription,
+            due_date=date(2026, 2, 1),
+            amount=Decimal("15.99"),
+            currency=self.currency,
+            state=SubscriptionOccurrence.State.PLANNED,
+        )
+        self.client.login(username="subs_user", password="test1234")
+        response = self.client.post(
+            "/subs/api/pay",
+            {
+                "occurrence_id": occurrence.id,
+                "account_id": self.account.id,
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="subs-dashboard-board"')
+        self.assertIn("subs:paid", response.headers.get("HX-Trigger", ""))
