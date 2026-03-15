@@ -31,6 +31,9 @@ docker compose ps
 echo "==> Log recenti web"
 docker compose logs --tail=80 web || true
 
+echo "==> Log recenti mail_worker"
+docker compose logs --tail=80 mail_worker || true
+
 echo "==> Log recenti caddy"
 docker compose logs --tail=80 caddy || true
 

@@ -147,20 +147,105 @@ def _sender_allowed(config: ArchibaldMailboxConfig, sender: str) -> bool:
         return True
 
 
+def _build_email_operational_context(owner) -> str:
+    if owner is None:
+        return "Contesto utente non disponibile."
+
+    today = timezone.localdate()
+    horizon = today + timedelta(days=7)
+    week_start = today - timedelta(days=today.weekday())
+
+    open_tasks = Task.objects.filter(owner=owner).exclude(status=Task.Status.DONE)
+    open_tasks_count = open_tasks.count()
+    tasks_due_today = open_tasks.filter(due_date=today).count()
+    tasks_due_week = open_tasks.filter(due_date__gte=today, due_date__lte=horizon).count()
+
+    planner_due_week = PlannerItem.objects.filter(
+        owner=owner,
+        status=PlannerItem.Status.PLANNED,
+        due_date__gte=today,
+        due_date__lte=horizon,
+    ).count()
+
+    subscriptions_due_week = SubscriptionOccurrence.objects.filter(
+        owner=owner,
+        state=SubscriptionOccurrence.State.PLANNED,
+        due_date__gte=today,
+        due_date__lte=horizon,
+    ).count()
+
+    routine_rows = list(
+        RoutineItem.objects.filter(
+            owner=owner,
+            is_active=True,
+            routine__is_active=True,
+            weekday=today.weekday(),
+        )
+        .select_related("routine")
+        .order_by("time_start", "routine__name", "title")[:12]
+    )
+    routine_done = 0
+    routine_skipped = 0
+    routine_planned = 0
+    routine_lines = []
+    if routine_rows:
+        checks = RoutineCheck.objects.filter(
+            owner=owner,
+            item_id__in=[row.id for row in routine_rows],
+            week_start=week_start,
+        )
+        status_map = {row.item_id: row.status for row in checks}
+        for row in routine_rows:
+            status = status_map.get(row.id, RoutineCheck.Status.PLANNED)
+            if status == RoutineCheck.Status.DONE:
+                routine_done += 1
+            elif status == RoutineCheck.Status.SKIPPED:
+                routine_skipped += 1
+            else:
+                routine_planned += 1
+            slot = row.time_start.strftime("%H:%M") if row.time_start else "--:--"
+            routine_lines.append(f"- {slot} | {row.title} ({row.routine.name}) -> {status}")
+
+    lines = [
+        "Contesto operativo reale (snapshot DB):",
+        f"- Data locale: {today.isoformat()}",
+        f"- Task aperti: {open_tasks_count} (oggi: {tasks_due_today}, prossimi 7 giorni: {tasks_due_week})",
+        f"- Planner pianificato prossimi 7 giorni: {planner_due_week}",
+        f"- Subscription in scadenza prossimi 7 giorni: {subscriptions_due_week}",
+        (
+            "- Routine oggi: "
+            f"{len(routine_rows)} (DONE: {routine_done}, SKIPPED: {routine_skipped}, PLANNED: {routine_planned})"
+        ),
+    ]
+    if routine_lines:
+        lines.append("- Prime routine di oggi:")
+        lines.extend(routine_lines[:8])
+    return "\n".join(lines)
+
+
 def _openai_email_reply(owner, incoming: ParsedInboundEmail) -> str:
+    operational_context = _build_email_operational_context(owner)
     instructions = (
         build_archibald_system_for_user(owner)
         + "\n"
         + "Modalita email: rispondi in italiano, tono elegante ma concreto, max 220 parole, "
-        "senza markdown complesso, chiudi con una micro-azione consigliata."
+        "senza markdown complesso, chiudi con una micro-azione consigliata.\n"
+        "Regole operative vincolanti:\n"
+        "- Usa solo i dati realmente presenti nel contesto operativo e nel testo email.\n"
+        "- Non inventare stati o automazioni che non esistono nel sistema.\n"
+        "- NON promettere azioni future con orari specifici (es. 'ti inviero tra 2 ore') "
+        "se non sono gia pianificate nel sistema.\n"
+        "- Se un dato non e disponibile, dichiaralo chiaramente e proponi un passo pratico immediato."
     )
     prompt = (
         "Hai ricevuto una email e devi rispondere.\n"
         f"Mittente: {incoming.sender or '-'}\n"
         f"Oggetto: {incoming.subject or '-'}\n"
+        "Contesto operativo utente:\n"
+        f"{operational_context}\n\n"
         "Testo email:\n"
         f"{incoming.body_text or '(vuoto)'}\n\n"
-        "Genera il corpo della risposta email."
+        "Genera il corpo della risposta email con riferimento esplicito ai dati disponibili sopra."
     )
     return (request_openai_response([{"role": "user", "content": prompt}], instructions) or "").strip()
 

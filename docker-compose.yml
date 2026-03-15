@@ -31,6 +31,24 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
 
+  mail_worker:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      DJANGO_DEBUG: "false"
+      DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
+      DJANGO_DB_SSL_REQUIRE: "false"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-mio}:${POSTGRES_PASSWORD:-mio_password}@db:5432/${POSTGRES_DB:-mio_master}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "python manage.py run_archibald_mail_worker
+      --interval-seconds ${ARCHIBALD_MAIL_POLL_SECONDS:-300}
+      --limit ${ARCHIBALD_MAIL_POLL_LIMIT:-0}"
+
   caddy:
     image: caddy:2.8-alpine
     restart: unless-stopped

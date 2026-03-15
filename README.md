@@ -117,7 +117,7 @@ Note Stimulus:
   - tabella categorie inbound con scelta da select e opzione `+nuova categoria` in triage inbox
   - inbox triage manuale (`/archibald-mail/inbox/`) per classificare email esterne senza flag
   - riepilogo email ogni 24h (destinatario configurabile da pannello in `notification_recipient`)
-  - auto-reply email con generazione risposta Archibald (OpenAI)
+  - risposta email AI su richiesta esplicita via flag `[ARCHI]`
   - routing azioni da oggetto email (es. `[MEMORY]`, `#MEMORY`, `ACTION:MEMORY`)
   - notifiche email automatiche su task/planner/subscriptions/routines
   - log completo email inbound/outbound/notification/test
@@ -234,6 +234,7 @@ Comandi principali:
 ```bash
 python manage.py process_archibald_inbox
 python manage.py send_archibald_notifications
+python manage.py run_archibald_mail_worker --interval-seconds 300
 ```
 
 Flag azione email disponibili:
@@ -266,11 +267,24 @@ Esempio `cron` (ogni 5 minuti inbox, notifiche giornaliere con controllo orario 
 */15 * * * * cd /path/mio_master && /path/mio_master/.venv/bin/python manage.py send_archibald_notifications >> /var/log/mio_archibald_notify.log 2>&1
 ```
 
+In alternativa al cron, puoi usare il worker continuo:
+
+```bash
+python manage.py run_archibald_mail_worker --interval-seconds 300
+```
+
+Opzioni utili:
+
+- `--run-once` esegue un solo ciclo (debug).
+- `--user <username|email>` limita il polling a un utente.
+- `--force` ignora `is_enabled`.
+
 ## Deploy VPS (Docker)
 
 Stack container:
 
 - `web`: Django + Gunicorn
+- `mail_worker`: polling inbox Archibald a intervallo costante (default 300s)
 - `db`: PostgreSQL 16
 - `caddy`: reverse proxy + static/media + HTTPS automatico
 
@@ -303,6 +317,7 @@ Controlli:
 ```bash
 docker compose ps
 docker compose logs -f web
+docker compose logs -f mail_worker
 docker compose logs -f caddy
 ```
 
@@ -327,6 +342,9 @@ Note:
   - avvio `gunicorn`
 - In `docker-compose.yml` `DATABASE_URL` e costruita automaticamente verso il servizio `db`.
 - Caddy emette e rinnova certificati TLS automaticamente quando `CADDY_SITE_HOST` e un dominio pubblico risolvibile.
+- `mail_worker` usa:
+  - `ARCHIBALD_MAIL_POLL_SECONDS` (default `300`)
+  - `ARCHIBALD_MAIL_POLL_LIMIT` (default `10`)
 
 ## Test
 

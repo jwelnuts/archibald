@@ -5,10 +5,17 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from memory_stock.models import MemoryStockItem
+from routines.models import Routine, RoutineItem
 from .actions import EmailActionOutcome, detect_action_from_subject, execute_action_from_email, execute_action_manually
 from .forms import ArchibaldEmailFlagRuleForm, ArchibaldMailboxConfigForm
 from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldInboundCategory, ArchibaldMailboxConfig
-from .services import ParsedInboundEmail, parse_inbound_email, process_inbox_for_config, send_notification_for_config
+from .services import (
+    ParsedInboundEmail,
+    _openai_email_reply,
+    parse_inbound_email,
+    process_inbox_for_config,
+    send_notification_for_config,
+)
 
 
 class ArchibaldMailFormTests(TestCase):
@@ -531,6 +538,49 @@ class ArchibaldMailActionsTests(TestCase):
         self.assertTrue(outcome.handled)
         row = MemoryStockItem.objects.get(owner=self.user, source_message_id="<msg-reminder-1@example.com>")
         self.assertEqual(row.source_action, "reminder.capture")
+
+
+class ArchibaldMailPromptingTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="mail_prompt_user",
+            password="pwd12345",
+            email="prompt-owner@example.com",
+        )
+
+    @patch("archibald_mail.services.request_openai_response", return_value="Risposta pronta.")
+    @patch("archibald_mail.services.build_archibald_system_for_user", return_value="SYSTEM BASE")
+    def test_openai_email_reply_includes_real_operational_context_and_guardrails(self, _mock_system, mock_openai):
+        routine = Routine.objects.create(owner=self.user, name="Morning", is_active=True)
+        RoutineItem.objects.create(
+            owner=self.user,
+            routine=routine,
+            title="Stretching",
+            weekday=0,
+            is_active=True,
+        )
+
+        incoming = ParsedInboundEmail(
+            message_id="<msg-ctx-1@example.com>",
+            in_reply_to="",
+            sender="user@example.com",
+            recipient="archibald@miorganizzo.ovh",
+            subject="[ARCHI] Aggiornamento routines",
+            body_text="mi fai un aggiornamento sulle routines?",
+            raw_headers="",
+        )
+        _openai_email_reply(self.user, incoming)
+
+        self.assertTrue(mock_openai.called)
+        messages = mock_openai.call_args.args[0]
+        instructions = mock_openai.call_args.args[1]
+        prompt = messages[0]["content"]
+
+        self.assertIn("Contesto operativo reale (snapshot DB)", prompt)
+        self.assertIn("Task aperti:", prompt)
+        self.assertIn("Routine oggi:", prompt)
+        self.assertIn("Regole operative vincolanti:", instructions)
+        self.assertIn("NON promettere azioni future", instructions)
 
 
 class ArchibaldMailFlagCrudViewsTests(TestCase):
