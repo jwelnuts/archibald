@@ -17,7 +17,7 @@
       <div>
         <h1 class="uk-heading-bullet uk-margin-remove">Archibald Mail Control Panel</h1>
         <p class="uk-text-meta uk-margin-small-top">
-          Configura risposte automatiche per <strong>{{ config.inbox_address }}</strong> e notifiche intelligenti.
+          Gestisci la inbox di <strong>{{ config.inbox_address }}</strong>, i flag azione e le notifiche intelligenti.
         </p>
       </div>
       <div class="uk-flex uk-flex-wrap uk-gap-small">
@@ -38,8 +38,8 @@
     <div class="uk-grid-small uk-child-width-1-5@m uk-margin-top" uk-grid>
       <div>
         <div class="uk-card uk-card-secondary uk-card-small uk-card-body">
-          <div class="uk-text-meta">Auto-reply</div>
-          <div class="uk-text-bold">{% if config.auto_reply_enabled and config.is_enabled %}Attivo{% else %}Disattivo{% endif %}</div>
+          <div class="uk-text-meta">Risposta [ARCHI]</div>
+          <div class="uk-text-bold">{% if config.is_enabled %}Attiva{% else %}Disattiva{% endif %}</div>
         </div>
       </div>
       <div>

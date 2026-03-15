@@ -13,10 +13,12 @@ from email.utils import parseaddr
 from zoneinfo import ZoneInfo
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from archibald.openai_client import request_openai_response
 from archibald.prompting import build_archibald_system_for_user
+from memory_stock.models import MemoryStockItem
 from planner.models import PlannerItem
 from routines.models import RoutineCheck, RoutineItem
 from subscriptions.models import SubscriptionOccurrence
@@ -339,17 +341,17 @@ def process_inbox_for_config(
 
                     if action_outcome.handled:
                         reply_body = action_outcome.reply_text.strip() or "Azione completata."
-                    elif not config.auto_reply_enabled:
+                    elif action_outcome.force_ai_reply:
+                        reply_body = _openai_email_reply(config.owner, incoming)
+                    else:
                         inbound.status = ArchibaldEmailMessage.Status.SKIPPED
                         inbound.processed_at = timezone.now()
-                        inbound.error_text = "Nessuna azione riconosciuta e auto-reply disattivato."
+                        inbound.error_text = "Nessun flag azione riconosciuto: email lasciata da gestire manualmente."
                         inbound.save(update_fields=["status", "processed_at", "error_text", "updated_at"])
                         result["processed"] += 1
                         result["skipped"] += 1
                         _mark_seen(mailbox, uid)
                         continue
-                    else:
-                        reply_body = _openai_email_reply(config.owner, incoming)
 
                     reply_body = _append_signature(reply_body, config.auto_reply_signature)
                     reply_subject = _reply_subject(config, incoming.subject)
@@ -381,7 +383,7 @@ def process_inbox_for_config(
                     inbound.status = ArchibaldEmailMessage.Status.REPLIED
                     inbound.processed_at = timezone.now()
                     inbound.ai_response_text = reply_body
-                    if action_outcome.handled:
+                    if action_outcome.handled or action_outcome.force_ai_reply:
                         inbound.selected_action_key = action_outcome.action_key
                         inbound.classification_label = action_outcome.action_key
                         inbound.review_status = ArchibaldEmailMessage.ReviewStatus.APPLIED
@@ -480,6 +482,42 @@ def build_notification_digest(config: ArchibaldMailboxConfig) -> tuple[str, bool
                 lines.append(f"- {task.title} ({task.due_date}, {task.get_priority_display()})")
             lines.append("")
 
+    if config.notification_include_reminders:
+        reminder_rows = list(
+            ArchibaldEmailMessage.objects.filter(
+                owner=config.owner,
+                direction=ArchibaldEmailMessage.Direction.INBOUND,
+                review_status=ArchibaldEmailMessage.ReviewStatus.PENDING,
+            )
+            .filter(
+                Q(selected_action_key="reminder.capture")
+                | Q(classification_label__icontains="reminder")
+                | Q(classification_label__icontains="scadenza")
+                | Q(classification_label__icontains="evento")
+                | Q(classification_category__label__icontains="reminder")
+                | Q(classification_category__label__icontains="scadenza")
+                | Q(classification_category__label__icontains="evento")
+            )
+            .order_by("-created_at")[:8]
+        )
+        if not reminder_rows:
+            reminder_rows = list(
+                MemoryStockItem.objects.filter(
+                    owner=config.owner,
+                    is_archived=False,
+                    source_action="reminder.capture",
+                ).order_by("-created_at")[:8]
+            )
+        if reminder_rows:
+            has_items = True
+            lines.append("Reminder da gestire:")
+            for row in reminder_rows:
+                title = getattr(row, "subject", "") or getattr(row, "title", "") or "Reminder"
+                created_at = getattr(row, "created_at", None)
+                when = f" ({created_at.date()})" if created_at else ""
+                lines.append(f"- {title[:90]}{when}")
+            lines.append("")
+
     if config.notification_include_planner:
         planner_rows = list(
             PlannerItem.objects.filter(
@@ -567,8 +605,8 @@ def _notification_due_now(config: ArchibaldMailboxConfig, now=None) -> bool:
     if config.last_notification_sent_at is None:
         return True
 
-    sent_local = config.last_notification_sent_at.astimezone(tz)
-    return sent_local.date() < local_now.date()
+    elapsed = now - config.last_notification_sent_at
+    return elapsed >= timedelta(hours=24)
 
 
 def _openai_notification_body(config: ArchibaldMailboxConfig, digest: str) -> str:

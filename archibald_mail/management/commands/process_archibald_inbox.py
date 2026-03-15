@@ -6,12 +6,12 @@ from archibald_mail.services import process_inbox_for_all, process_inbox_for_con
 
 
 class Command(BaseCommand):
-    help = "Processa inbox IMAP di Archibald e invia risposte automatiche."
+    help = "Processa inbox IMAP di Archibald e applica azioni email configurate."
 
     def add_arguments(self, parser):
         parser.add_argument("--user", help="Username o email dell'utente.")
         parser.add_argument("--limit", type=int, default=0, help="Override limite email per run.")
-        parser.add_argument("--force", action="store_true", help="Ignora flag is_enabled/auto_reply_enabled.")
+        parser.add_argument("--force", action="store_true", help="Ignora flag is_enabled.")
 
     def handle(self, *args, **options):
         limit = options.get("limit") or None

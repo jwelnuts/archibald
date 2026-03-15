@@ -116,6 +116,7 @@ Note Stimulus:
   - CRUD flag inbound da pannello (`/archibald-mail/flags/`) per categorizzare email in ingresso
   - tabella categorie inbound con scelta da select e opzione `+nuova categoria` in triage inbox
   - inbox triage manuale (`/archibald-mail/inbox/`) per classificare email esterne senza flag
+  - riepilogo email ogni 24h (destinatario configurabile da pannello in `notification_recipient`)
   - auto-reply email con generazione risposta Archibald (OpenAI)
   - routing azioni da oggetto email (es. `[MEMORY]`, `#MEMORY`, `ACTION:MEMORY`)
   - notifiche email automatiche su task/planner/subscriptions/routines

@@ -76,6 +76,7 @@ class ArchibaldMailboxConfig(OwnedModel, TimeStampedModel):
         validators=[MinValueValidator(1), MaxValueValidator(14)],
     )
     notification_include_tasks = models.BooleanField(default=True)
+    notification_include_reminders = models.BooleanField(default=True)
     notification_include_planner = models.BooleanField(default=True)
     notification_include_subscriptions = models.BooleanField(default=True)
     notification_include_routines = models.BooleanField(default=True)
@@ -155,6 +156,7 @@ class ArchibaldEmailFlagRule(OwnedModel, TimeStampedModel):
         TODO_CAPTURE = "todo.capture", "Todo (fallback Memory Stock)"
         TRANSACTION_CAPTURE = "transaction.capture", "Transaction (fallback Memory Stock)"
         REMINDER_CAPTURE = "reminder.capture", "Reminder (fallback Memory Stock)"
+        ARCHI_REPLY = "archi.reply", "Archibald reply immediata"
 
     label = models.CharField(max_length=60)
     flag_token = models.CharField(max_length=32)

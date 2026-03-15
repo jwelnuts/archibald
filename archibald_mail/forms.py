@@ -8,7 +8,6 @@ class ArchibaldMailboxConfigForm(forms.ModelForm):
         "inbox_address",
         "timezone_name",
         "is_enabled",
-        "auto_reply_enabled",
         "auto_reply_subject_prefix",
         "auto_reply_signature",
         "allowed_sender_regex",
@@ -21,6 +20,7 @@ class ArchibaldMailboxConfigForm(forms.ModelForm):
         "notification_minute",
         "notification_days_ahead",
         "notification_include_tasks",
+        "notification_include_reminders",
         "notification_include_planner",
         "notification_include_subscriptions",
         "notification_include_routines",
@@ -32,7 +32,6 @@ class ArchibaldMailboxConfigForm(forms.ModelForm):
             "inbox_address",
             "timezone_name",
             "is_enabled",
-            "auto_reply_enabled",
             "auto_reply_subject_prefix",
             "auto_reply_signature",
             "allowed_sender_regex",
@@ -43,6 +42,7 @@ class ArchibaldMailboxConfigForm(forms.ModelForm):
             "notification_minute",
             "notification_days_ahead",
             "notification_include_tasks",
+            "notification_include_reminders",
             "notification_include_planner",
             "notification_include_subscriptions",
             "notification_include_routines",
@@ -54,7 +54,7 @@ class ArchibaldMailboxConfigForm(forms.ModelForm):
             "auto_reply_signature": "Firma opzionale aggiunta in fondo alla risposta.",
             "allowed_sender_regex": "Opzionale: rispondi solo ai mittenti che matchano questa regex.",
             "max_inbox_emails_per_run": "Limite email processate per singolo run.",
-            "notification_recipient": "Se vuoto usa email utente, altrimenti inbox address.",
+            "notification_recipient": "Email destinatario riepilogo ogni 24 ore (configurabile da pannello).",
         }
 
 
@@ -72,7 +72,7 @@ class ArchibaldEmailFlagRuleForm(forms.ModelForm):
             "notes": forms.Textarea(attrs={"rows": 3}),
         }
         help_texts = {
-            "flag_token": "Token senza parentesi: es. MEMORY, TODO, TRANSACTION, TX.",
+            "flag_token": "Token senza parentesi: es. MEMORY, TODO, TRANSACTION, TX, ARCHI.",
             "action_key": "Categoria/azione da applicare quando il flag e presente nell'oggetto.",
             "is_active": "Se disattivato il flag non viene considerato nel processamento inbox.",
         }

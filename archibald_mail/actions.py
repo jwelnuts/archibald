@@ -20,12 +20,14 @@ ACTION_LABELS = {
     "todo.capture": "Todo",
     "transaction.capture": "Transaction",
     "reminder.capture": "Reminder",
+    "archi.reply": "Archibald Reply",
 }
 ACTION_DESTINATIONS = {
     "memory_stock.save": "Memory Stock",
     "todo.capture": "Memory Stock (temporaneo)",
     "transaction.capture": "Memory Stock (temporaneo)",
     "reminder.capture": "Memory Stock (temporaneo)",
+    "archi.reply": "Risposta email immediata con Archibald",
 }
 DEFAULT_FLAG_RULES = (
     {
@@ -58,6 +60,12 @@ DEFAULT_FLAG_RULES = (
         "action_key": "reminder.capture",
         "is_active": True,
     },
+    {
+        "label": "Archibald Reply",
+        "flag_token": "ARCHI",
+        "action_key": "archi.reply",
+        "is_active": True,
+    },
 )
 
 
@@ -66,6 +74,7 @@ class EmailActionOutcome:
     handled: bool
     action_key: str = ""
     reply_text: str = ""
+    force_ai_reply: bool = False
 
 
 def _destination_for_action(action_key: str) -> str:
@@ -141,6 +150,8 @@ def list_action_choices(owner=None) -> tuple[tuple[str, str], ...]:
     seen = set()
     for row in rows:
         key = row["key"]
+        if key == "archi.reply":
+            continue
         if key in seen:
             continue
         seen.add(key)
@@ -201,6 +212,9 @@ def execute_action_from_email(*, owner, incoming, inbound_message) -> EmailActio
     action_key = detect_action_from_subject(incoming.subject, owner=owner)
     if not action_key:
         return EmailActionOutcome(handled=False)
+
+    if action_key == "archi.reply":
+        return EmailActionOutcome(handled=False, action_key=action_key, force_ai_reply=True)
 
     if action_key in ACTIONS_WITH_MEMORY_STOCK_FALLBACK:
         save_result = _execute_action_to_memory_stock(
