@@ -57,6 +57,19 @@ if not ALLOWED_HOSTS:
 _csrf_trusted_origins = os.getenv("DJANGO_CSRF_TRUSTED_ORIGINS", "")
 CSRF_TRUSTED_ORIGINS = [o.strip() for o in _csrf_trusted_origins.split(",") if o.strip()]
 
+_mobile_api_allowed_origins = os.getenv("MOBILE_API_ALLOWED_ORIGINS", "")
+MOBILE_API_ALLOWED_ORIGINS = [o.strip() for o in _mobile_api_allowed_origins.split(",") if o.strip()]
+if not MOBILE_API_ALLOWED_ORIGINS:
+    MOBILE_API_ALLOWED_ORIGINS = [
+        "http://localhost",
+        "https://localhost",
+        "capacitor://localhost",
+        "ionic://localhost",
+    ]
+
+MOBILE_API_ACCESS_TTL_SECONDS = int(os.getenv("MOBILE_API_ACCESS_TTL_SECONDS", "900"))
+MOBILE_API_REFRESH_TTL_DAYS = int(os.getenv("MOBILE_API_REFRESH_TTL_DAYS", "14"))
+
 
 # Application definition
 
@@ -93,6 +106,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    "core.mobile_api.MobileApiCorsMiddleware",
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',

@@ -1,10 +1,14 @@
 import json
+from datetime import timedelta
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from django.utils import timezone
 
 from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
-from .models import UserNavConfig
+from planner.models import PlannerItem
+from todo.models import Task
+from .models import MobileApiSession, UserNavConfig
 from .views import DEFAULT_DASHBOARD_WIDGET_IDS
 
 
@@ -247,3 +251,112 @@ class DashboardPreferencesTests(TestCase):
         self.assertEqual(prefs["density"], "compact")
         self.assertEqual(prefs["accent"], "amber")
         self.assertEqual(prefs["sections"], ["snapshot", "widgets"])
+
+
+class MobileApiAuthTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="mobile_user",
+            email="mobile@example.com",
+            password="test12345",
+        )
+
+    def _login(self):
+        response = self.client.post(
+            "/api/mobile/auth/login",
+            data=json.dumps({"identity": "mobile@example.com", "password": "test12345"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        return response.json()
+
+    def test_login_issues_tokens(self):
+        payload = self._login()
+        self.assertTrue(payload["ok"])
+        self.assertIn("access_token", payload)
+        self.assertIn("refresh_token", payload)
+        self.assertEqual(payload["user"]["id"], self.user.id)
+        self.assertEqual(MobileApiSession.objects.filter(user=self.user, revoked_at__isnull=True).count(), 1)
+
+    def test_login_rejects_invalid_credentials(self):
+        response = self.client.post(
+            "/api/mobile/auth/login",
+            data=json.dumps({"identity": "mobile@example.com", "password": "wrong"}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["error"], "invalid_credentials")
+
+    def test_dashboard_requires_bearer_token(self):
+        response = self.client.get("/api/mobile/dashboard")
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json()["error"], "missing_bearer_token")
+
+    def test_dashboard_returns_user_snapshot(self):
+        Task.objects.create(
+            owner=self.user,
+            title="Task mobile",
+            status=Task.Status.OPEN,
+            due_date=timezone.localdate() - timedelta(days=1),
+        )
+        PlannerItem.objects.create(
+            owner=self.user,
+            title="Planner mobile",
+            status=PlannerItem.Status.PLANNED,
+        )
+
+        payload = self._login()
+        access = payload["access_token"]
+        response = self.client.get(
+            "/api/mobile/dashboard",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["metrics"]["open_tasks"], 1)
+        self.assertEqual(body["metrics"]["planner_queue"], 1)
+        self.assertEqual(body["metrics"]["alerts_open"], 1)
+
+    def test_refresh_rotates_tokens(self):
+        payload = self._login()
+        old_refresh = payload["refresh_token"]
+
+        refresh_response = self.client.post(
+            "/api/mobile/auth/refresh",
+            data=json.dumps({"refresh_token": old_refresh}),
+            content_type="application/json",
+        )
+        self.assertEqual(refresh_response.status_code, 200)
+        refreshed = refresh_response.json()
+        self.assertNotEqual(refreshed["refresh_token"], old_refresh)
+
+        second_refresh = self.client.post(
+            "/api/mobile/auth/refresh",
+            data=json.dumps({"refresh_token": old_refresh}),
+            content_type="application/json",
+        )
+        self.assertEqual(second_refresh.status_code, 401)
+
+    def test_logout_revokes_session(self):
+        payload = self._login()
+        access = payload["access_token"]
+
+        logout = self.client.post(
+            "/api/mobile/auth/logout",
+            data=json.dumps({}),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(logout.status_code, 200)
+
+        denied = self.client.get("/api/mobile/dashboard", HTTP_AUTHORIZATION=f"Bearer {access}")
+        self.assertEqual(denied.status_code, 401)
+
+    def test_mobile_options_preflight_returns_cors_headers(self):
+        response = self.client.options(
+            "/api/mobile/auth/login",
+            HTTP_ORIGIN="http://localhost",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="POST",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["Access-Control-Allow-Origin"], "http://localhost")

@@ -203,6 +203,9 @@ Obbligatorie in produzione:
 Opzionali (feature specifiche):
 
 - `DJANGO_CSRF_TRUSTED_ORIGINS`
+- `MOBILE_API_ALLOWED_ORIGINS` (origini consentite CORS per `/api/mobile/*`, es. `http://localhost,capacitor://localhost`)
+- `MOBILE_API_ACCESS_TTL_SECONDS` (durata access token mobile, default `900`)
+- `MOBILE_API_REFRESH_TTL_DAYS` (durata refresh token mobile, default `14`)
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL` (default: `gpt-4o-mini`)
 - `OPENAI_MODEL_ARCHIBALD` (override modello solo per Archibald, default: `gpt-5-mini`)
@@ -232,6 +235,28 @@ Note:
 
 - Se `OPENAI_API_KEY` manca, le feature AI mostrano errore controllato o fallback.
 - Se `VAULT_ENCRYPTION_KEY` manca, in locale viene derivata da `SECRET_KEY` (fallback deterministico).
+
+## API Mobile (ArchiDroid)
+
+Endpoint JSON dedicati alla app mobile:
+
+- `POST /api/mobile/auth/login`
+  - body: `{"identity":"email_o_username","password":"..."}` (+ opzionale `device_label`)
+  - risposta: `access_token`, `refresh_token`, scadenze, dati utente
+- `POST /api/mobile/auth/refresh`
+  - body: `{"refresh_token":"..."}`
+  - risposta: nuova coppia token (rotazione refresh inclusa)
+- `POST /api/mobile/auth/logout`
+  - header: `Authorization: Bearer <access_token>` (oppure body con `refresh_token`)
+- `GET /api/mobile/dashboard`
+  - header: `Authorization: Bearer <access_token>`
+  - risposta: metriche dashboard + eventi recenti utente
+
+Sicurezza:
+
+- token salvati nel DB in forma hash (`sha256`)
+- revoca sessione supportata
+- access token a breve durata + refresh token ruotato
 
 ## Automazione email Archibald
 

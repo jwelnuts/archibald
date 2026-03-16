@@ -1,20 +1,25 @@
 from datetime import date, timedelta
 from decimal import Decimal
+import hashlib
 import json
+import secrets
 
+from django.conf import settings
 from django.contrib import messages as django_messages
-from django.contrib.auth import login, logout as auth_logout
+from django.contrib.auth import authenticate, get_user_model, login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
 from django.db.models import Count, Sum
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from agenda.models import AgendaItem, WorkLog
 from .forms import AccountForm, SignUpForm
 from .hero_actions import HERO_ACTIONS
-from .models import UserHeroActionsConfig, UserNavConfig
+from .models import MobileApiSession, UserHeroActionsConfig, UserNavConfig
 from .navigation import DEFAULT_APP_OPTIONS, normalize_nav_config, parse_widgets_json
 from planner.models import PlannerItem
 from routines.models import RoutineItem
@@ -772,3 +777,258 @@ def remove_account(request):
             return redirect("/core/accounts/")
     accounts_list = Account.objects.filter(owner=request.user).order_by("name")[:20]
     return render(request, "core/remove_account.html", {"account": account, "accounts": accounts_list})
+
+
+def _mobile_json_error(error: str, status: int = 400):
+    return JsonResponse({"ok": False, "error": error}, status=status)
+
+
+def _mobile_parse_json(request):
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _mobile_hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _mobile_access_ttl_seconds() -> int:
+    raw = int(getattr(settings, "MOBILE_API_ACCESS_TTL_SECONDS", 900) or 900)
+    return max(raw, 60)
+
+
+def _mobile_refresh_ttl_days() -> int:
+    raw = int(getattr(settings, "MOBILE_API_REFRESH_TTL_DAYS", 14) or 14)
+    return max(raw, 1)
+
+
+def _mobile_client_ip(request) -> str:
+    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    if forwarded:
+        return forwarded
+    return (request.META.get("REMOTE_ADDR") or "").strip()
+
+
+def _mobile_issue_tokens():
+    return secrets.token_urlsafe(32), secrets.token_urlsafe(48)
+
+
+def _mobile_create_session(user, request, device_label: str = ""):
+    access_token, refresh_token = _mobile_issue_tokens()
+    now = timezone.now()
+    session = MobileApiSession.objects.create(
+        user=user,
+        access_token_hash=_mobile_hash_token(access_token),
+        refresh_token_hash=_mobile_hash_token(refresh_token),
+        access_expires_at=now + timedelta(seconds=_mobile_access_ttl_seconds()),
+        refresh_expires_at=now + timedelta(days=_mobile_refresh_ttl_days()),
+        device_label=(device_label or "")[:120],
+        user_agent=(request.headers.get("User-Agent") or "")[:255],
+        ip_address=_mobile_client_ip(request) or None,
+    )
+    return session, access_token, refresh_token
+
+
+def _mobile_payload(user, access_token: str, refresh_token: str, session: MobileApiSession):
+    return {
+        "ok": True,
+        "access_token": access_token,
+        "access_expires_at": session.access_expires_at.isoformat(),
+        "refresh_token": refresh_token,
+        "refresh_expires_at": session.refresh_expires_at.isoformat(),
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+        },
+    }
+
+
+def _mobile_bearer_token(request) -> str:
+    header = (request.headers.get("Authorization") or "").strip()
+    if not header.lower().startswith("bearer "):
+        return ""
+    return header[7:].strip()
+
+
+def _mobile_authenticate_request(request):
+    token = _mobile_bearer_token(request)
+    if not token:
+        return None, _mobile_json_error("missing_bearer_token", status=401)
+
+    now = timezone.now()
+    session = (
+        MobileApiSession.objects.select_related("user")
+        .filter(
+            access_token_hash=_mobile_hash_token(token),
+            revoked_at__isnull=True,
+            access_expires_at__gt=now,
+        )
+        .first()
+    )
+    if not session:
+        return None, _mobile_json_error("invalid_or_expired_access_token", status=401)
+
+    session.last_used_at = now
+    session.save(update_fields=["last_used_at", "updated_at"])
+    return session, None
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def mobile_auth_login(request):
+    payload = _mobile_parse_json(request)
+    if payload is None:
+        return _mobile_json_error("invalid_json", status=400)
+
+    identity = (payload.get("identity") or payload.get("email") or payload.get("username") or "").strip()
+    password = (payload.get("password") or "").strip()
+    device_label = (payload.get("device_label") or "").strip()
+
+    if not identity or not password:
+        return _mobile_json_error("missing_credentials", status=400)
+
+    user_model = get_user_model()
+    user_by_email = user_model.objects.filter(email__iexact=identity).first()
+    auth_username = user_by_email.username if user_by_email else identity
+    user = authenticate(request, username=auth_username, password=password)
+    if not user or not user.is_active:
+        return _mobile_json_error("invalid_credentials", status=401)
+
+    session, access_token, refresh_token = _mobile_create_session(user, request, device_label=device_label)
+    return JsonResponse(_mobile_payload(user, access_token, refresh_token, session))
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def mobile_auth_refresh(request):
+    payload = _mobile_parse_json(request)
+    if payload is None:
+        return _mobile_json_error("invalid_json", status=400)
+
+    refresh_token = (payload.get("refresh_token") or "").strip()
+    if not refresh_token:
+        return _mobile_json_error("missing_refresh_token", status=400)
+
+    now = timezone.now()
+    session = (
+        MobileApiSession.objects.select_related("user")
+        .filter(
+            refresh_token_hash=_mobile_hash_token(refresh_token),
+            revoked_at__isnull=True,
+            refresh_expires_at__gt=now,
+        )
+        .first()
+    )
+    if not session:
+        return _mobile_json_error("invalid_or_expired_refresh_token", status=401)
+
+    access_token, new_refresh_token = _mobile_issue_tokens()
+    session.access_token_hash = _mobile_hash_token(access_token)
+    session.refresh_token_hash = _mobile_hash_token(new_refresh_token)
+    session.access_expires_at = now + timedelta(seconds=_mobile_access_ttl_seconds())
+    session.refresh_expires_at = now + timedelta(days=_mobile_refresh_ttl_days())
+    session.last_used_at = now
+    session.save(
+        update_fields=[
+            "access_token_hash",
+            "refresh_token_hash",
+            "access_expires_at",
+            "refresh_expires_at",
+            "last_used_at",
+            "updated_at",
+        ]
+    )
+
+    return JsonResponse(_mobile_payload(session.user, access_token, new_refresh_token, session))
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def mobile_auth_logout(request):
+    payload = _mobile_parse_json(request)
+    if payload is None:
+        payload = {}
+
+    now = timezone.now()
+    session = None
+    access_token = _mobile_bearer_token(request)
+    if access_token:
+        session = (
+            MobileApiSession.objects.filter(
+                access_token_hash=_mobile_hash_token(access_token),
+                revoked_at__isnull=True,
+            )
+            .order_by("-id")
+            .first()
+        )
+
+    if not session:
+        refresh_token = (payload.get("refresh_token") or "").strip()
+        if refresh_token:
+            session = (
+                MobileApiSession.objects.filter(
+                    refresh_token_hash=_mobile_hash_token(refresh_token),
+                    revoked_at__isnull=True,
+                )
+                .order_by("-id")
+                .first()
+            )
+
+    if session:
+        session.revoked_at = now
+        session.save(update_fields=["revoked_at", "updated_at"])
+
+    return JsonResponse({"ok": True})
+
+
+@require_http_methods(["GET"])
+def mobile_dashboard(request):
+    session, error = _mobile_authenticate_request(request)
+    if error:
+        return error
+
+    snapshot_context = _dashboard_snapshot_context(session.user)
+    snapshot = snapshot_context["snapshot"]
+    today = date.today()
+    events = []
+    for row in snapshot_context["focus_rows"][:8]:
+        due_date = row.get("due_date")
+        events.append(
+            {
+                "kind": row.get("kind"),
+                "title": row.get("title"),
+                "due_date": due_date.isoformat() if due_date else "",
+                "url": row.get("url", ""),
+                "warn": bool(due_date and due_date < today),
+            }
+        )
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "synced_at": timezone.now().isoformat(),
+            "metrics": {
+                "open_tasks": snapshot["open_tasks"],
+                "planner_queue": snapshot["planner_planned"],
+                "alerts_open": snapshot["overdue_tasks"],
+                "due_subscriptions_week": snapshot["due_subscriptions_week"],
+            },
+            "snapshot": {
+                "tasks_today": snapshot["tasks_today"],
+                "month_transactions": snapshot["month_transactions"],
+                "month_income": snapshot["month_income"],
+                "month_expense": snapshot["month_expense"],
+                "month_balance": snapshot["month_balance"],
+            },
+            "events": events,
+            "user": {
+                "id": session.user.id,
+                "username": session.user.username,
+                "email": session.user.email,
+            },
+        }
+    )

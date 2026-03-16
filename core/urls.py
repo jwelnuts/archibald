@@ -3,6 +3,10 @@ from django.urls import include, path
 from . import views
 
 urlpatterns = [
+    path("api/mobile/auth/login", views.mobile_auth_login, name="mobile-auth-login"),
+    path("api/mobile/auth/refresh", views.mobile_auth_refresh, name="mobile-auth-refresh"),
+    path("api/mobile/auth/logout", views.mobile_auth_logout, name="mobile-auth-logout"),
+    path("api/mobile/dashboard", views.mobile_dashboard, name="mobile-dashboard"),
     path('', views.dashboard, name='core-dashboard'),
     path('dashboard/widgets', views.dashboard_widgets, name='core-dashboard-widgets'),
     path('dashboard/preferences', views.dashboard_preferences, name='core-dashboard-preferences'),
