@@ -11,9 +11,8 @@ from .forms import (
     QuickRoutineItemForm,
     RoutineForm,
     RoutineItemForm,
-    WEEKDAY_ALL,
 )
-from .models import Routine, RoutineCheck, RoutineItem
+from .models import Routine, RoutineCategory, RoutineCheck, RoutineItem
 from projects.models import Project
 
 
@@ -87,6 +86,63 @@ def _extract_schema_data(item, user, data):
     return result
 
 
+def _format_data_value(value):
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return "Si" if value else "No"
+    if isinstance(value, float):
+        if value.is_integer():
+            return str(int(value))
+        return str(value)
+    if isinstance(value, (list, tuple)):
+        cleaned = [str(entry).strip() for entry in value if str(entry).strip()]
+        return ", ".join(cleaned) if cleaned else None
+    text = str(value).strip()
+    return text or None
+
+
+def _build_data_rows(schema_fields, data):
+    if not isinstance(data, dict) or not data:
+        return []
+
+    rows = []
+    handled_keys = set()
+    for field in schema_fields:
+        name = field.get("name")
+        if not name or name not in data:
+            continue
+        formatted = _format_data_value(data.get(name))
+        if formatted is None:
+            continue
+        rows.append({"label": field.get("label") or name, "value": formatted})
+        handled_keys.add(name)
+
+    for key, raw in data.items():
+        if key in handled_keys:
+            continue
+        formatted = _format_data_value(raw)
+        if formatted is None:
+            continue
+        rows.append({"label": key.replace("_", " ").capitalize(), "value": formatted})
+
+    return rows
+
+
+def _resolve_category(user, raw_value):
+    raw = (raw_value or "").strip()
+    if not raw.isdigit():
+        return None
+    return RoutineCategory.objects.filter(owner=user, is_active=True, id=int(raw)).first()
+
+
+def _dashboard_redirect_url(week_start: date, category: RoutineCategory | None):
+    query = f"week={week_start.isoformat()}"
+    if category is not None:
+        query += f"&category={category.id}"
+    return f"/routines/?{query}"
+
+
 def _week_stats(owner, week_start: date):
     counts = (
         RoutineCheck.objects.filter(owner=owner, week_start=week_start)
@@ -113,17 +169,27 @@ def dashboard(request):
     week_start = _week_start_for(requested_week)
     week_end = week_start + timedelta(days=6)
     today = date.today()
+    selected_category_raw = request.POST.get("category") if request.method == "POST" else request.GET.get("category")
+    selected_category = _resolve_category(user, selected_category_raw)
 
     active_quick_form = ""
-    quick_routine_form = QuickRoutineForm()
-    quick_item_form = QuickRoutineItemForm(owner=user, initial={"weekday": str(today.weekday())})
+    quick_routine_form = QuickRoutineForm(owner=user)
+    quick_item_form = QuickRoutineItemForm(
+        owner=user,
+        category=selected_category,
+        initial={"weekday": str(today.weekday())},
+    )
 
     if request.method == "POST":
         quick_action = (request.POST.get("quick_action") or "").strip()
         if quick_action == "add_routine":
             active_quick_form = "routine"
-            quick_routine_form = QuickRoutineForm(request.POST)
-            quick_item_form = QuickRoutineItemForm(owner=user, initial={"weekday": str(today.weekday())})
+            quick_routine_form = QuickRoutineForm(request.POST, owner=user)
+            quick_item_form = QuickRoutineItemForm(
+                owner=user,
+                category=selected_category,
+                initial={"weekday": str(today.weekday())},
+            )
             if quick_routine_form.is_valid():
                 name = (quick_routine_form.cleaned_data.get("name") or "").strip()
                 description = (quick_routine_form.cleaned_data.get("description") or "").strip()
@@ -145,22 +211,27 @@ def dashboard(request):
                         updates.append("is_active")
                     if updates:
                         routine.save(update_fields=updates)
-                return redirect(f"/routines/?week={week_start.isoformat()}")
+                return redirect(_dashboard_redirect_url(week_start, selected_category))
 
         elif quick_action == "add_item":
             active_quick_form = "item"
-            quick_item_form = QuickRoutineItemForm(request.POST, owner=user)
-            quick_routine_form = QuickRoutineForm()
+            quick_item_form = QuickRoutineItemForm(request.POST, owner=user, category=selected_category)
+            quick_routine_form = QuickRoutineForm(owner=user)
             if quick_item_form.is_valid():
                 quick_item_form.save(owner=user)
-                return redirect(f"/routines/?week={week_start.isoformat()}")
+                return redirect(_dashboard_redirect_url(week_start, selected_category))
 
+    categories = RoutineCategory.objects.filter(owner=user, is_active=True).order_by("name")
     routines = Routine.objects.filter(owner=user, is_active=True).order_by("name")
+
     items = (
         RoutineItem.objects.filter(owner=user, is_active=True, routine__in=routines)
-        .select_related("routine")
+        .select_related("routine", "category")
         .order_by("weekday", "time_start", "time_end", "title")
     )
+    if selected_category is not None:
+        items = items.filter(category=selected_category)
+        routines = routines.filter(id__in=items.values_list("routine_id", flat=True).distinct())
 
     checks = RoutineCheck.objects.filter(owner=user, week_start=week_start, item__in=items)
     check_map = {check.item_id: check for check in checks}
@@ -207,11 +278,14 @@ def dashboard(request):
     for item in items:
         check = check_map.get(item.id)
         status = check.status if check else RoutineCheck.Status.PLANNED
+        schema_fields = _schema_fields(item, user)
+        data = check.data if check else {}
         grouped[item.weekday].append({
             "item": item,
             "status": status,
-            "data": check.data if check else {},
-            "schema_fields": _schema_fields(item, user),
+            "data": data,
+            "schema_fields": schema_fields,
+            "data_rows": _build_data_rows(schema_fields, data),
         })
 
     stats = _week_stats(user, week_start)
@@ -240,6 +314,9 @@ def dashboard(request):
         "week_days": week_days,
         "grouped": grouped,
         "routines": routines,
+        "categories": categories,
+        "selected_category": selected_category,
+        "category_query": f"&category={selected_category.id}" if selected_category is not None else "",
         "stats": stats,
         "today_stats": today_stats,
         "prev_week": (week_start - timedelta(days=7)).isoformat(),
@@ -286,6 +363,8 @@ def check_item(request):
     check.save(update_fields=["status", "data"])
 
     stats = _week_stats(request.user, week_start)
+    schema_fields = _schema_fields(item, request.user)
+    data_rows = _build_data_rows(schema_fields, check.data)
 
     if is_htmx:
         context = {
@@ -293,6 +372,7 @@ def check_item(request):
             "status": check.status,
             "stats": stats,
             "data": check.data,
+            "data_rows": data_rows,
         }
         return render(request, "routines/partials/check_item_oob.html", context)
 
@@ -428,14 +508,14 @@ def stats(request):
 @login_required
 def add_routine(request):
     if request.method == "POST":
-        form = RoutineForm(request.POST)
+        form = RoutineForm(request.POST, owner=request.user)
         if form.is_valid():
             routine = form.save(commit=False)
             routine.owner = request.user
             routine.save()
             return redirect("/routines/")
     else:
-        form = RoutineForm()
+        form = RoutineForm(owner=request.user)
     return render(request, "routines/add_routine.html", {"form": form})
 
 
@@ -446,12 +526,12 @@ def update_routine(request):
     if routine_id:
         routine = get_object_or_404(Routine, id=routine_id, owner=request.user)
         if request.method == "POST":
-            form = RoutineForm(request.POST, instance=routine)
+            form = RoutineForm(request.POST, instance=routine, owner=request.user)
             if form.is_valid():
                 form.save()
                 return redirect("/routines/")
         else:
-            form = RoutineForm(instance=routine)
+            form = RoutineForm(instance=routine, owner=request.user)
         return render(request, "routines/update_routine.html", {"form": form, "routine": routine})
 
     routines = Routine.objects.filter(owner=request.user).order_by("name")[:20]
@@ -482,6 +562,7 @@ def add_item(request):
                 if routine is None:
                     form.add_error("routine_choice", "Seleziona una routine valida.")
                     return render(request, "routines/add_item.html", {"form": form})
+                category = form.resolve_category()
                 project = form.resolve_project()
                 items = []
                 for value, _label in RoutineItem.Weekday.choices:
@@ -489,6 +570,7 @@ def add_item(request):
                         RoutineItem(
                             owner=request.user,
                             routine=routine,
+                            category=category,
                             project=project,
                             title=form.cleaned_data["title"],
                             weekday=value,

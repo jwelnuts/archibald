@@ -400,6 +400,25 @@ body.routines-skin {
   margin-top: 14px;
 }
 
+.routine-category-filter {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.routine-category-filter .uk-button {
+  min-height: 34px;
+  border-radius: 999px;
+  padding-inline: 12px;
+}
+
+.routine-category-filter .uk-button.is-active {
+  border-color: rgba(30, 106, 91, 0.8);
+  color: var(--accent);
+  background: rgba(30, 106, 91, 0.12);
+}
+
 .routine-filter-group .uk-button {
   min-height: 38px;
   border-radius: 999px;
@@ -541,6 +560,26 @@ body.routines-skin {
   background: rgba(91, 78, 48, 0.08);
 }
 
+.routine-entry-values {
+  display: grid;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.routine-entry-values-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(77, 73, 57, 0.72);
+}
+
+.routine-entry-values-list {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .routine-entry-status {
   display: inline-flex;
   align-items: center;
@@ -613,6 +652,14 @@ body.routines-skin {
 
 .routine-list {
   gap: 10px;
+}
+
+.routine-group-title {
+  margin: 10px 0 6px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: rgba(77, 73, 57, 0.72);
 }
 
 .routine-list-item {

@@ -1,6 +1,6 @@
 {% extends "routines/base.html" %}
 
-{% block title %}MIO - Update Routine Item{% endblock %}
+{% block title %}MIO - Update Attivita{% endblock %}
 
 {% block content %}
   <section class="panel narrow">
@@ -22,9 +22,14 @@
       <form class="form form-compact uk-form-stacked" method="post" action="">
         {% csrf_token %}
         <div class="field">
-          <label for="id_routine_choice">Routine</label>
+          <label for="id_routine_choice">Contenitore</label>
           {{ form.routine_choice }}
-          <input id="id_routine_name" name="routine_name" class="uk-input uk-form-small" type="text" placeholder="Nome nuova routine" value="{{ form.routine_name.value|default:'' }}" style="display:none;">
+          <div class="helper-text">Le attivita appartengono sempre a un contenitore esistente.</div>
+        </div>
+        <div class="field">
+          <label for="id_category_choice">Categoria attivita</label>
+          {{ form.category_choice }}
+          <input id="id_category_name" name="category_name" class="uk-input uk-form-small" type="text" placeholder="Nome nuova categoria" value="{{ form.category_name.value|default:'' }}" style="display:none;">
         </div>
         <div class="field">
           <label for="id_project_choice">Progetto</label>
@@ -83,18 +88,19 @@
       </form>
       <script>
         (function () {
-          var select = document.getElementById("id_routine_choice");
-          var input = document.getElementById("id_routine_name");
-          function toggleRoutine() {
-            var isNew = select.value === "__new__";
-            input.style.display = isNew ? "block" : "none";
-            if (!isNew) {
-              input.value = "";
+          var categorySelect = document.getElementById("id_category_choice");
+          var categoryInput = document.getElementById("id_category_name");
+          function toggleCategory() {
+            var isNewCategory = categorySelect && categorySelect.value === "__new__";
+            if (!categoryInput) return;
+            categoryInput.style.display = isNewCategory ? "block" : "none";
+            if (!isNewCategory) {
+              categoryInput.value = "";
             }
           }
-          if (select && input) {
-            select.addEventListener("change", toggleRoutine);
-            toggleRoutine();
+          if (categorySelect && categoryInput) {
+            categorySelect.addEventListener("change", toggleCategory);
+            toggleCategory();
           }
 
           var projectSelect = document.getElementById("id_project_choice");

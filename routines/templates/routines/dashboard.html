@@ -11,7 +11,7 @@
         <div class="routines-hero-copy uk-width-1-1 uk-width-3-5@l">
           <div class="routines-kicker">Routines</div>
           <h1 class="routines-hero-title">Settimana in movimento</h1>
-          <p class="routines-hero-text">Segna al volo, filtra quello che conta e tieni le routine sotto controllo anche da telefono.</p>
+          <p class="routines-hero-text">Organizza le routine per categoria, aggiungi attivita con meno passaggi e salva i valori durante il completamento.</p>
         </div>
         <div class="routines-hero-progress uk-width-1-1 uk-width-2-5@l">
           <div class="routines-progress-label">
@@ -32,13 +32,13 @@
           <div class="routines-hero-meta">
             <span>{{ stats.done }} fatti</span>
             <span>{{ stats.planned }} da fare</span>
-            <span>{{ routines|length }} routine</span>
+            <span>{{ routines|length }} contenitori</span>
           </div>
         </div>
       </div>
       <div class="routines-hero-actions uk-grid-small uk-child-width-1-1 uk-child-width-1-3@s" uk-grid id="app-actions" data-module="routines">
-        <a class="uk-button uk-button-primary uk-button-small" href="/routines/api/add" data-action="add_routine">Nuova routine</a>
-        <a class="uk-button uk-button-default uk-button-small" href="/routines/items/add" data-action="add_item">Nuova attivita</a>
+        <a class="uk-button uk-button-primary uk-button-small" href="/routines/api/add" data-action="add_routine">Nuovo contenitore</a>
+        <a class="uk-button uk-button-default uk-button-small" href="/routines/items/add" data-action="add_item">Nuova attivita (task)</a>
         <a class="uk-button uk-button-default uk-button-small" href="/routines/stats">Statistiche</a>
       </div>
     </section>
@@ -56,8 +56,14 @@
           </div>
         </div>
         <div class="routines-week-nav">
-          <a class="uk-button uk-button-default uk-button-small" href="/routines/?week={{ prev_week }}">Settimana prima</a>
-          <a class="uk-button uk-button-default uk-button-small" href="/routines/?week={{ next_week }}">Settimana dopo</a>
+          <a class="uk-button uk-button-default uk-button-small" href="/routines/?week={{ prev_week }}{{ category_query }}">Settimana prima</a>
+          <a class="uk-button uk-button-default uk-button-small" href="/routines/?week={{ next_week }}{{ category_query }}">Settimana dopo</a>
+        </div>
+        <div class="routine-category-filter">
+          <a class="uk-button uk-button-default uk-button-small {% if not selected_category %}is-active{% endif %}" href="/routines/?week={{ week_start|date:'Y-m-d' }}">Tutte le categorie</a>
+          {% for category in categories %}
+            <a class="uk-button uk-button-default uk-button-small {% if selected_category and selected_category.id == category.id %}is-active{% endif %}" href="/routines/?week={{ week_start|date:'Y-m-d' }}&category={{ category.id }}">{{ category.name }}</a>
+          {% endfor %}
         </div>
         <div class="routines-day-strip" aria-label="Navigazione giorni">
           {% for day in week_days %}
@@ -115,26 +121,73 @@
         <div class="routines-quick-block">
           <div class="routines-quick-title">Inserimento veloce</div>
           <ul class="uk-accordion routines-quick-accordion" uk-accordion="active: false; collapsible: true">
+            <li class="{% if active_quick_form == "routine" %}uk-open{% endif %}">
+              <a class="uk-accordion-title" href="#">1) Crea contenitore</a>
+              <div class="uk-accordion-content">
+                <form method="post" class="uk-form-stacked routines-quick-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="quick_action" value="add_routine">
+                  <input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
+                  {% if selected_category %}
+                    <input type="hidden" name="category" value="{{ selected_category.id }}">
+                  {% endif %}
+                  {% if quick_routine_form.errors %}
+                    <div class="uk-alert-danger uk-padding-small uk-margin-small-bottom">
+                      Correggi i campi del form contenitore.
+                    </div>
+                  {% endif %}
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_routine_form.name.id_for_label }}">Nome contenitore</label>
+                    {{ quick_routine_form.name }}
+                    {{ quick_routine_form.name.errors }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_routine_form.description.id_for_label }}">Descrizione</label>
+                    {{ quick_routine_form.description }}
+                    {{ quick_routine_form.description.errors }}
+                  </div>
+                  <div class="uk-text-meta uk-margin-small-bottom">Il contenitore e il gruppo principale (es. salute, hobby, doveri).</div>
+                  <div class="uk-margin-small-top">
+                    <button class="uk-button uk-button-default uk-button-small" type="submit">Aggiungi contenitore</button>
+                  </div>
+                  {{ quick_routine_form.non_field_errors }}
+                </form>
+              </div>
+            </li>
             <li class="{% if active_quick_form == "item" %}uk-open{% endif %}">
-              <a class="uk-accordion-title" href="#">Nuova attivita</a>
+              <a class="uk-accordion-title" href="#">2) Crea attivita (task)</a>
               <div class="uk-accordion-content">
                 <form method="post" class="uk-form-stacked routines-quick-form">
                   {% csrf_token %}
                   <input type="hidden" name="quick_action" value="add_item">
                   <input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
+                  {% if selected_category %}
+                    <input type="hidden" name="category" value="{{ selected_category.id }}">
+                  {% endif %}
                   {% if quick_item_form.errors %}
                     <div class="uk-alert-danger uk-padding-small uk-margin-small-bottom">
                       Correggi i campi del form attivita.
                     </div>
                   {% endif %}
                   <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ quick_item_form.routine_choice.id_for_label }}">Routine</label>
+                    <label class="uk-form-label" for="{{ quick_item_form.routine_choice.id_for_label }}">Contenitore</label>
                     {{ quick_item_form.routine_choice }}
+                    {{ quick_item_form.routine_choice.errors }}
+                    {% if not routines %}
+                      <div class="uk-text-meta uk-margin-small-top">Prima crea almeno un contenitore.</div>
+                    {% endif %}
                   </div>
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ quick_item_form.routine_name.id_for_label }}">Nuova routine (opzionale)</label>
-                    {{ quick_item_form.routine_name }}
-                    {{ quick_item_form.routine_name.errors }}
+                  <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+                    <div class="uk-margin-small">
+                      <label class="uk-form-label" for="{{ quick_item_form.category_choice.id_for_label }}">Categoria</label>
+                      {{ quick_item_form.category_choice }}
+                      {{ quick_item_form.category_choice.errors }}
+                    </div>
+                    <div class="uk-margin-small">
+                      <label class="uk-form-label" for="{{ quick_item_form.category_name.id_for_label }}">Nuova categoria</label>
+                      {{ quick_item_form.category_name }}
+                      {{ quick_item_form.category_name.errors }}
+                    </div>
                   </div>
                   <div class="uk-margin-small">
                     <label class="uk-form-label" for="{{ quick_item_form.title.id_for_label }}">Attivita</label>
@@ -157,40 +210,11 @@
                     <label class="uk-form-label" for="{{ quick_item_form.note.id_for_label }}">Nota</label>
                     {{ quick_item_form.note }}
                   </div>
+                  <div class="uk-text-meta uk-margin-small-bottom">L'attivita e un singolo task ripetibile dentro un contenitore.</div>
                   <div class="uk-margin-small-top">
                     <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi attivita</button>
                   </div>
-                  {{ quick_item_form.routine_choice.errors }}
                   {{ quick_item_form.non_field_errors }}
-                </form>
-              </div>
-            </li>
-            <li class="{% if active_quick_form == "routine" %}uk-open{% endif %}">
-              <a class="uk-accordion-title" href="#">Nuova routine</a>
-              <div class="uk-accordion-content">
-                <form method="post" class="uk-form-stacked routines-quick-form">
-                  {% csrf_token %}
-                  <input type="hidden" name="quick_action" value="add_routine">
-                  <input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
-                  {% if quick_routine_form.errors %}
-                    <div class="uk-alert-danger uk-padding-small uk-margin-small-bottom">
-                      Correggi i campi del form routine.
-                    </div>
-                  {% endif %}
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ quick_routine_form.name.id_for_label }}">Nome routine</label>
-                    {{ quick_routine_form.name }}
-                    {{ quick_routine_form.name.errors }}
-                  </div>
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ quick_routine_form.description.id_for_label }}">Descrizione</label>
-                    {{ quick_routine_form.description }}
-                    {{ quick_routine_form.description.errors }}
-                  </div>
-                  <div class="uk-margin-small-top">
-                    <button class="uk-button uk-button-default uk-button-small" type="submit">Aggiungi routine</button>
-                  </div>
-                  {{ quick_routine_form.non_field_errors }}
                 </form>
               </div>
             </li>
@@ -226,7 +250,7 @@
                             <div>
                               <div class="routine-entry-title">{{ entry.item.title }}</div>
                               <div class="uk-text-meta routine-day-entry-meta">
-                                {{ entry.item.routine.name }}{% if entry.item.project %} · {{ entry.item.project.name }}{% endif %}
+                                Contenitore: {{ entry.item.routine.name }}{% if entry.item.category %} · Categoria: {{ entry.item.category.name }}{% endif %}{% if entry.item.project %} · Progetto: {{ entry.item.project.name }}{% endif %}
                               </div>
                             </div>
                             <div id="routine-status-{{ entry.item.id }}" class="routine-entry-status" data-routine-status data-routine-status-value="{{ entry.status }}">{{ entry.status }}</div>
@@ -286,6 +310,17 @@
                             {% endwith %}
                           {% endwith %}
 
+                          <div id="routine-values-{{ entry.item.id }}" class="routine-entry-values">
+                            {% if entry.data_rows %}
+                              <div class="routine-entry-values-title">Valori salvati (settimana corrente)</div>
+                              <ul class="routine-entry-values-list">
+                                {% for row in entry.data_rows %}
+                                  <li><strong>{{ row.label }}:</strong> {{ row.value }}</li>
+                                {% endfor %}
+                              </ul>
+                            {% endif %}
+                          </div>
+
                           <div class="routine-entry-links">
                             <a class="uk-button uk-button-text uk-text-small" href="/routines/items/update?id={{ entry.item.id }}">Modifica</a>
                             <a class="uk-button uk-button-text uk-text-small uk-text-danger" href="/routines/items/remove?id={{ entry.item.id }}">Elimina</a>
@@ -332,7 +367,7 @@
           <div class="routines-panel-head">
             <div>
               <div class="routines-panel-kicker">Library</div>
-              <h2 class="routines-panel-title">Routine attive</h2>
+              <h2 class="routines-panel-title">Contenitori attivi</h2>
             </div>
           </div>
           {% if routines %}
@@ -353,7 +388,7 @@
               {% endfor %}
             </ul>
           {% else %}
-            <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessuna routine attiva.</div>
+            <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessun contenitore attivo.</div>
           {% endif %}
         </section>
       </aside>
@@ -361,17 +396,35 @@
     {% endwith %}
 
     <nav class="routines-mobile-dock" aria-label="Azioni rapide routines">
-      <a class="routines-mobile-dock__action is-primary" href="/routines/items/add">+ Attivita</a>
-      <a class="routines-mobile-dock__action" href="/routines/api/add">+ Routine</a>
+      <a class="routines-mobile-dock__action is-primary" href="/routines/api/add">+ Contenitore</a>
+      <a class="routines-mobile-dock__action" href="/routines/items/add">+ Attivita</a>
       <a class="routines-mobile-dock__action" href="/routines/stats">Statistiche</a>
     </nav>
   </div>
+  <script>
+    (function () {
+      var select = document.getElementById("{{ quick_item_form.category_choice.id_for_label }}");
+      var input = document.getElementById("{{ quick_item_form.category_name.id_for_label }}");
+      function toggleCategory() {
+        if (!select || !input) return;
+        var isNew = select.value === "__new__";
+        input.style.display = isNew ? "block" : "none";
+        if (!isNew) {
+          input.value = "";
+        }
+      }
+      if (select && input) {
+        select.addEventListener("change", toggleCategory);
+        toggleCategory();
+      }
+    })();
+  </script>
 
   <div class="modal" id="routine-modal" hidden>
     <div class="modal-backdrop" data-modal-close></div>
     <div class="modal-card uk-card uk-card-default uk-card-small" role="dialog" aria-modal="true" aria-labelledby="routine-modal-title">
       <div class="modal-head">
-        <h3 id="routine-modal-title">Completa routine</h3>
+        <h3 id="routine-modal-title">Completa attivita</h3>
         <button class="modal-close" type="button" data-modal-close aria-label="Chiudi">×</button>
       </div>
       <form

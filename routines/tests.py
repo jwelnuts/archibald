@@ -3,7 +3,7 @@ from datetime import date, timedelta
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from routines.models import Routine, RoutineCheck, RoutineItem
+from routines.models import Routine, RoutineCategory, RoutineCheck, RoutineItem
 
 
 class RoutineCheckHTMXTests(TestCase):
@@ -72,6 +72,8 @@ class RoutineCheckHTMXTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, f'id="routine-data-container-{self.item.id}"')
+        self.assertContains(response, f'id="routine-values-{self.item.id}"')
+        self.assertContains(response, "Completata bene")
         check = RoutineCheck.objects.get(owner=self.user, item=self.item, week_start=self.week_start)
         self.assertEqual(check.status, RoutineCheck.Status.DONE)
         self.assertEqual(check.data.get("note_done"), "Completata bene")
@@ -88,7 +90,6 @@ class RoutineItemCreationTests(TestCase):
             "/routines/items/add",
             {
                 "routine_choice": str(self.routine.id),
-                "routine_name": "",
                 "project_choice": "",
                 "project_name": "",
                 "title": "Stretching",
@@ -124,6 +125,31 @@ class RoutineItemCreationTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Routine.objects.filter(owner=self.user, name="Routine lampo", is_active=True).exists())
 
+    def test_dashboard_quick_add_item_creates_category(self):
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+
+        category_name = "Salute"
+        response = self.client.post(
+            "/routines/",
+            {
+                "quick_action": "add_item",
+                "week": week_start.isoformat(),
+                "routine_choice": str(self.routine.id),
+                "title": "Task con categoria",
+                "weekday": "1",
+                "category_choice": "__new__",
+                "category_name": category_name,
+            },
+        )
+
+        self.assertEqual(response.status_code, 302)
+        category = RoutineCategory.objects.filter(owner=self.user, name=category_name).first()
+        self.assertIsNotNone(category)
+        item = RoutineItem.objects.filter(owner=self.user, title="Task con categoria").first()
+        self.assertIsNotNone(item)
+        self.assertEqual(item.category_id, category.id)
+
     def test_dashboard_quick_add_item_creates_item(self):
         today = date.today()
         week_start = today - timedelta(days=today.weekday())
@@ -134,7 +160,6 @@ class RoutineItemCreationTests(TestCase):
                 "quick_action": "add_item",
                 "week": week_start.isoformat(),
                 "routine_choice": str(self.routine.id),
-                "routine_name": "",
                 "title": "Task veloce",
                 "weekday": "2",
                 "time_start": "08:15",
@@ -146,6 +171,20 @@ class RoutineItemCreationTests(TestCase):
         created = RoutineItem.objects.filter(owner=self.user, routine=self.routine, title="Task veloce")
         self.assertEqual(created.count(), 1)
         self.assertEqual(created.first().weekday, 2)
+
+    def test_dashboard_can_filter_by_category(self):
+        category_a = RoutineCategory.objects.create(owner=self.user, name="Fitness", is_active=True)
+        category_b = RoutineCategory.objects.create(owner=self.user, name="Lavoro", is_active=True)
+        routine_a = Routine.objects.create(owner=self.user, name="Morning", is_active=True)
+        routine_b = Routine.objects.create(owner=self.user, name="Office", is_active=True)
+        RoutineItem.objects.create(owner=self.user, routine=routine_a, category=category_a, title="Pushup", weekday=0, is_active=True)
+        RoutineItem.objects.create(owner=self.user, routine=routine_b, category=category_b, title="Mail check", weekday=0, is_active=True)
+
+        response = self.client.get(f"/routines/?category={category_a.id}")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Pushup")
+        self.assertNotContains(response, "Mail check")
 
 
 class RoutineCrudTests(TestCase):

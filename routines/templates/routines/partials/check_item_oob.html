@@ -14,6 +14,17 @@
 {% endwith %}
 {% endwith %}
 
+<div id="routine-values-{{ item.id }}" class="routine-entry-values" hx-swap-oob="outerHTML">
+  {% if data_rows %}
+    <div class="routine-entry-values-title">Valori salvati (settimana corrente)</div>
+    <ul class="routine-entry-values-list">
+      {% for row in data_rows %}
+        <li><strong>{{ row.label }}:</strong> {{ row.value }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
 <strong id="routine-stat-planned" data-routine-stat="PLANNED" hx-swap-oob="outerHTML">{{ stats.planned }}</strong>
 <strong id="routine-stat-done" data-routine-stat="DONE" hx-swap-oob="outerHTML">{{ stats.done }}</strong>
 <strong id="routine-stat-skipped" data-routine-stat="SKIPPED" hx-swap-oob="outerHTML">{{ stats.skipped }}</strong>

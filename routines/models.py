@@ -3,7 +3,28 @@ from django.db import models
 from common.models import OwnedModel, TimeStampedModel
 
 
+class RoutineCategory(OwnedModel, TimeStampedModel):
+    name = models.CharField(max_length=120)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = [("owner", "name")]
+        indexes = [
+            models.Index(fields=["owner", "is_active"]),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
 class Routine(OwnedModel, TimeStampedModel):
+    category = models.ForeignKey(
+        "routines.RoutineCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="routines",
+    )
     name = models.CharField(max_length=160)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
@@ -12,6 +33,7 @@ class Routine(OwnedModel, TimeStampedModel):
         unique_together = [("owner", "name")]
         indexes = [
             models.Index(fields=["owner", "is_active"]),
+            models.Index(fields=["owner", "category"]),
         ]
 
     def __str__(self):
@@ -33,6 +55,13 @@ class RoutineItem(OwnedModel, TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="items",
     )
+    category = models.ForeignKey(
+        "routines.RoutineCategory",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="routine_items",
+    )
     project = models.ForeignKey(
         "projects.Project",
         null=True,
@@ -52,6 +81,7 @@ class RoutineItem(OwnedModel, TimeStampedModel):
         indexes = [
             models.Index(fields=["owner", "weekday"]),
             models.Index(fields=["owner", "routine", "weekday"]),
+            models.Index(fields=["owner", "category"]),
         ]
 
     def __str__(self):

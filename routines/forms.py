@@ -5,7 +5,7 @@ from django import forms
 from projects.models import Project
 from projects.quick_create import create_quick_project
 
-from .models import Routine, RoutineItem
+from .models import Routine, RoutineCategory, RoutineItem
 
 WEEKDAY_ALL = "ALL"
 
@@ -30,18 +30,48 @@ def _apply_uikit_compact(fields):
         _append_class(widget, "uk-input uk-form-small")
 
 
+def _active_categories_for(owner):
+    if owner is None:
+        return RoutineCategory.objects.none()
+    return RoutineCategory.objects.filter(owner=owner, is_active=True).order_by("name")
+
+
+def _resolve_category(*, owner, category_qs, category_choice, category_name):
+    choice = (category_choice or "").strip()
+    name = (category_name or "").strip()
+
+    if choice == "__new__":
+        if owner is None or not name:
+            return None
+        category, _ = RoutineCategory.objects.get_or_create(
+            owner=owner,
+            name=name,
+            defaults={"is_active": True},
+        )
+        if not category.is_active:
+            category.is_active = True
+            category.save(update_fields=["is_active"])
+        return category
+
+    if choice and owner is not None:
+        return category_qs.filter(id=choice).first()
+
+    return None
+
+
 class RoutineForm(forms.ModelForm):
     class Meta:
         model = Routine
         fields = ("name", "description", "is_active")
 
     def __init__(self, *args, **kwargs):
+        kwargs.pop("owner", None)
         super().__init__(*args, **kwargs)
         _apply_uikit_compact(self.fields)
 
 
 class QuickRoutineForm(forms.Form):
-    name = forms.CharField(label="Nome routine", max_length=160)
+    name = forms.CharField(label="Nome contenitore", max_length=160)
     description = forms.CharField(
         label="Descrizione",
         required=False,
@@ -49,14 +79,16 @@ class QuickRoutineForm(forms.Form):
     )
 
     def __init__(self, *args, **kwargs):
+        kwargs.pop("owner", None)
         super().__init__(*args, **kwargs)
         _apply_uikit_compact(self.fields)
 
 
 class QuickRoutineItemForm(forms.Form):
-    routine_choice = forms.ChoiceField(label="Routine", required=False)
-    routine_name = forms.CharField(label="Nuova routine", required=False, max_length=160)
+    routine_choice = forms.ChoiceField(label="Contenitore")
     title = forms.CharField(label="Attivita", max_length=200)
+    category_choice = forms.ChoiceField(label="Categoria", required=False)
+    category_name = forms.CharField(label="Nuova categoria", max_length=120, required=False)
     weekday = forms.ChoiceField(
         label="Giorno",
         choices=[(str(value), label) for value, label in RoutineItem.Weekday.choices],
@@ -74,18 +106,27 @@ class QuickRoutineItemForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         owner = kwargs.pop("owner", None)
+        selected_category = kwargs.pop("category", None)
         super().__init__(*args, **kwargs)
         _apply_uikit_compact(self.fields)
         self._owner = owner
         self._routine_qs = Routine.objects.none()
+        self._category_qs = _active_categories_for(owner)
 
         if owner is not None:
-            self._routine_qs = Routine.objects.filter(owner=owner).order_by("name")
+            self._routine_qs = Routine.objects.filter(owner=owner, is_active=True).order_by("name")
             self.fields["routine_choice"].choices = [("", "Seleziona...")] + [
-                (str(r.id), r.name) for r in self._routine_qs
-            ] + [("__new__", "+ Nuova routine")]
+                (str(routine.id), routine.name) for routine in self._routine_qs
+            ]
         else:
-            self.fields["routine_choice"].choices = [("", "Seleziona..."), ("__new__", "+ Nuova routine")]
+            self.fields["routine_choice"].choices = [("", "Seleziona...")]
+
+        self.fields["category_choice"].choices = [("", "Senza categoria")] + [
+            (str(category.id), category.name) for category in self._category_qs
+        ] + [("__new__", "+ Nuova categoria")]
+
+        if selected_category is not None:
+            self.fields["category_choice"].initial = str(selected_category.id)
 
         if not self.is_bound and not self.initial.get("weekday"):
             self.initial["weekday"] = str(date.today().weekday())
@@ -104,53 +145,49 @@ class QuickRoutineItemForm(forms.Form):
     def clean(self):
         cleaned = super().clean()
         routine_choice = (cleaned.get("routine_choice") or "").strip()
-        routine_name = (cleaned.get("routine_name") or "").strip()
+        category_choice = (cleaned.get("category_choice") or "").strip()
+        category_name = (cleaned.get("category_name") or "").strip()
 
-        if routine_choice == "__new__":
-            if not routine_name:
-                self.add_error("routine_name", "Inserisci il nome della nuova routine.")
-        elif not routine_choice:
-            self.add_error("routine_choice", "Seleziona una routine.")
-        else:
-            if not routine_choice.isdigit():
-                self.add_error("routine_choice", "Routine non valida.")
-            elif self._owner is not None and not self._routine_qs.filter(id=routine_choice).exists():
-                self.add_error("routine_choice", "Routine non trovata.")
+        if not routine_choice:
+            self.add_error("routine_choice", "Seleziona un contenitore.")
+        elif not routine_choice.isdigit():
+            self.add_error("routine_choice", "Contenitore non valido.")
+        elif self._owner is not None and not self._routine_qs.filter(id=routine_choice).exists():
+            self.add_error("routine_choice", "Contenitore non trovato.")
+
+        if category_choice == "__new__":
+            if not category_name:
+                self.add_error("category_name", "Inserisci il nome della categoria.")
+        elif category_choice:
+            if not category_choice.isdigit():
+                self.add_error("category_choice", "Categoria non valida.")
+            elif self._owner is not None and not self._category_qs.filter(id=category_choice).exists():
+                self.add_error("category_choice", "Categoria non trovata.")
 
         return cleaned
 
     def resolve_routine(self):
         routine_choice = (self.cleaned_data.get("routine_choice") or "").strip()
-        routine_name = (self.cleaned_data.get("routine_name") or "").strip()
-
-        if routine_choice == "__new__":
-            if self._owner is None:
-                return None
-            routine, _ = Routine.objects.get_or_create(
-                owner=self._owner,
-                name=routine_name,
-                defaults={"is_active": True},
-            )
-            if not routine.is_active:
-                routine.is_active = True
-                routine.save(update_fields=["is_active"])
-            return routine
-
         if routine_choice and self._owner is not None:
-            try:
-                return self._routine_qs.get(id=int(routine_choice))
-            except (Routine.DoesNotExist, ValueError, TypeError):
-                return None
-
+            return self._routine_qs.filter(id=routine_choice).first()
         return None
+
+    def resolve_category(self):
+        return _resolve_category(
+            owner=self._owner,
+            category_qs=self._category_qs,
+            category_choice=self.cleaned_data.get("category_choice"),
+            category_name=self.cleaned_data.get("category_name"),
+        )
 
     def save(self, *, owner):
         routine = self.resolve_routine()
         if routine is None:
-            raise ValueError("Routine non valida.")
+            raise ValueError("Contenitore non valido.")
         return RoutineItem.objects.create(
             owner=owner,
             routine=routine,
+            category=self.resolve_category(),
             title=(self.cleaned_data.get("title") or "").strip(),
             weekday=self.cleaned_data["weekday"],
             time_start=self.cleaned_data.get("time_start"),
@@ -161,12 +198,9 @@ class QuickRoutineItemForm(forms.Form):
 
 class RoutineItemForm(forms.ModelForm):
     weekday = forms.ChoiceField(label="Giorno della settimana")
-    routine_choice = forms.ChoiceField(label="Routine", required=False)
-    routine_name = forms.CharField(
-        required=False,
-        label="Nome nuova routine",
-        max_length=160,
-    )
+    routine_choice = forms.ChoiceField(label="Contenitore")
+    category_choice = forms.ChoiceField(label="Categoria", required=False)
+    category_name = forms.CharField(label="Nuova categoria", max_length=120, required=False)
     project_choice = forms.ChoiceField(label="Progetto", required=False)
     project_name = forms.CharField(label="Nuovo progetto", max_length=120, required=False)
 
@@ -201,6 +235,7 @@ class RoutineItemForm(forms.ModelForm):
         self._weekday_all = False
         self._routine_qs = Routine.objects.none()
         self._project_qs = Project.objects.none()
+        self._category_qs = _active_categories_for(owner)
 
         base_choices = [(str(value), label) for value, label in RoutineItem.Weekday.choices]
         if self.instance and self.instance.pk:
@@ -212,19 +247,25 @@ class RoutineItemForm(forms.ModelForm):
             routines = Routine.objects.filter(owner=owner).order_by("name")
             self._routine_qs = routines
             self.fields["routine_choice"].choices = [("", "Seleziona...")] + [
-                (str(r.id), r.name) for r in routines
-            ] + [("__new__", "+ Nuova Routine")]
+                (str(routine.id), routine.name) for routine in routines
+            ]
             self.fields["project"].queryset = self.fields["project"].queryset.filter(owner=owner).order_by("name")
             self._project_qs = self.fields["project"].queryset
         else:
-            self.fields["routine_choice"].choices = [("", "Seleziona..."), ("__new__", "+ Nuova Routine")]
+            self.fields["routine_choice"].choices = [("", "Seleziona...")]
+
+        self.fields["category_choice"].choices = [("", "Senza categoria")] + [
+            (str(category.id), category.name) for category in self._category_qs
+        ] + [("__new__", "+ Nuova categoria")]
         self.fields["project_choice"].choices = [("", "Nessuno"), ("__new__", "+Nuovo")] + [
             (str(project.id), project.name) for project in self._project_qs
         ]
 
         if self.instance and self.instance.pk and self.instance.routine_id:
             self.fields["routine_choice"].initial = str(self.instance.routine_id)
-            self.fields["routine_name"].initial = self.instance.routine.name
+        if self.instance and self.instance.pk and self.instance.category_id:
+            self.fields["category_choice"].initial = str(self.instance.category_id)
+            self.fields["category_name"].initial = self.instance.category.name
         if self.instance and self.instance.pk and self.instance.project_id:
             self.fields["project_choice"].initial = str(self.instance.project_id)
         elif not (self.instance and self.instance.pk):
@@ -246,14 +287,27 @@ class RoutineItemForm(forms.ModelForm):
     def clean(self):
         cleaned = super().clean()
         routine_choice = (cleaned.get("routine_choice") or "").strip()
-        routine_name = (cleaned.get("routine_name") or "").strip()
+        category_choice = (cleaned.get("category_choice") or "").strip()
+        category_name = (cleaned.get("category_name") or "").strip()
         project_choice = (cleaned.get("project_choice") or "").strip()
         project_name = (cleaned.get("project_name") or "").strip()
-        if routine_choice == "__new__":
-            if not routine_name:
-                self.add_error("routine_name", "Inserisci il nome della nuova routine.")
-        elif not routine_choice:
-            self.add_error("routine_choice", "Seleziona una routine.")
+
+        if not routine_choice:
+            self.add_error("routine_choice", "Seleziona un contenitore.")
+        elif not routine_choice.isdigit():
+            self.add_error("routine_choice", "Contenitore non valido.")
+        elif self._owner is not None and not self._routine_qs.filter(id=routine_choice).exists():
+            self.add_error("routine_choice", "Contenitore non trovato.")
+
+        if category_choice == "__new__":
+            if not category_name:
+                self.add_error("category_name", "Inserisci il nome della categoria.")
+        elif category_choice:
+            if not category_choice.isdigit():
+                self.add_error("category_choice", "Categoria non valida.")
+            elif self._owner is not None and not self._category_qs.filter(id=category_choice).exists():
+                self.add_error("category_choice", "Categoria non trovata.")
+
         if project_choice == "__new__" and not project_name:
             self.add_error("project_name", "Inserisci il nome del nuovo progetto.")
         elif project_choice and project_choice != "__new__":
@@ -265,19 +319,17 @@ class RoutineItemForm(forms.ModelForm):
 
     def resolve_routine(self):
         routine_choice = (self.cleaned_data.get("routine_choice") or "").strip()
-        routine_name = (self.cleaned_data.get("routine_name") or "").strip()
-
-        if routine_choice and routine_choice != "__new__":
-            try:
-                return self._routine_qs.get(id=routine_choice)
-            except (Routine.DoesNotExist, ValueError, TypeError):
-                return None
-
-        if routine_choice == "__new__" and routine_name and self._owner is not None:
-            routine, _ = Routine.objects.get_or_create(owner=self._owner, name=routine_name)
-            return routine
-
+        if routine_choice and self._owner is not None:
+            return self._routine_qs.filter(id=routine_choice).first()
         return None
+
+    def resolve_category(self):
+        return _resolve_category(
+            owner=self._owner,
+            category_qs=self._category_qs,
+            category_choice=self.cleaned_data.get("category_choice"),
+            category_name=self.cleaned_data.get("category_name"),
+        )
 
     def resolve_project(self):
         project_choice = (self.cleaned_data.get("project_choice") or "").strip()
@@ -292,6 +344,7 @@ class RoutineItemForm(forms.ModelForm):
     def save(self, commit=True):
         instance = super().save(commit=False)
         instance.routine = self.resolve_routine()
+        instance.category = self.resolve_category()
         instance.project = self.resolve_project()
         if commit:
             instance.save()

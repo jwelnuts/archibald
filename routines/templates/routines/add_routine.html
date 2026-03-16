@@ -1,11 +1,11 @@
 {% extends "routines/base.html" %}
 
-{% block title %}MIO - Add Routine{% endblock %}
+{% block title %}MIO - Add Contenitore{% endblock %}
 
 {% block content %}
   <section class="panel narrow">
-    <h1>Nuova routine</h1>
-    <p class="muted">Definisci una routine settimanale.</p>
+    <h1>Nuovo contenitore</h1>
+    <p class="muted">Definisci il contenitore principale delle attivita.</p>
     {% if form and form.errors %}
       <div class="warning-box">
         Controlla i campi evidenziati.
@@ -20,7 +20,7 @@
     <form class="form form-compact uk-form-stacked" method="post" action="">
       {% csrf_token %}
       <div class="field">
-        <label for="id_name">Nome</label>
+        <label for="id_name">Nome contenitore</label>
         {{ form.name }}
       </div>
       <div class="field">

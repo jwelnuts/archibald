@@ -239,6 +239,23 @@ body.routines-skin {
   gap: 6px;
 }
 
+.routine-category-filter {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.routine-category-filter .uk-button {
+  border-radius: 999px;
+}
+
+.routine-category-filter .uk-button.is-active {
+  border-color: rgba(30, 135, 240, 0.5);
+  background: #eff6ff;
+  color: #1e40af;
+}
+
 .routines-quick-block {
   margin-top: 10px;
   padding-top: 8px;
@@ -350,6 +367,25 @@ body.routines-skin {
   color: #526072;
 }
 
+.routine-entry-values {
+  display: grid;
+  gap: 4px;
+}
+
+.routine-entry-values-title {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+}
+
+.routine-entry-values-list {
+  margin: 0;
+  padding-left: 16px;
+  color: #526072;
+  font-size: 0.75rem;
+}
+
 .routine-action-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -393,6 +429,14 @@ body.routines-skin {
 
 .routine-list {
   margin: 0;
+}
+
+.routine-group-title {
+  margin: 8px 0 4px;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
 }
 
 .routine-list-item {

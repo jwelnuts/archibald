@@ -22,7 +22,7 @@ from .hero_actions import HERO_ACTIONS
 from .models import MobileApiSession, UserHeroActionsConfig, UserNavConfig
 from .navigation import DEFAULT_APP_OPTIONS, normalize_nav_config, parse_widgets_json
 from planner.models import PlannerItem
-from routines.models import RoutineItem
+from routines.models import RoutineCheck, RoutineItem
 from subscriptions.models import Account
 from subscriptions.models import SubscriptionOccurrence
 from todo.models import Task
@@ -1030,5 +1030,122 @@ def mobile_dashboard(request):
                 "username": session.user.username,
                 "email": session.user.email,
             },
+        }
+    )
+
+
+def _mobile_week_start_for(value: str | None) -> date:
+    today = date.today()
+    if value:
+        try:
+            parsed = date.fromisoformat(value)
+            return parsed - timedelta(days=parsed.weekday())
+        except ValueError:
+            pass
+    return today - timedelta(days=today.weekday())
+
+
+def _mobile_routines_stats(owner, week_start: date):
+    counts = (
+        RoutineCheck.objects.filter(owner=owner, week_start=week_start)
+        .values("status")
+        .annotate(total=Count("id"))
+    )
+    count_map = {row["status"]: row["total"] for row in counts}
+    return {
+        "planned": count_map.get(RoutineCheck.Status.PLANNED, 0),
+        "done": count_map.get(RoutineCheck.Status.DONE, 0),
+        "skipped": count_map.get(RoutineCheck.Status.SKIPPED, 0),
+    }
+
+
+@require_http_methods(["GET"])
+def mobile_routines(request):
+    session, error = _mobile_authenticate_request(request)
+    if error:
+        return error
+
+    week_start = _mobile_week_start_for(request.GET.get("week"))
+    week_end = week_start + timedelta(days=6)
+    items = (
+        RoutineItem.objects.filter(owner=session.user, is_active=True, routine__is_active=True)
+        .select_related("routine", "category", "project")
+        .order_by("weekday", "time_start", "time_end", "title")
+    )
+    checks = RoutineCheck.objects.filter(owner=session.user, week_start=week_start, item__in=items)
+    check_map = {check.item_id: check for check in checks}
+
+    payload_items = []
+    for item in items:
+        check = check_map.get(item.id)
+        payload_items.append(
+            {
+                "id": item.id,
+                "title": item.title,
+                "weekday": item.weekday,
+                "weekday_label": item.get_weekday_display(),
+                "time_start": item.time_start.strftime("%H:%M") if item.time_start else "",
+                "time_end": item.time_end.strftime("%H:%M") if item.time_end else "",
+                "note": item.note or "",
+                "container": item.routine.name,
+                "category": item.category.name if item.category_id else "",
+                "project": item.project.name if item.project_id else "",
+                "status": check.status if check else RoutineCheck.Status.PLANNED,
+            }
+        )
+
+    stats = _mobile_routines_stats(session.user, week_start)
+    return JsonResponse(
+        {
+            "ok": True,
+            "synced_at": timezone.now().isoformat(),
+            "week_start": week_start.isoformat(),
+            "week_end": week_end.isoformat(),
+            "stats": stats,
+            "items": payload_items,
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def mobile_routines_check(request):
+    session, error = _mobile_authenticate_request(request)
+    if error:
+        return error
+
+    payload = _mobile_parse_json(request)
+    if payload is None:
+        return _mobile_json_error("invalid_json", status=400)
+
+    item_id = payload.get("item_id")
+    status = (payload.get("status") or "").strip().upper()
+    week_start = _mobile_week_start_for(payload.get("week"))
+
+    allowed_statuses = {RoutineCheck.Status.PLANNED, RoutineCheck.Status.DONE, RoutineCheck.Status.SKIPPED}
+    if status not in allowed_statuses:
+        return _mobile_json_error("invalid_status", status=400)
+
+    item = RoutineItem.objects.filter(owner=session.user, id=item_id).first()
+    if not item:
+        return _mobile_json_error("item_not_found", status=404)
+
+    check, _created = RoutineCheck.objects.get_or_create(
+        owner=session.user,
+        item=item,
+        week_start=week_start,
+        defaults={"status": RoutineCheck.Status.PLANNED},
+    )
+    check.status = status
+    check.save(update_fields=["status", "updated_at"])
+
+    stats = _mobile_routines_stats(session.user, week_start)
+    return JsonResponse(
+        {
+            "ok": True,
+            "item_id": item.id,
+            "status": check.status,
+            "stats": stats,
+            "week_start": week_start.isoformat(),
         }
     )

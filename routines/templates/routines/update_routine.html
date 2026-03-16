@@ -1,11 +1,11 @@
 {% extends "routines/base.html" %}
 
-{% block title %}MIO - Update Routine{% endblock %}
+{% block title %}MIO - Update Contenitore{% endblock %}
 
 {% block content %}
   <section class="panel narrow">
-    <h1>Aggiorna routine</h1>
-    <p class="muted">Seleziona una routine da aggiornare.</p>
+    <h1>Aggiorna contenitore</h1>
+    <p class="muted">Seleziona un contenitore da aggiornare.</p>
     {% if form and form.errors %}
       <div class="warning-box">
         Controlla i campi evidenziati.
@@ -22,7 +22,7 @@
       <form class="form form-compact uk-form-stacked" method="post" action="">
         {% csrf_token %}
         <div class="field">
-          <label for="id_name">Nome</label>
+          <label for="id_name">Nome contenitore</label>
           {{ form.name }}
         </div>
         <div class="field">
@@ -49,7 +49,7 @@
           {% endfor %}
         </ul>
       {% else %}
-        <div class="note">Nessuna routine disponibile.</div>
+        <div class="note">Nessun contenitore disponibile.</div>
       {% endif %}
     {% endif %}
   </section>

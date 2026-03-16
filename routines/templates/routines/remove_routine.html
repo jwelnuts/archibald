@@ -1,15 +1,15 @@
 {% extends "routines/base.html" %}
 
-{% block title %}MIO - Remove Routine{% endblock %}
+{% block title %}MIO - Remove Contenitore{% endblock %}
 
 {% block content %}
   <section class="panel narrow">
-    <h1>Rimuovi routine</h1>
-    <p class="muted">Seleziona una routine da eliminare.</p>
+    <h1>Rimuovi contenitore</h1>
+    <p class="muted">Seleziona un contenitore da eliminare.</p>
 
     {% if routine %}
       <div class="warning-box">
-        Stai per rimuovere: <strong>{{ routine.name }}</strong>.
+        Stai per rimuovere il contenitore: <strong>{{ routine.name }}</strong>.
         Questa azione non e reversibile.
       </div>
       <form class="actions uk-flex uk-flex-wrap uk-grid-small" method="post" action="">
@@ -28,7 +28,7 @@
           {% endfor %}
         </ul>
       {% else %}
-        <div class="note">Nessuna routine disponibile.</div>
+        <div class="note">Nessun contenitore disponibile.</div>
       {% endif %}
     {% endif %}
   </section>

@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
 from planner.models import PlannerItem
+from routines.models import Routine, RoutineItem, RoutineCheck
 from todo.models import Task
 from .models import MobileApiSession, UserNavConfig
 from .views import DEFAULT_DASHBOARD_WIDGET_IDS
@@ -360,3 +361,67 @@ class MobileApiAuthTests(TestCase):
         )
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response["Access-Control-Allow-Origin"], "http://localhost")
+
+    def test_mobile_routines_returns_week_items(self):
+        routine = Routine.objects.create(owner=self.user, name="Routine Mobile", is_active=True)
+        item = RoutineItem.objects.create(
+            owner=self.user,
+            routine=routine,
+            title="Stretching",
+            weekday=timezone.localdate().weekday(),
+            is_active=True,
+        )
+        week_start = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
+        RoutineCheck.objects.create(
+            owner=self.user,
+            item=item,
+            week_start=week_start,
+            status=RoutineCheck.Status.DONE,
+        )
+
+        payload = self._login()
+        access = payload["access_token"]
+        response = self.client.get(
+            f"/api/mobile/routines?week={week_start.isoformat()}",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["week_start"], week_start.isoformat())
+        self.assertEqual(len(body["items"]), 1)
+        self.assertEqual(body["items"][0]["title"], "Stretching")
+        self.assertEqual(body["items"][0]["status"], RoutineCheck.Status.DONE)
+
+    def test_mobile_routines_check_updates_status(self):
+        routine = Routine.objects.create(owner=self.user, name="Routine Check", is_active=True)
+        item = RoutineItem.objects.create(
+            owner=self.user,
+            routine=routine,
+            title="Hydration",
+            weekday=0,
+            is_active=True,
+        )
+        week_start = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
+        payload = self._login()
+        access = payload["access_token"]
+
+        response = self.client.post(
+            "/api/mobile/routines/check",
+            data=json.dumps(
+                {
+                    "item_id": item.id,
+                    "status": RoutineCheck.Status.SKIPPED,
+                    "week": week_start.isoformat(),
+                }
+            ),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["status"], RoutineCheck.Status.SKIPPED)
+
+        check = RoutineCheck.objects.get(owner=self.user, item=item, week_start=week_start)
+        self.assertEqual(check.status, RoutineCheck.Status.SKIPPED)
