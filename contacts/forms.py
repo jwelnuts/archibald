@@ -1,10 +1,14 @@
 from django import forms
+from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 
 from .models import Contact, ContactPriceList, ContactPriceListItem, ContactToolbox
 
 
 class ContactForm(forms.ModelForm):
+    _ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tif", ".tiff"}
+    _MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024
+
     class Meta:
         model = Contact
         fields = (
@@ -12,6 +16,7 @@ class ContactForm(forms.ModelForm):
             "entity_type",
             "person_name",
             "business_name",
+            "profile_image",
             "email",
             "phone",
             "website",
@@ -23,9 +28,30 @@ class ContactForm(forms.ModelForm):
             "notes",
             "is_active",
         )
+        widgets = {
+            "profile_image": forms.ClearableFileInput(attrs={"accept": "image/*"}),
+        }
 
     def clean_display_name(self):
         return (self.cleaned_data.get("display_name") or "").strip()
+
+    def clean_profile_image(self):
+        image = self.cleaned_data.get("profile_image")
+        if not image:
+            return image
+
+        ext = f".{image.name.rsplit('.', 1)[-1].lower()}" if "." in image.name else ""
+        if ext not in self._ALLOWED_IMAGE_EXTENSIONS:
+            raise ValidationError("Formato immagine non supportato.")
+
+        content_type = (getattr(image, "content_type", "") or "").lower()
+        if content_type and not content_type.startswith("image/"):
+            raise ValidationError("Tipo file non valido. Carica un'immagine.")
+
+        if image.size > self._MAX_IMAGE_SIZE_BYTES:
+            raise ValidationError("Immagine troppo grande. Dimensione massima: 5 MB.")
+
+        return image
 
 
 class ContactToolboxForm(forms.ModelForm):
@@ -55,6 +81,7 @@ class ContactPriceListForm(forms.ModelForm):
         if len(value) != 3:
             raise forms.ValidationError("La valuta deve essere un codice di 3 lettere (es. EUR).")
         return value
+
 
 class ContactPriceListItemForm(forms.ModelForm):
     class Meta:

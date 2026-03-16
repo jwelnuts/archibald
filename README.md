@@ -243,6 +243,11 @@ python manage.py send_archibald_notifications
 python manage.py run_archibald_mail_worker --interval-seconds 300
 ```
 
+`send_archibald_notifications` gestisce anche i prompt worklog automatici:
+
+- ore `12:30` -> email check mattina `[WORKLOG_AM]`
+- ore `18:30` -> email check pomeriggio `[WORKLOG_PM]`
+
 Flag azione email disponibili:
 
 - `memory_stock.save` tramite oggetto con uno dei pattern:
@@ -270,6 +275,17 @@ Flag azione email disponibili:
   - `#ARCHI`
   - `ACTION:ARCHI`
   - risposta AI immediata (corsia veloce worker)
+- `worklog.capture_am` tramite oggetto con:
+  - `[WORKLOG_AM]`
+  - `#WORKLOG_AM`
+  - `ACTION:WORKLOG_AM`
+  - rispondi con fascia oraria mattina (es. `09:00-12:30`) per aggiornare `agenda.WorkLog`
+- `worklog.capture_pm` tramite oggetto con:
+  - `[WORKLOG_PM]`
+  - `#WORKLOG_PM`
+  - `ACTION:WORKLOG_PM`
+  - rispondi con ore pomeriggio (es. `4 ore`) o fascia oraria (es. `14:00-18:30`)
+  - il backend calcola automaticamente la pausa pranzo e aggiorna `agenda.WorkLog`
 
 Esempio `cron` (ogni 5 minuti inbox, notifiche giornaliere con controllo orario interno):
 

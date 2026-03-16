@@ -73,6 +73,7 @@ def dashboard(request):
         grid_rows.append(
             {
                 "id": item.id,
+                "profile_image_url": item.profile_image.url if item.profile_image else "",
                 "display_name": item.display_name,
                 "entity_type": item.get_entity_type_display(),
                 "entity_code": item.entity_type,
@@ -120,7 +121,7 @@ def add_contact(request):
     sync_contacts_from_legacy(request.user)
     next_url = _safe_next_url(request)
     if request.method == "POST":
-        form = ContactForm(request.POST)
+        form = ContactForm(request.POST, request.FILES)
         if form.is_valid():
             item = form.save(commit=False)
             item.owner = request.user
@@ -141,7 +142,7 @@ def update_contact(request):
     if item_id:
         item = get_object_or_404(Contact, id=item_id, owner=request.user)
         if request.method == "POST":
-            form = ContactForm(request.POST, instance=item)
+            form = ContactForm(request.POST, request.FILES, instance=item)
             if form.is_valid():
                 saved = form.save()
                 _ensure_toolbox(saved)

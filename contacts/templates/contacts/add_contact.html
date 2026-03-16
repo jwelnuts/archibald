@@ -17,7 +17,7 @@
         </div>
       </div>
     {% endif %}
-    <form class="form" method="post" action="">
+    <form class="form" method="post" action="" enctype="multipart/form-data">
       {% csrf_token %}
       {% if next_url %}
         <input type="hidden" name="next" value="{{ next_url }}">
@@ -26,6 +26,7 @@
       <div class="field"><label for="id_entity_type">Tipo</label>{{ form.entity_type }}</div>
       <div class="field"><label for="id_person_name">Nome persona</label>{{ form.person_name }}</div>
       <div class="field"><label for="id_business_name">Nome attivita/azienda</label>{{ form.business_name }}</div>
+      <div class="field"><label for="id_profile_image">Logo / Immagine profilo</label>{{ form.profile_image }}</div>
       <div class="field"><label for="id_email">Email</label>{{ form.email }}</div>
       <div class="field"><label for="id_phone">Telefono</label>{{ form.phone }}</div>
       <div class="field"><label for="id_website">Sito</label>{{ form.website }}</div>

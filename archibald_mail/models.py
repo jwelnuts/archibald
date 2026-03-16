@@ -157,6 +157,8 @@ class ArchibaldEmailFlagRule(OwnedModel, TimeStampedModel):
         TRANSACTION_CAPTURE = "transaction.capture", "Transaction (fallback Memory Stock)"
         REMINDER_CAPTURE = "reminder.capture", "Reminder (fallback Memory Stock)"
         ARCHI_REPLY = "archi.reply", "Archibald reply immediata"
+        WORKLOG_CAPTURE_AM = "worklog.capture_am", "Worklog mattina (Agenda)"
+        WORKLOG_CAPTURE_PM = "worklog.capture_pm", "Worklog pomeriggio (Agenda)"
 
     label = models.CharField(max_length=60)
     flag_token = models.CharField(max_length=32)

@@ -3,6 +3,29 @@
 {% block title %}MIO - Contacts{% endblock %}
 
 {% block content %}
+  <style>
+    .ct-avatar-wrap {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid #d0d7e2;
+      background: #f5f7ff;
+      color: #30416f;
+      font-weight: 700;
+      font-size: 12px;
+      overflow: hidden;
+    }
+
+    .ct-avatar-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  </style>
   <section class="hero">
     <div class="hero-copy">
       <h1>Contacts</h1>
@@ -138,6 +161,27 @@
         return '<div class="ct-contact-block">' + parts.join("") + "</div>";
       }
 
+      function avatarCell(row) {
+        var label = String(row.display_name || "").trim();
+        var parts = label.split(/\s+/);
+        var initials = "";
+        if (parts.length > 1) {
+          initials = (parts[0][0] || "") + (parts[1][0] || "");
+        } else {
+          initials = label.slice(0, 2);
+        }
+        initials = escapeHtml(initials.toUpperCase() || "?");
+
+        if (row.profile_image_url) {
+          return (
+            '<span class="ct-avatar-wrap"><img class="ct-avatar-image" src="' +
+            escapeHtml(row.profile_image_url) +
+            '" alt="Logo contatto"></span>'
+          );
+        }
+        return '<span class="ct-avatar-wrap">' + initials + "</span>";
+      }
+
       function statusChip(row) {
         if (row.is_active) {
           return '<span class="ct-status-chip ct-status-chip--active">Attivo</span>';
@@ -183,10 +227,20 @@
           scrollX: true,
           scrollY: true,
           bodyHeight: 460,
-          rowHeight: 46,
-          minRowHeight: 44,
+          rowHeight: 52,
+          minRowHeight: 50,
           columnOptions: { resizable: true },
           columns: [
+            {
+              header: "Logo",
+              name: "profile_image_url",
+              align: "center",
+              width: 90,
+              formatter: function (ctx) {
+                return avatarCell(ctx.row);
+              },
+              escapeHTML: false,
+            },
             { header: "Nome", name: "display_name", minWidth: 220, sortable: true },
             {
               header: "Tipo",

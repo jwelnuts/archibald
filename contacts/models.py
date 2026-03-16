@@ -16,6 +16,7 @@ class Contact(OwnedModel, TimeStampedModel):
     entity_type = models.CharField(max_length=10, choices=EntityType.choices, default=EntityType.PERSON)
     person_name = models.CharField(max_length=160, blank=True)
     business_name = models.CharField(max_length=160, blank=True)
+    profile_image = models.FileField(upload_to="contacts/profile_images/%Y/%m/", blank=True, null=True)
 
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=40, blank=True)

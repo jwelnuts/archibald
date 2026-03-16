@@ -5,7 +5,7 @@ import os
 import re
 import smtplib
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
 from email import policy
 from email.header import decode_header, make_header
 from email.message import EmailMessage
@@ -25,7 +25,7 @@ from routines.models import RoutineCheck, RoutineItem
 from subscriptions.models import SubscriptionOccurrence
 from todo.models import Task
 
-from .actions import execute_action_from_email
+from .actions import WORKLOG_TOKEN_AM, WORKLOG_TOKEN_PM, execute_action_from_email
 from .models import ArchibaldEmailMessage, ArchibaldMailboxConfig
 
 
@@ -42,6 +42,34 @@ class ParsedInboundEmail:
     subject: str
     body_text: str
     raw_headers: str
+
+
+WORKLOG_PROMPT_PHASES = (
+    {
+        "key": "am",
+        "token": WORKLOG_TOKEN_AM,
+        "hour": 12,
+        "minute": 30,
+        "subject_label": "Check lavoro mattina",
+        "body": (
+            "Ciao, dammi il blocco mattina.\n"
+            "Rispondi con una fascia oraria (esempio: 09:00-12:30).\n"
+            "Archibald salvera il dato in Agenda WorkLog."
+        ),
+    },
+    {
+        "key": "pm",
+        "token": WORKLOG_TOKEN_PM,
+        "hour": 18,
+        "minute": 30,
+        "subject_label": "Check lavoro pomeriggio",
+        "body": (
+            "Ciao, quante ore hai lavorato dopo pranzo?\n"
+            "Puoi rispondere con ore (esempio: 4 ore) oppure con fascia oraria (esempio: 14:00-18:30).\n"
+            "Archibald aggiornera il WorkLog e calcolera la pausa pranzo."
+        ),
+    },
+)
 
 
 def _safe_header(value: str) -> str:
@@ -684,6 +712,103 @@ def build_notification_digest(config: ArchibaldMailboxConfig) -> tuple[str, bool
     return digest, has_items
 
 
+def _config_local_now(config: ArchibaldMailboxConfig, now=None):
+    current = now or timezone.now()
+    try:
+        tz = ZoneInfo((config.timezone_name or "UTC").strip() or "UTC")
+    except Exception:
+        tz = timezone.get_current_timezone()
+    return current.astimezone(tz), tz
+
+
+def _worklog_prompt_subject(phase: dict, work_date) -> str:
+    return f"Archibald | {phase['subject_label']} {work_date.isoformat()} [{phase['token']}]"
+
+
+def _worklog_prompt_sent_for_day(config: ArchibaldMailboxConfig, phase: dict, work_date) -> bool:
+    marker = f"{work_date.isoformat()} [{phase['token']}]"
+    return ArchibaldEmailMessage.objects.filter(
+        owner=config.owner,
+        config=config,
+        direction=ArchibaldEmailMessage.Direction.NOTIFICATION,
+        status=ArchibaldEmailMessage.Status.SENT,
+        subject__icontains=marker,
+    ).exists()
+
+
+def _worklog_prompt_due(config: ArchibaldMailboxConfig, phase: dict, now=None):
+    local_now, _tz = _config_local_now(config, now=now)
+    work_date = local_now.date()
+    due_at = local_now.replace(
+        hour=phase["hour"],
+        minute=phase["minute"],
+        second=0,
+        microsecond=0,
+    )
+    if local_now < due_at:
+        return False, work_date
+    if _worklog_prompt_sent_for_day(config, phase, work_date):
+        return False, work_date
+    return True, work_date
+
+
+def send_due_worklog_prompts_for_config(
+    config: ArchibaldMailboxConfig,
+    *,
+    force: bool = False,
+    now=None,
+) -> dict:
+    if not config.is_enabled and not force:
+        return {"status": "disabled", "sent": False, "sent_count": 0, "reason": "mailbox_disabled"}
+    if not config.is_smtp_configured():
+        raise ArchibaldMailError("SMTP non configurato per prompt worklog.")
+
+    recipient = config.notification_target()
+    if not recipient:
+        return {"status": "skipped", "sent": False, "sent_count": 0, "reason": "missing_recipient"}
+    if recipient.lower() == (config.inbox_address or "").strip().lower():
+        return {"status": "skipped", "sent": False, "sent_count": 0, "reason": "recipient_is_inbox"}
+
+    sent_phases = []
+    for phase in WORKLOG_PROMPT_PHASES:
+        if force:
+            local_now, _tz = _config_local_now(config, now=now)
+            work_date = local_now.date()
+            due = True
+        else:
+            due, work_date = _worklog_prompt_due(config, phase, now=now)
+        if not due:
+            continue
+
+        subject = _worklog_prompt_subject(phase, work_date)
+        body = (
+            f"{phase['body']}\n\n"
+            f"Data riferimento: {work_date.isoformat()}\n"
+            f"Token: [{phase['token']}]"
+        )
+        send_email_via_smtp(config, recipient=recipient, subject=subject, body=body)
+        ArchibaldEmailMessage.objects.create(
+            owner=config.owner,
+            config=config,
+            direction=ArchibaldEmailMessage.Direction.NOTIFICATION,
+            status=ArchibaldEmailMessage.Status.SENT,
+            sender=config.smtp_sender(),
+            recipient=recipient,
+            subject=subject,
+            body_text=body,
+            selected_action_key=f"worklog.prompt.{phase['key']}",
+            classification_label=phase["token"],
+            review_status=ArchibaldEmailMessage.ReviewStatus.APPLIED,
+            sent_at=timezone.now(),
+            processed_at=timezone.now(),
+        )
+        sent_phases.append(phase["key"])
+
+    if not sent_phases:
+        return {"status": "not_due", "sent": False, "sent_count": 0, "reason": "time_window"}
+    return {"status": "sent", "sent": True, "sent_count": len(sent_phases), "phases": sent_phases, "reason": "ok"}
+
+
 def _notification_due_now(config: ArchibaldMailboxConfig, now=None) -> bool:
     if now is None:
         now = timezone.now()
@@ -836,5 +961,17 @@ def send_due_notifications_for_all(*, force: bool = False, only_due: bool = True
             result = send_notification_for_config(config, force=force, only_due=only_due)
         except Exception as exc:
             result = {"status": "error", "sent": False, "reason": str(exc)}
+        rows.append((config, result))
+    return rows
+
+
+def send_due_worklog_prompts_for_all(*, force: bool = False, now=None):
+    rows = []
+    configs = ArchibaldMailboxConfig.objects.filter(is_enabled=True).select_related("owner")
+    for config in configs:
+        try:
+            result = send_due_worklog_prompts_for_config(config, force=force, now=now)
+        except Exception as exc:
+            result = {"status": "error", "sent": False, "sent_count": 0, "reason": str(exc)}
         rows.append((config, result))
     return rows

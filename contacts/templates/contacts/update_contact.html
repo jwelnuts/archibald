@@ -18,12 +18,25 @@
       </div>
     {% endif %}
     {% if item %}
-      <form class="form" method="post" action="">
+      <form class="form" method="post" action="" enctype="multipart/form-data">
         {% csrf_token %}
         <div class="field"><label for="id_display_name">Nome visualizzato</label>{{ form.display_name }}</div>
         <div class="field"><label for="id_entity_type">Tipo</label>{{ form.entity_type }}</div>
         <div class="field"><label for="id_person_name">Nome persona</label>{{ form.person_name }}</div>
         <div class="field"><label for="id_business_name">Nome attivita/azienda</label>{{ form.business_name }}</div>
+        <div class="field">
+          <label for="id_profile_image">Logo / Immagine profilo</label>
+          {% if item.profile_image %}
+            <div style="margin: 0 0 8px;">
+              <img
+                src="{{ item.profile_image.url }}"
+                alt="Immagine profilo {{ item.display_name }}"
+                style="width: 56px; height: 56px; object-fit: cover; border-radius: 50%; border: 1px solid #d0d7e2;"
+              >
+            </div>
+          {% endif %}
+          {{ form.profile_image }}
+        </div>
         <div class="field"><label for="id_email">Email</label>{{ form.email }}</div>
         <div class="field"><label for="id_phone">Telefono</label>{{ form.phone }}</div>
         <div class="field"><label for="id_website">Sito</label>{{ form.website }}</div>

@@ -6,9 +6,18 @@
   {% if contact %}
     <section class="panel">
       <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap uk-gap-small">
-        <div>
-          <h1 class="uk-margin-remove">Toolbox - {{ contact.display_name }}</h1>
-          <p class="muted uk-margin-small-top">Contenitore strumenti per il contatto. Qui puoi gestire listini e futuri tool dedicati.</p>
+        <div class="uk-flex uk-flex-middle uk-gap-small">
+          {% if contact.profile_image %}
+            <img
+              src="{{ contact.profile_image.url }}"
+              alt="Logo {{ contact.display_name }}"
+              style="width: 48px; height: 48px; object-fit: cover; border-radius: 50%; border: 1px solid #d0d7e2;"
+            >
+          {% endif %}
+          <div>
+            <h1 class="uk-margin-remove">Toolbox - {{ contact.display_name }}</h1>
+            <p class="muted uk-margin-small-top">Contenitore strumenti per il contatto. Qui puoi gestire listini e futuri tool dedicati.</p>
+          </div>
         </div>
         <div class="uk-flex uk-flex-wrap uk-gap-small">
           <a class="btn" href="/contacts/">Rubrica</a>

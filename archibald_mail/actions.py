@@ -1,14 +1,33 @@
 from __future__ import annotations
 
+from datetime import date, datetime
+from decimal import Decimal, ROUND_HALF_UP
 import re
 from dataclasses import dataclass
+from zoneinfo import ZoneInfo
 
+from django.utils import timezone
+
+from agenda.models import WorkLog
 from memory_stock.services import save_memory_from_inbound_email
 
 from .models import ArchibaldEmailFlagRule
 
 
 EXPLICIT_ACTION_PATTERN = re.compile(r"action\s*:\s*([a-z0-9_.-]+)", re.IGNORECASE)
+WORKLOG_DATE_PATTERN = re.compile(r"\b(20\d{2}-\d{2}-\d{2})\b")
+WORKLOG_TIME_RANGE_PATTERN = re.compile(
+    r"\b(\d{1,2}(?:[:.]\d{2})?)\s*(?:-|–|—|a|to)\s*(\d{1,2}(?:[:.]\d{2})?)\b",
+    re.IGNORECASE,
+)
+WORKLOG_HOURS_PATTERN = re.compile(r"\b(\d+(?:[.,]\d{1,2})?)\s*(?:h|ore|ora)\b", re.IGNORECASE)
+WORKLOG_MINUTES_PATTERN = re.compile(r"\b(\d{1,3})\s*(?:min|mins|minuti|minuto)\b", re.IGNORECASE)
+
+WORKLOG_ACTION_AM = "worklog.capture_am"
+WORKLOG_ACTION_PM = "worklog.capture_pm"
+WORKLOG_TOKEN_AM = "WORKLOG_AM"
+WORKLOG_TOKEN_PM = "WORKLOG_PM"
+
 ACTIONS_WITH_MEMORY_STOCK_FALLBACK = {
     "memory_stock.save",
     "todo.capture",
@@ -21,6 +40,8 @@ ACTION_LABELS = {
     "transaction.capture": "Transaction",
     "reminder.capture": "Reminder",
     "archi.reply": "Archibald Reply",
+    WORKLOG_ACTION_AM: "Worklog mattina",
+    WORKLOG_ACTION_PM: "Worklog pomeriggio",
 }
 ACTION_DESTINATIONS = {
     "memory_stock.save": "Memory Stock",
@@ -28,6 +49,8 @@ ACTION_DESTINATIONS = {
     "transaction.capture": "Memory Stock (temporaneo)",
     "reminder.capture": "Memory Stock (temporaneo)",
     "archi.reply": "Risposta email immediata con Archibald",
+    WORKLOG_ACTION_AM: "Agenda WorkLog",
+    WORKLOG_ACTION_PM: "Agenda WorkLog",
 }
 DEFAULT_FLAG_RULES = (
     {
@@ -64,6 +87,18 @@ DEFAULT_FLAG_RULES = (
         "label": "Archibald Reply",
         "flag_token": "ARCHI",
         "action_key": "archi.reply",
+        "is_active": True,
+    },
+    {
+        "label": "Worklog Mattina",
+        "flag_token": WORKLOG_TOKEN_AM,
+        "action_key": WORKLOG_ACTION_AM,
+        "is_active": True,
+    },
+    {
+        "label": "Worklog Pomeriggio",
+        "flag_token": WORKLOG_TOKEN_PM,
+        "action_key": WORKLOG_ACTION_PM,
         "is_active": True,
     },
 )
@@ -170,6 +205,212 @@ def _execute_action_to_memory_stock(*, owner, sender: str, subject: str, body_te
     )
 
 
+def _parse_date_from_subject(subject: str, fallback: date) -> date:
+    match = WORKLOG_DATE_PATTERN.search(subject or "")
+    if not match:
+        return fallback
+    try:
+        return date.fromisoformat(match.group(1))
+    except ValueError:
+        return fallback
+
+
+def _parse_time_token(raw: str):
+    value = (raw or "").strip().replace(".", ":")
+    if not value:
+        return None
+    if ":" in value:
+        left, right = value.split(":", 1)
+        if not left.isdigit() or not right.isdigit():
+            return None
+        hour = int(left)
+        minute = int(right)
+    else:
+        if not value.isdigit():
+            return None
+        hour = int(value)
+        minute = 0
+    if hour < 0 or hour > 23 or minute < 0 or minute > 59:
+        return None
+    return datetime.strptime(f"{hour:02d}:{minute:02d}", "%H:%M").time()
+
+
+def _extract_time_range(text: str):
+    match = WORKLOG_TIME_RANGE_PATTERN.search(text or "")
+    if not match:
+        return None, None
+    start = _parse_time_token(match.group(1))
+    end = _parse_time_token(match.group(2))
+    return start, end
+
+
+def _minutes_between(start_time, end_time):
+    start_dt = datetime.combine(date.min, start_time)
+    end_dt = datetime.combine(date.min, end_time)
+    return int((end_dt - start_dt).total_seconds() // 60)
+
+
+def _minutes_to_hours(minutes: int) -> Decimal:
+    return (Decimal(minutes) / Decimal("60")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _extract_worked_minutes(text: str):
+    text = (text or "").strip()
+    if not text:
+        return None
+    min_match = WORKLOG_MINUTES_PATTERN.search(text)
+    if min_match:
+        return int(min_match.group(1))
+
+    hour_match = WORKLOG_HOURS_PATTERN.search(text)
+    if hour_match:
+        value = hour_match.group(1).replace(",", ".")
+        try:
+            hours = Decimal(value)
+        except Exception:
+            return None
+        if hours <= 0:
+            return None
+        return int((hours * Decimal("60")).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+    numeric_text = text.replace(",", ".").strip()
+    if re.fullmatch(r"\d+(?:\.\d{1,2})?", numeric_text):
+        hours = Decimal(numeric_text)
+        if hours > 0:
+            return int((hours * Decimal("60")).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    return None
+
+
+def _resolve_local_now(inbound_message):
+    now = timezone.now()
+    tz_name = ""
+    config_obj = getattr(inbound_message, "config", None) if inbound_message is not None else None
+    if config_obj is not None:
+        tz_name = (getattr(config_obj, "timezone_name", "") or "").strip()
+    if not tz_name:
+        return now
+    try:
+        return now.astimezone(ZoneInfo(tz_name))
+    except Exception:
+        return now
+
+
+def _append_worklog_note(existing_note: str, line: str) -> str:
+    base = (existing_note or "").strip()
+    if not base:
+        return line
+    return f"{base}\n{line}"
+
+
+def _handle_worklog_am(*, owner, incoming, inbound_message):
+    local_now = _resolve_local_now(inbound_message)
+    work_date = _parse_date_from_subject(incoming.subject, local_now.date())
+    start, end = _extract_time_range(incoming.body_text)
+    if not start or not end:
+        return (
+            "Formato non riconosciuto per il worklog mattina. "
+            "Rispondi con una fascia oraria, esempio: 09:00-12:30."
+        )
+    if end <= start:
+        return "Orario non valido: l'orario finale deve essere successivo a quello iniziale."
+
+    morning_minutes = _minutes_between(start, end)
+    if morning_minutes <= 0:
+        return "Intervallo mattina non valido. Riprova con formato tipo 09:00-12:30."
+
+    morning_hours = _minutes_to_hours(morning_minutes)
+    row, _ = WorkLog.objects.get_or_create(
+        owner=owner,
+        work_date=work_date,
+        defaults={
+            "hours": morning_hours,
+            "time_start": start,
+            "time_end": end,
+            "lunch_break_minutes": 0,
+        },
+    )
+    row.time_start = start
+    row.time_end = end
+    row.lunch_break_minutes = 0
+    row.hours = morning_hours
+    row.note = _append_worklog_note(row.note, f"Archibald mattina: {start.strftime('%H:%M')}-{end.strftime('%H:%M')}")
+    row.save(update_fields=["time_start", "time_end", "lunch_break_minutes", "hours", "note", "updated_at"])
+
+    return (
+        f"Worklog mattina salvato per {work_date.isoformat()}: "
+        f"{start.strftime('%H:%M')} - {end.strftime('%H:%M')} ({morning_hours}h)."
+    )
+
+
+def _handle_worklog_pm(*, owner, incoming, inbound_message):
+    local_now = _resolve_local_now(inbound_message)
+    work_date = _parse_date_from_subject(incoming.subject, local_now.date())
+    row = WorkLog.objects.filter(owner=owner, work_date=work_date).first()
+    if row is None or not row.time_start or not row.time_end:
+        return (
+            "Non ho trovato il blocco mattina per questa data. "
+            "Prima rispondi al prompt delle 12:30 con una fascia oraria (es. 09:00-12:30)."
+        )
+
+    morning_start = row.time_start
+    morning_end = row.time_end
+    morning_minutes = _minutes_between(morning_start, morning_end)
+    if morning_minutes <= 0:
+        return "I dati della mattina non sono validi. Re-invia il blocco mattina."
+
+    pm_start, pm_end = _extract_time_range(incoming.body_text)
+    lunch_minutes = 0
+    afternoon_minutes = 0
+    final_end = None
+
+    if pm_start and pm_end:
+        if pm_end <= pm_start:
+            return "Intervallo pomeriggio non valido: l'orario finale deve essere successivo a quello iniziale."
+        if pm_start < morning_end:
+            return "Intervallo pomeriggio non valido: inizio pomeriggio precedente alla fine mattina."
+        afternoon_minutes = _minutes_between(pm_start, pm_end)
+        lunch_minutes = _minutes_between(morning_end, pm_start)
+        final_end = pm_end
+    else:
+        parsed_minutes = _extract_worked_minutes(incoming.body_text)
+        if not parsed_minutes:
+            return (
+                "Formato pomeriggio non riconosciuto. Rispondi con ore (es. 4 ore) "
+                "oppure con fascia oraria (es. 14:00-18:30)."
+            )
+        final_end = local_now.time().replace(second=0, microsecond=0)
+        if final_end <= morning_end:
+            return "Orario risposta non coerente con la mattina. Invia una fascia oraria completa per il pomeriggio."
+        span_after_morning = _minutes_between(morning_end, final_end)
+        lunch_minutes = span_after_morning - parsed_minutes
+        if lunch_minutes < 0:
+            return (
+                "Le ore indicate dopo pranzo superano l'intervallo disponibile. "
+                "Invia una fascia oraria completa (es. 14:00-18:30)."
+            )
+        afternoon_minutes = parsed_minutes
+
+    total_minutes = morning_minutes + afternoon_minutes
+    total_hours = _minutes_to_hours(total_minutes)
+    row.time_start = morning_start
+    row.time_end = final_end
+    row.lunch_break_minutes = int(lunch_minutes)
+    row.hours = total_hours
+    row.note = _append_worklog_note(
+        row.note,
+        (
+            "Archibald pomeriggio: "
+            f"+{_minutes_to_hours(afternoon_minutes)}h, pausa pranzo calcolata {int(lunch_minutes)} min"
+        ),
+    )
+    row.save(update_fields=["time_start", "time_end", "lunch_break_minutes", "hours", "note", "updated_at"])
+
+    return (
+        f"Worklog aggiornato {work_date.isoformat()}: totale {total_hours}h, "
+        f"pausa pranzo calcolata {int(lunch_minutes)} minuti."
+    )
+
+
 def detect_action_from_subject(subject: str, owner=None) -> str:
     text = (subject or "").strip()
     if not text:
@@ -215,6 +456,14 @@ def execute_action_from_email(*, owner, incoming, inbound_message) -> EmailActio
 
     if action_key == "archi.reply":
         return EmailActionOutcome(handled=False, action_key=action_key, force_ai_reply=True)
+
+    if action_key == WORKLOG_ACTION_AM:
+        reply_text = _handle_worklog_am(owner=owner, incoming=incoming, inbound_message=inbound_message)
+        return EmailActionOutcome(handled=True, action_key=action_key, reply_text=reply_text)
+
+    if action_key == WORKLOG_ACTION_PM:
+        reply_text = _handle_worklog_pm(owner=owner, incoming=incoming, inbound_message=inbound_message)
+        return EmailActionOutcome(handled=True, action_key=action_key, reply_text=reply_text)
 
     if action_key in ACTIONS_WITH_MEMORY_STOCK_FALLBACK:
         save_result = _execute_action_to_memory_stock(

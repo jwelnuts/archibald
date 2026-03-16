@@ -1,9 +1,13 @@
 from unittest.mock import patch
 from types import SimpleNamespace
+from datetime import datetime
+from decimal import Decimal
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase
+from zoneinfo import ZoneInfo
 
+from agenda.models import WorkLog
 from memory_stock.models import MemoryStockItem
 from routines.models import Routine, RoutineItem
 from .actions import EmailActionOutcome, detect_action_from_subject, execute_action_from_email, execute_action_manually
@@ -15,6 +19,7 @@ from .services import (
     _sender_allowed,
     parse_inbound_email,
     process_inbox_for_config,
+    send_due_worklog_prompts_for_config,
     send_notification_for_config,
 )
 
@@ -498,6 +503,40 @@ class ArchibaldMailServicesTests(TestCase):
         self.assertFalse(result["sent"])
         self.assertEqual(result["status"], "nothing_to_send")
 
+    @patch("archibald_mail.services.send_email_via_smtp")
+    def test_send_due_worklog_prompts_sends_once_per_phase(self, mock_smtp):
+        self.config.is_enabled = True
+        self.config.notification_recipient = "worklog@example.com"
+        self.config.timezone_name = "Europe/Rome"
+        self.config.save(update_fields=["is_enabled", "notification_recipient", "timezone_name", "updated_at"])
+
+        morning_now = datetime(2026, 3, 16, 12, 40, tzinfo=ZoneInfo("Europe/Rome"))
+        first = send_due_worklog_prompts_for_config(self.config, now=morning_now)
+        self.assertTrue(first["sent"])
+        self.assertEqual(first["sent_count"], 1)
+        self.assertEqual(first["phases"], ["am"])
+
+        duplicate = send_due_worklog_prompts_for_config(self.config, now=morning_now)
+        self.assertFalse(duplicate["sent"])
+        self.assertEqual(duplicate["sent_count"], 0)
+
+        evening_now = datetime(2026, 3, 16, 18, 40, tzinfo=ZoneInfo("Europe/Rome"))
+        second = send_due_worklog_prompts_for_config(self.config, now=evening_now)
+        self.assertTrue(second["sent"])
+        self.assertEqual(second["sent_count"], 1)
+        self.assertEqual(second["phases"], ["pm"])
+
+        self.assertEqual(mock_smtp.call_count, 2)
+        subjects = [
+            row.subject
+            for row in ArchibaldEmailMessage.objects.filter(
+                owner=self.user,
+                direction=ArchibaldEmailMessage.Direction.NOTIFICATION,
+            ).order_by("created_at")
+        ]
+        self.assertIn("[WORKLOG_AM]", subjects[0])
+        self.assertIn("[WORKLOG_PM]", subjects[1])
+
     def test_parse_inbound_email(self):
         raw = (
             "From: Mario Rossi <mario@example.com>\r\n"
@@ -580,6 +619,8 @@ class ArchibaldMailActionsTests(TestCase):
         self.assertEqual(detect_action_from_subject("#TRANSACTION Spesa"), "transaction.capture")
         self.assertEqual(detect_action_from_subject("[REMINDER] Evento"), "reminder.capture")
         self.assertEqual(detect_action_from_subject("[ARCHI] Rispondi al volo"), "archi.reply")
+        self.assertEqual(detect_action_from_subject("[WORKLOG_AM] 2026-03-16"), "worklog.capture_am")
+        self.assertEqual(detect_action_from_subject("[WORKLOG_PM] 2026-03-16"), "worklog.capture_pm")
         self.assertEqual(detect_action_from_subject("ACTION:memory_stock.save nota"), "memory_stock.save")
         self.assertEqual(detect_action_from_subject("ACTION:TODO nota"), "todo.capture")
         self.assertEqual(detect_action_from_subject("ACTION:TRANSACTION nota"), "transaction.capture")
@@ -643,6 +684,76 @@ class ArchibaldMailActionsTests(TestCase):
         self.assertFalse(outcome.handled)
         self.assertEqual(outcome.action_key, "archi.reply")
         self.assertTrue(outcome.force_ai_reply)
+
+    def test_execute_worklog_am_action_creates_worklog(self):
+        incoming = SimpleNamespace(
+            sender="mario@example.com",
+            subject="[WORKLOG_AM] 2026-03-16",
+            body_text="09:00-12:30",
+            message_id="<msg-worklog-am-1@example.com>",
+        )
+
+        outcome = execute_action_from_email(owner=self.user, incoming=incoming, inbound_message=None)
+        self.assertTrue(outcome.handled)
+        self.assertEqual(outcome.action_key, "worklog.capture_am")
+
+        row = WorkLog.objects.get(owner=self.user, work_date="2026-03-16")
+        self.assertEqual(row.time_start.strftime("%H:%M"), "09:00")
+        self.assertEqual(row.time_end.strftime("%H:%M"), "12:30")
+        self.assertEqual(row.hours, Decimal("3.50"))
+        self.assertEqual(row.lunch_break_minutes, 0)
+
+    def test_execute_worklog_pm_action_calculates_lunch_break(self):
+        WorkLog.objects.create(
+            owner=self.user,
+            work_date="2026-03-16",
+            time_start="09:00",
+            time_end="12:30",
+            lunch_break_minutes=0,
+            hours=Decimal("3.50"),
+        )
+        incoming = SimpleNamespace(
+            sender="mario@example.com",
+            subject="[WORKLOG_PM] 2026-03-16",
+            body_text="14:00-18:30",
+            message_id="<msg-worklog-pm-1@example.com>",
+        )
+
+        outcome = execute_action_from_email(owner=self.user, incoming=incoming, inbound_message=None)
+        self.assertTrue(outcome.handled)
+        self.assertEqual(outcome.action_key, "worklog.capture_pm")
+
+        row = WorkLog.objects.get(owner=self.user, work_date="2026-03-16")
+        self.assertEqual(row.time_start.strftime("%H:%M"), "09:00")
+        self.assertEqual(row.time_end.strftime("%H:%M"), "18:30")
+        self.assertEqual(row.hours, Decimal("8.00"))
+        self.assertEqual(row.lunch_break_minutes, 90)
+
+    def test_execute_worklog_pm_with_hours_uses_reply_time_for_break(self):
+        WorkLog.objects.create(
+            owner=self.user,
+            work_date="2026-03-16",
+            time_start="09:00",
+            time_end="12:30",
+            lunch_break_minutes=0,
+            hours=Decimal("3.50"),
+        )
+        incoming = SimpleNamespace(
+            sender="mario@example.com",
+            subject="[WORKLOG_PM] 2026-03-16",
+            body_text="4 ore",
+            message_id="<msg-worklog-pm-2@example.com>",
+        )
+        inbound = SimpleNamespace(config=SimpleNamespace(timezone_name="UTC"), config_id=1)
+
+        with patch("archibald_mail.actions.timezone.now", return_value=datetime(2026, 3, 16, 18, 30, tzinfo=ZoneInfo("UTC"))):
+            outcome = execute_action_from_email(owner=self.user, incoming=incoming, inbound_message=inbound)
+        self.assertTrue(outcome.handled)
+
+        row = WorkLog.objects.get(owner=self.user, work_date="2026-03-16")
+        self.assertEqual(row.time_end.strftime("%H:%M"), "18:30")
+        self.assertEqual(row.hours, Decimal("7.50"))
+        self.assertEqual(row.lunch_break_minutes, 120)
 
     def test_execute_action_manually_works_for_reminder(self):
         inbound = ArchibaldEmailMessage.objects.create(
