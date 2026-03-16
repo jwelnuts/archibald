@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date, time, timedelta
 from decimal import Decimal
 import hashlib
 import json
@@ -22,7 +22,7 @@ from .hero_actions import HERO_ACTIONS
 from .models import MobileApiSession, UserHeroActionsConfig, UserNavConfig
 from .navigation import DEFAULT_APP_OPTIONS, normalize_nav_config, parse_widgets_json
 from planner.models import PlannerItem
-from routines.models import RoutineCheck, RoutineItem
+from routines.models import Routine, RoutineCategory, RoutineCheck, RoutineItem
 from subscriptions.models import Account
 from subscriptions.models import SubscriptionOccurrence
 from todo.models import Task
@@ -1045,18 +1045,41 @@ def _mobile_week_start_for(value: str | None) -> date:
     return today - timedelta(days=today.weekday())
 
 
-def _mobile_routines_stats(owner, week_start: date):
-    counts = (
-        RoutineCheck.objects.filter(owner=owner, week_start=week_start)
-        .values("status")
-        .annotate(total=Count("id"))
-    )
-    count_map = {row["status"]: row["total"] for row in counts}
-    return {
-        "planned": count_map.get(RoutineCheck.Status.PLANNED, 0),
-        "done": count_map.get(RoutineCheck.Status.DONE, 0),
-        "skipped": count_map.get(RoutineCheck.Status.SKIPPED, 0),
-    }
+def _mobile_routines_stats_from_items(items, check_map):
+    planned = 0
+    done = 0
+    skipped = 0
+    for item in items:
+        check = check_map.get(item.id)
+        status = check.status if check else RoutineCheck.Status.PLANNED
+        if status == RoutineCheck.Status.DONE:
+            done += 1
+        elif status == RoutineCheck.Status.SKIPPED:
+            skipped += 1
+        else:
+            planned += 1
+    return {"planned": planned, "done": done, "skipped": skipped}
+
+
+def _mobile_parse_weekday(value):
+    try:
+        weekday = int(value)
+    except (TypeError, ValueError):
+        return None
+    if weekday < 0 or weekday > 6:
+        return None
+    return weekday
+
+
+def _mobile_parse_time(value):
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    try:
+        parsed = time.fromisoformat(raw)
+    except ValueError:
+        return None
+    return parsed.replace(second=0, microsecond=0)
 
 
 @require_http_methods(["GET"])
@@ -1087,14 +1110,16 @@ def mobile_routines(request):
                 "time_start": item.time_start.strftime("%H:%M") if item.time_start else "",
                 "time_end": item.time_end.strftime("%H:%M") if item.time_end else "",
                 "note": item.note or "",
+                "routine_id": item.routine_id,
                 "container": item.routine.name,
+                "category_id": item.category_id or "",
                 "category": item.category.name if item.category_id else "",
                 "project": item.project.name if item.project_id else "",
                 "status": check.status if check else RoutineCheck.Status.PLANNED,
             }
         )
 
-    stats = _mobile_routines_stats(session.user, week_start)
+    stats = _mobile_routines_stats_from_items(items, check_map)
     return JsonResponse(
         {
             "ok": True,
@@ -1103,6 +1128,16 @@ def mobile_routines(request):
             "week_end": week_end.isoformat(),
             "stats": stats,
             "items": payload_items,
+            "containers": list(
+                Routine.objects.filter(owner=session.user, is_active=True)
+                .order_by("name")
+                .values("id", "name")
+            ),
+            "categories": list(
+                RoutineCategory.objects.filter(owner=session.user, is_active=True)
+                .order_by("name")
+                .values("id", "name")
+            ),
         }
     )
 
@@ -1139,7 +1174,12 @@ def mobile_routines_check(request):
     check.status = status
     check.save(update_fields=["status", "updated_at"])
 
-    stats = _mobile_routines_stats(session.user, week_start)
+    active_items = list(
+        RoutineItem.objects.filter(owner=session.user, is_active=True, routine__is_active=True).only("id")
+    )
+    active_checks = RoutineCheck.objects.filter(owner=session.user, week_start=week_start, item__in=active_items)
+    active_check_map = {row.item_id: row for row in active_checks}
+    stats = _mobile_routines_stats_from_items(active_items, active_check_map)
     return JsonResponse(
         {
             "ok": True,
@@ -1149,3 +1189,130 @@ def mobile_routines_check(request):
             "week_start": week_start.isoformat(),
         }
     )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def mobile_routines_item_create(request):
+    session, error = _mobile_authenticate_request(request)
+    if error:
+        return error
+
+    payload = _mobile_parse_json(request)
+    if payload is None:
+        return _mobile_json_error("invalid_json", status=400)
+
+    routine_id = payload.get("routine_id")
+    title = (payload.get("title") or "").strip()
+    weekday = _mobile_parse_weekday(payload.get("weekday"))
+    category_id = payload.get("category_id")
+    note = (payload.get("note") or "").strip()
+    time_start = _mobile_parse_time(payload.get("time_start"))
+    time_end = _mobile_parse_time(payload.get("time_end"))
+
+    routine = Routine.objects.filter(owner=session.user, is_active=True, id=routine_id).first()
+    if not routine:
+        return _mobile_json_error("routine_not_found", status=404)
+    if not title:
+        return _mobile_json_error("missing_title", status=400)
+    if weekday is None:
+        return _mobile_json_error("invalid_weekday", status=400)
+
+    category = None
+    if category_id not in (None, "", 0, "0"):
+        category = RoutineCategory.objects.filter(owner=session.user, is_active=True, id=category_id).first()
+        if category is None:
+            return _mobile_json_error("category_not_found", status=404)
+
+    item = RoutineItem.objects.create(
+        owner=session.user,
+        routine=routine,
+        category=category,
+        title=title,
+        weekday=weekday,
+        time_start=time_start,
+        time_end=time_end,
+        note=note,
+        is_active=True,
+    )
+    return JsonResponse({"ok": True, "item_id": item.id})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def mobile_routines_item_update(request):
+    session, error = _mobile_authenticate_request(request)
+    if error:
+        return error
+
+    payload = _mobile_parse_json(request)
+    if payload is None:
+        return _mobile_json_error("invalid_json", status=400)
+
+    item_id = payload.get("item_id")
+    item = RoutineItem.objects.filter(owner=session.user, id=item_id).first()
+    if not item:
+        return _mobile_json_error("item_not_found", status=404)
+
+    routine_id = payload.get("routine_id")
+    title = (payload.get("title") or "").strip()
+    weekday = _mobile_parse_weekday(payload.get("weekday"))
+    category_id = payload.get("category_id")
+    note = (payload.get("note") or "").strip()
+    time_start = _mobile_parse_time(payload.get("time_start"))
+    time_end = _mobile_parse_time(payload.get("time_end"))
+
+    routine = Routine.objects.filter(owner=session.user, is_active=True, id=routine_id).first()
+    if not routine:
+        return _mobile_json_error("routine_not_found", status=404)
+    if not title:
+        return _mobile_json_error("missing_title", status=400)
+    if weekday is None:
+        return _mobile_json_error("invalid_weekday", status=400)
+
+    category = None
+    if category_id not in (None, "", 0, "0"):
+        category = RoutineCategory.objects.filter(owner=session.user, is_active=True, id=category_id).first()
+        if category is None:
+            return _mobile_json_error("category_not_found", status=404)
+
+    item.routine = routine
+    item.category = category
+    item.title = title
+    item.weekday = weekday
+    item.time_start = time_start
+    item.time_end = time_end
+    item.note = note
+    item.save(
+        update_fields=[
+            "routine",
+            "category",
+            "title",
+            "weekday",
+            "time_start",
+            "time_end",
+            "note",
+            "updated_at",
+        ]
+    )
+    return JsonResponse({"ok": True, "item_id": item.id})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def mobile_routines_item_delete(request):
+    session, error = _mobile_authenticate_request(request)
+    if error:
+        return error
+
+    payload = _mobile_parse_json(request)
+    if payload is None:
+        return _mobile_json_error("invalid_json", status=400)
+
+    item_id = payload.get("item_id")
+    item = RoutineItem.objects.filter(owner=session.user, id=item_id).first()
+    if not item:
+        return _mobile_json_error("item_not_found", status=404)
+
+    item.delete()
+    return JsonResponse({"ok": True, "item_id": item_id})

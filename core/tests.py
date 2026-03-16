@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
 from planner.models import PlannerItem
-from routines.models import Routine, RoutineItem, RoutineCheck
+from routines.models import Routine, RoutineCategory, RoutineItem, RoutineCheck
 from todo.models import Task
 from .models import MobileApiSession, UserNavConfig
 from .views import DEFAULT_DASHBOARD_WIDGET_IDS
@@ -392,6 +392,32 @@ class MobileApiAuthTests(TestCase):
         self.assertEqual(len(body["items"]), 1)
         self.assertEqual(body["items"][0]["title"], "Stretching")
         self.assertEqual(body["items"][0]["status"], RoutineCheck.Status.DONE)
+        self.assertEqual(body["stats"]["planned"], 0)
+        self.assertEqual(body["stats"]["done"], 1)
+        self.assertEqual(body["stats"]["skipped"], 0)
+
+    def test_mobile_routines_counts_unchecked_items_as_planned(self):
+        routine = Routine.objects.create(owner=self.user, name="Routine Planned", is_active=True)
+        RoutineItem.objects.create(
+            owner=self.user,
+            routine=routine,
+            title="Morning walk",
+            weekday=timezone.localdate().weekday(),
+            is_active=True,
+        )
+        week_start = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
+        payload = self._login()
+        access = payload["access_token"]
+
+        response = self.client.get(
+            f"/api/mobile/routines?week={week_start.isoformat()}",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["stats"]["planned"], 1)
+        self.assertEqual(body["stats"]["done"], 0)
+        self.assertEqual(body["stats"]["skipped"], 0)
 
     def test_mobile_routines_check_updates_status(self):
         routine = Routine.objects.create(owner=self.user, name="Routine Check", is_active=True)
@@ -422,6 +448,70 @@ class MobileApiAuthTests(TestCase):
         body = response.json()
         self.assertTrue(body["ok"])
         self.assertEqual(body["status"], RoutineCheck.Status.SKIPPED)
+        self.assertEqual(body["stats"]["planned"], 0)
+        self.assertEqual(body["stats"]["done"], 0)
+        self.assertEqual(body["stats"]["skipped"], 1)
 
         check = RoutineCheck.objects.get(owner=self.user, item=item, week_start=week_start)
         self.assertEqual(check.status, RoutineCheck.Status.SKIPPED)
+
+    def test_mobile_routines_item_crud(self):
+        routine = Routine.objects.create(owner=self.user, name="Routine CRUD", is_active=True)
+        category = RoutineCategory.objects.create(owner=self.user, name="Salute", is_active=True)
+        payload = self._login()
+        access = payload["access_token"]
+
+        create_response = self.client.post(
+            "/api/mobile/routines/items/create",
+            data=json.dumps(
+                {
+                    "routine_id": routine.id,
+                    "title": "Mobilita",
+                    "weekday": 2,
+                    "time_start": "08:30",
+                    "time_end": "09:00",
+                    "category_id": category.id,
+                    "note": "Foam roller",
+                }
+            ),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(create_response.status_code, 200)
+        created_id = create_response.json()["item_id"]
+        item = RoutineItem.objects.get(id=created_id, owner=self.user)
+        self.assertEqual(item.title, "Mobilita")
+        self.assertEqual(item.category_id, category.id)
+
+        update_response = self.client.post(
+            "/api/mobile/routines/items/update",
+            data=json.dumps(
+                {
+                    "item_id": item.id,
+                    "routine_id": routine.id,
+                    "title": "Mobilita mattina",
+                    "weekday": 3,
+                    "time_start": "08:45",
+                    "time_end": "",
+                    "category_id": "",
+                    "note": "Versione breve",
+                }
+            ),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(update_response.status_code, 200)
+        item.refresh_from_db()
+        self.assertEqual(item.title, "Mobilita mattina")
+        self.assertEqual(item.weekday, 3)
+        self.assertIsNone(item.time_end)
+        self.assertIsNone(item.category_id)
+
+        delete_response = self.client.post(
+            "/api/mobile/routines/items/delete",
+            data=json.dumps({"item_id": item.id}),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertFalse(RoutineItem.objects.filter(id=item.id).exists())
