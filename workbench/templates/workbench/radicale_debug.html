@@ -1,0 +1,158 @@
+{% extends "workbench/base.html" %}
+
+{% block title %}MIO - Radicale Debug{% endblock %}
+
+{% block content %}
+  <section class="hero workbench-hero">
+    <div class="hero-copy">
+      <div class="hero-tag">CalDAV runtime</div>
+      <h1>Debug Radicale</h1>
+      <p>
+        Snapshot configurazione DAV, stato file utenti e test di raggiungibilita endpoint.
+      </p>
+    </div>
+    <div class="hero-card workbench-hero-card">
+      <div class="card-title">Stato rapido</div>
+      <div class="stat-row">
+        <div class="stat">
+          <div class="stat-label">CalDAV</div>
+          <div class="stat-value">{% if caldav_enabled %}ON{% else %}OFF{% endif %}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Probe OK</div>
+          <div class="stat-value">{{ probes_ok_count }}/{{ probes|length }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Account attivi</div>
+          <div class="stat-value">{{ active_accounts_count }}</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Users file</div>
+          <div class="stat-value">{% if users_file_info.exists %}OK{% else %}N/A{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="card-title">Configurazione DAV</div>
+    <div class="uk-overflow-auto">
+      <table class="uk-table uk-table-divider uk-table-small">
+        <tbody>
+          <tr><th>CALDAV_ENABLED</th><td>{{ caldav_enabled }}</td></tr>
+          <tr><th>CALDAV_BASE_URL</th><td><code>{{ caldav_base_url|default:"-" }}</code></td></tr>
+          <tr><th>CALDAV_LOGIN_DOMAIN</th><td><code>{{ caldav_login_domain|default:"-" }}</code></td></tr>
+          <tr><th>CALDAV_DEFAULT_TEAM_COLLECTION</th><td><code>{{ caldav_default_team_collection|default:"-" }}</code></td></tr>
+          <tr><th>CALDAV_SERVICE_USERNAME</th><td><code>{{ service_username|default:"-" }}</code></td></tr>
+          <tr>
+            <th>CALDAV_SERVICE_PASSWORD</th>
+            <td>
+              {% if service_password_configured %}
+                configurata (<code>{{ service_password_masked }}</code>)
+              {% else %}
+                non configurata
+              {% endif %}
+            </td>
+          </tr>
+          <tr><th>RADICALE_USERS_FILE</th><td><code>{{ radicale_users_file }}</code></td></tr>
+          <tr><th>RADICALE_USERS_LOCK_FILE</th><td><code>{{ radicale_users_lock_file }}</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="card-title">Probe endpoint</div>
+    {% if probes %}
+      <div class="uk-overflow-auto">
+        <table class="uk-table uk-table-divider uk-table-small">
+          <thead>
+            <tr>
+              <th>Check</th>
+              <th>URL</th>
+              <th>Stato</th>
+              <th>Dettaglio</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for probe in probes %}
+              <tr>
+                <td>{{ probe.name }}</td>
+                <td><code>{{ probe.result.url }}</code></td>
+                <td>{% if probe.result.ok %}OK{% else %}KO{% endif %} - {{ probe.result.status_label }}</td>
+                <td class="muted">{{ probe.result.detail }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="note">Configura prima <code>CALDAV_BASE_URL</code> per eseguire i probe.</div>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="card-title">File utenti Radicale</div>
+    {% if users_file_info.error %}
+      <div class="note">Errore lettura file: {{ users_file_info.error }}</div>
+    {% endif %}
+    <div class="uk-overflow-auto">
+      <table class="uk-table uk-table-divider uk-table-small">
+        <tbody>
+          <tr><th>Esiste</th><td>{{ users_file_info.exists }}</td></tr>
+          <tr><th>Permessi</th><td><code>{{ users_file_info.permissions }}</code></td></tr>
+          <tr><th>Dimensione</th><td>{{ users_file_info.size }} bytes</td></tr>
+          <tr><th>Linee utenti</th><td>{{ users_file_info.line_count }}</td></tr>
+          <tr>
+            <th>Preview username</th>
+            <td>
+              {% if users_file_info.preview %}
+                {% for username in users_file_info.preview %}
+                  <code>{{ username }}</code>{% if not forloop.last %}, {% endif %}
+                {% endfor %}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="card-title">DAV accounts applicativi</div>
+    <p class="muted">
+      Totale attivi: <strong>{{ active_accounts_count }}</strong>,
+      inattivi: <strong>{{ inactive_accounts_count }}</strong>.
+    </p>
+    {% if dav_accounts %}
+      <div class="uk-overflow-auto">
+        <table class="uk-table uk-table-divider uk-table-small">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>DAV username</th>
+              <th>Attivo</th>
+              <th>Rotazione password</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for account in dav_accounts %}
+              <tr>
+                <td>{{ account.user.username }}</td>
+                <td>{{ account.user.email }}</td>
+                <td><code>{{ account.dav_username }}</code></td>
+                <td>{{ account.is_active }}</td>
+                <td>{{ account.password_rotated_at|date:"Y-m-d H:i:s" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="note">Nessun account DAV provisionato.</div>
+    {% endif %}
+  </section>
+{% endblock %}

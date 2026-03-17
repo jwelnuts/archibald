@@ -23,7 +23,7 @@ git pull --ff-only
 
 echo "==> Commit attivo: $(git rev-parse --short HEAD)"
 echo "==> Rebuild e restart container"
-docker compose up -d --build
+docker compose up -d --build --wait --wait-timeout 180
 
 echo "==> Stato servizi"
 docker compose ps

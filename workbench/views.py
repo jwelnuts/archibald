@@ -1,7 +1,10 @@
+import base64
 import json
 import os
+from pathlib import Path
 import urllib.error
 import urllib.request
+from urllib.parse import quote, urljoin
 from importlib.util import find_spec
 
 from django.apps import apps
@@ -20,6 +23,77 @@ from .app_builder import AppBuilderError, generate_app_from_prompt, run_post_gen
 from .forms import AppGeneratorForm, WorkbenchItemForm
 from .models import DebugChangeLog, WorkbenchItem
 from .orphan_cleanup import cleanup_generated_app
+
+
+def _normalize_caldav_url(raw_url):
+    value = (raw_url or "").strip()
+    if not value:
+        return ""
+    return value if value.endswith("/") else f"{value}/"
+
+
+def _probe_http_endpoint(url, *, username="", password="", timeout_seconds=3):
+    if not url:
+        return {
+            "url": "",
+            "ok": False,
+            "status_code": None,
+            "status_label": "N/D",
+            "detail": "URL non configurata.",
+        }
+
+    headers = {"User-Agent": "mio-workbench-radicale-debug"}
+    if username and password:
+        token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode("ascii")
+        headers["Authorization"] = f"Basic {token}"
+    request = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+            status_code = int(getattr(response, "status", 200))
+            content_type = response.headers.get("Content-Type", "")
+            return {
+                "url": url,
+                "ok": status_code < 500,
+                "status_code": status_code,
+                "status_label": f"HTTP {status_code}",
+                "detail": content_type or "Connessione riuscita.",
+            }
+    except urllib.error.HTTPError as exc:
+        status_code = int(exc.code)
+        content_type = ""
+        if getattr(exc, "headers", None):
+            content_type = exc.headers.get("Content-Type", "")
+        return {
+            "url": url,
+            "ok": status_code < 500,
+            "status_code": status_code,
+            "status_label": f"HTTP {status_code}",
+            "detail": content_type or str(exc.reason),
+        }
+    except urllib.error.URLError as exc:
+        return {
+            "url": url,
+            "ok": False,
+            "status_code": None,
+            "status_label": "Network error",
+            "detail": str(exc.reason),
+        }
+    except Exception as exc:
+        return {
+            "url": url,
+            "ok": False,
+            "status_code": None,
+            "status_label": "Errore",
+            "detail": str(exc),
+        }
+
+
+def _mask_secret(value):
+    if not value:
+        return "-"
+    if len(value) <= 6:
+        return "***"
+    return f"{value[:2]}***{value[-2:]}"
 
 
 def _group_migrations_by_app():
@@ -674,3 +748,104 @@ def db_schema(request):
         "workbench/db_schema.html",
         {"models": models_info, "mermaid_erd": mermaid_erd},
     )
+
+
+@login_required
+def radicale_debug(request):
+    from core.models import DavAccount
+
+    base_url = _normalize_caldav_url(getattr(settings, "CALDAV_BASE_URL", ""))
+    service_username = (getattr(settings, "CALDAV_SERVICE_USERNAME", "") or "").strip()
+    service_password = (getattr(settings, "CALDAV_SERVICE_PASSWORD", "") or "").strip()
+    users_file_value = (getattr(settings, "RADICALE_USERS_FILE", "") or "").strip()
+    lock_file_value = (getattr(settings, "RADICALE_USERS_LOCK_FILE", "") or "").strip()
+    users_path = Path(users_file_value) if users_file_value else None
+    lock_path = Path(lock_file_value) if lock_file_value else (Path(f"{users_path}.lock") if users_path else None)
+
+    users_file_info = {
+        "path": str(users_path) if users_path else "",
+        "exists": False,
+        "size": 0,
+        "permissions": "-",
+        "line_count": 0,
+        "preview": [],
+        "error": "",
+    }
+    if users_path:
+        try:
+            users_file_info["exists"] = users_path.exists()
+            if users_path.exists():
+                stat = users_path.stat()
+                users_file_info["size"] = stat.st_size
+                users_file_info["permissions"] = oct(stat.st_mode & 0o777)
+                lines = [line.strip() for line in users_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+                usernames = [line.split(":", 1)[0].strip() for line in lines if ":" in line]
+                users_file_info["line_count"] = len(usernames)
+                users_file_info["preview"] = usernames[:8]
+        except Exception as exc:
+            users_file_info["error"] = str(exc)
+
+    probes = []
+    if base_url:
+        probes.append(
+            {
+                "name": "Base URL (anonimo)",
+                "result": _probe_http_endpoint(base_url),
+            }
+        )
+        probes.append(
+            {
+                "name": ".well-known/caldav (anonimo)",
+                "result": _probe_http_endpoint(urljoin(base_url, "/.well-known/caldav")),
+            }
+        )
+        if service_username and service_password:
+            probes.append(
+                {
+                    "name": "Base URL (service account)",
+                    "result": _probe_http_endpoint(
+                        base_url,
+                        username=service_username,
+                        password=service_password,
+                    ),
+                }
+            )
+            service_principal_url = urljoin(base_url, f"{quote(service_username, safe='@._+-')}/")
+            probes.append(
+                {
+                    "name": "Principal service",
+                    "result": _probe_http_endpoint(
+                        service_principal_url,
+                        username=service_username,
+                        password=service_password,
+                    ),
+                }
+            )
+    probes_ok_count = sum(1 for probe in probes if probe["result"]["ok"])
+
+    dav_accounts = (
+        DavAccount.objects.select_related("user")
+        .order_by("dav_username")
+    )
+    active_accounts_count = dav_accounts.filter(is_active=True).count()
+    inactive_accounts_count = dav_accounts.filter(is_active=False).count()
+
+    context = {
+        "caldav_enabled": bool(getattr(settings, "CALDAV_ENABLED", False)),
+        "caldav_base_url": base_url,
+        "caldav_login_domain": (getattr(settings, "CALDAV_LOGIN_DOMAIN", "") or "").strip(),
+        "caldav_default_team_collection": (getattr(settings, "CALDAV_DEFAULT_TEAM_COLLECTION", "") or "").strip(),
+        "service_username": service_username or "-",
+        "service_password_masked": _mask_secret(service_password),
+        "service_password_configured": bool(service_password),
+        "service_username_configured": bool(service_username),
+        "radicale_users_file": str(users_path) if users_path else "-",
+        "radicale_users_lock_file": str(lock_path) if lock_path else "-",
+        "users_file_info": users_file_info,
+        "probes": probes,
+        "probes_ok_count": probes_ok_count,
+        "active_accounts_count": active_accounts_count,
+        "inactive_accounts_count": inactive_accounts_count,
+        "dav_accounts": dav_accounts[:120],
+    }
+    return render(request, "workbench/radicale_debug.html", context)

@@ -28,6 +28,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.create_connection(('127.0.0.1', 8000), 3); s.close()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
@@ -59,12 +64,22 @@ services:
   radicale:
     image: tomsquest/docker-radicale:latest
     restart: unless-stopped
+    command: >
+      sh -c "mkdir -p /data/collections &&
+      touch /data/users &&
+      chmod 600 /data/users &&
+      exec radicale --config /config/config"
     ports:
       - "${RADICALE_PUBLISHED_PORT:-5232}:5232"
     volumes:
       - ./docker/radicale/config:/config/config:ro
       - ./docker/radicale/rights:/config/rights:ro
       - radicale_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.create_connection(('127.0.0.1', 5232), 3); s.close()\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
 
   caddy:
     image: caddy:2.8-alpine
@@ -72,7 +87,8 @@ services:
     environment:
       CADDY_SITE_HOST: ${CADDY_SITE_HOST:-:80}
     depends_on:
-      - web
+      web:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"
