@@ -50,7 +50,7 @@ const setupDashboardWidgets = () => {
     const hiddenCount = cards().filter((card) => card.classList.contains("is-user-hidden")).length;
     statusLabel.textContent = editMode
       ? `Personalizzazione attiva · ${hiddenCount} nascosti`
-      : "Drag & drop attivo";
+      : "Lista moduli operativi";
   };
 
   const refreshHiddenPanel = () => {
@@ -292,11 +292,31 @@ const dashChat = document.getElementById("dashboard-archibald-chat");
 const dashPrompt = document.getElementById("dashboard-archibald-prompt");
 const dashThread = document.getElementById("dashboard-archibald-thread");
 const dashReset = document.getElementById("dashboard-archibald-reset");
+const dashStatus = document.getElementById("dashboard-archibald-status");
+const dashFloating = document.getElementById("dashboard-archibald-floating");
+const dashLauncher = document.getElementById("dashboard-archibald-launch");
+const dashClose = document.getElementById("dashboard-archibald-close");
 
 if (dashForm && dashChat && dashPrompt && dashThread) {
-  const addMessage = (role, content, time) => {
+  const setStatus = (text) => {
+    if (!dashStatus) return;
+    dashStatus.textContent = text;
+  };
+
+  const showChatPanel = () => {
+    if (!dashFloating) return;
+    dashFloating.classList.remove("uk-hidden");
+    dashPrompt.focus();
+  };
+
+  const hideChatPanel = () => {
+    if (!dashFloating) return;
+    dashFloating.classList.add("uk-hidden");
+  };
+
+  const addMessage = (role, content, time, pending = false) => {
     const wrapper = document.createElement("div");
-    wrapper.className = `chat-message ${role}`;
+    wrapper.className = `chat-message ${role}${pending ? " is-pending" : ""}`;
     const bubble = document.createElement("div");
     bubble.className = "chat-bubble";
     const roleEl = document.createElement("div");
@@ -317,14 +337,32 @@ if (dashForm && dashChat && dashPrompt && dashThread) {
     wrapper.appendChild(bubble);
     dashChat.appendChild(wrapper);
     dashChat.scrollTop = dashChat.scrollHeight;
+    return wrapper;
   };
+
+  if (dashLauncher) {
+    dashLauncher.addEventListener("click", (event) => {
+      event.preventDefault();
+      showChatPanel();
+    });
+  }
+
+  if (dashClose) {
+    dashClose.addEventListener("click", (event) => {
+      event.preventDefault();
+      hideChatPanel();
+    });
+  }
 
   dashForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const text = dashPrompt.value.trim();
     if (!text) return;
+    showChatPanel();
     addMessage("user", text);
     dashPrompt.value = "";
+    setStatus("Archibald sta scrivendo...");
+    const pendingNode = addMessage("assistant", "...", "", true);
     const data = new FormData();
     data.append("prompt", text);
     if (dashThread.value) {
@@ -337,16 +375,32 @@ if (dashForm && dashChat && dashPrompt && dashThread) {
         headers: { "X-Requested-With": "XMLHttpRequest", "X-CSRFToken": getCsrfToken() },
         credentials: "same-origin",
       });
-      if (!resp.ok) return;
+      if (!resp.ok) {
+        pendingNode.remove();
+        addMessage("assistant", "C'e stato un problema di connessione. Riprova tra poco.");
+        setStatus("Offline");
+        return;
+      }
       const payload = await resp.json();
+      pendingNode.remove();
       if (payload.thread_id) {
         dashThread.value = payload.thread_id;
       }
       if (payload.assistant) {
         addMessage("assistant", payload.assistant.content, payload.assistant.time);
       }
+      setStatus("Online");
     } catch (err) {
-      // ignore
+      pendingNode.remove();
+      addMessage("assistant", "Non riesco a rispondere adesso. Verifica la connessione e riprova.");
+      setStatus("Offline");
+    }
+  });
+
+  dashPrompt.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      dashForm.requestSubmit();
     }
   });
 
@@ -355,7 +409,8 @@ if (dashForm && dashChat && dashPrompt && dashThread) {
       dashThread.value = "";
       dashChat.innerHTML = "";
       dashPrompt.value = "";
-      dashPrompt.focus();
+      setStatus("Online");
+      showChatPanel();
     });
   }
 
