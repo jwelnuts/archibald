@@ -61,14 +61,23 @@ services:
     volumes:
       - radicale_data:/radicale-data
 
-  radicale:
-    image: tomsquest/docker-radicale:latest
-    restart: unless-stopped
+  radicale_init:
+    image: alpine:3.20
+    restart: "no"
     command: >
       sh -c "mkdir -p /data/collections &&
       touch /data/users &&
-      chmod 600 /data/users &&
-      exec radicale --config /config/config"
+      chown 2999:2999 /data/users &&
+      chmod 600 /data/users"
+    volumes:
+      - radicale_data:/data
+
+  radicale:
+    image: tomsquest/docker-radicale:latest
+    restart: unless-stopped
+    depends_on:
+      radicale_init:
+        condition: service_completed_successfully
     ports:
       - "${RADICALE_PUBLISHED_PORT:-5232}:5232"
     volumes:
