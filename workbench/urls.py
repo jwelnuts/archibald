@@ -11,5 +11,6 @@ urlpatterns = [
     path('ai/ui-generator', views.ai_ui_generator, name='workbench-ai-ui-generator'),
     path('ai/app-generator', views.ai_app_generator, name='workbench-ai-app-generator'),
     path('debug/logs', views.debug_logs, name='workbench-debug-logs'),
+    path('debug/api-endpoints', views.api_endpoints, name='workbench-api-endpoints'),
     path('debug/schema', views.db_schema, name='workbench-db-schema'),
 ]

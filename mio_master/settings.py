@@ -69,6 +69,14 @@ if not MOBILE_API_ALLOWED_ORIGINS:
 
 MOBILE_API_ACCESS_TTL_SECONDS = int(os.getenv("MOBILE_API_ACCESS_TTL_SECONDS", "900"))
 MOBILE_API_REFRESH_TTL_DAYS = int(os.getenv("MOBILE_API_REFRESH_TTL_DAYS", "14"))
+CALDAV_ENABLED = os.getenv("CALDAV_ENABLED", "false").lower() in {"1", "true", "yes", "on"}
+CALDAV_BASE_URL = os.getenv("CALDAV_BASE_URL", "").strip()
+CALDAV_SERVICE_USERNAME = os.getenv("CALDAV_SERVICE_USERNAME", "").strip()
+CALDAV_SERVICE_PASSWORD = os.getenv("CALDAV_SERVICE_PASSWORD", "").strip()
+CALDAV_LOGIN_DOMAIN = os.getenv("CALDAV_LOGIN_DOMAIN", "miorganizzo.ovh").strip()
+CALDAV_DEFAULT_TEAM_COLLECTION = os.getenv("CALDAV_DEFAULT_TEAM_COLLECTION", "team/progetto-generale").strip()
+RADICALE_USERS_FILE = os.getenv("RADICALE_USERS_FILE", str(BASE_DIR / "runtime" / "radicale" / "users")).strip()
+RADICALE_USERS_LOCK_FILE = os.getenv("RADICALE_USERS_LOCK_FILE", "").strip()
 
 
 # Application definition

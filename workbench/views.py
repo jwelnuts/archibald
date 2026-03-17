@@ -13,7 +13,7 @@ from django.db import connection
 from django.db.migrations.loader import MigrationLoader
 from django.http import HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
-from django.urls import Resolver404, resolve
+from django.urls import URLPattern, URLResolver, Resolver404, get_resolver, resolve
 from django.views.decorators.http import require_POST
 
 from .app_builder import AppBuilderError, generate_app_from_prompt, run_post_generation_setup
@@ -43,6 +43,49 @@ def _severity_to_ui(severity):
     if severity == "warn":
         return "ATTENZIONE", "dot-amber", "health-pill warn"
     return "OK", "dot-green", "health-pill ok"
+
+
+def _iter_url_patterns(urlpatterns, prefix=""):
+    for entry in urlpatterns:
+        chunk = str(entry.pattern or "")
+        full_path = f"{prefix}{chunk}"
+        if isinstance(entry, URLResolver):
+            yield from _iter_url_patterns(entry.url_patterns, full_path)
+            continue
+        if isinstance(entry, URLPattern):
+            yield full_path, entry
+
+
+def _is_api_endpoint(path_value):
+    segments = [seg for seg in path_value.strip("/").split("/") if seg]
+    return "api" in segments or path_value.startswith("api/") or "/api/" in path_value
+
+
+def _methods_for_pattern(pattern):
+    callback = pattern.callback
+    actions = getattr(callback, "actions", None)
+    if actions:
+        methods = sorted({method.upper() for method in actions.keys()})
+        if methods:
+            return methods
+
+    view_class = getattr(callback, "view_class", None)
+    if view_class and hasattr(view_class, "http_method_names"):
+        methods = [
+            method.upper()
+            for method in view_class.http_method_names
+            if method not in {"head", "options", "trace"}
+        ]
+        if methods:
+            return sorted(set(methods))
+
+    allowed = getattr(callback, "allowed_methods", None)
+    if allowed:
+        methods = [m.upper() for m in allowed if m]
+        if methods:
+            return sorted(set(methods))
+
+    return ["N/D"]
 
 
 def _analyze_generated_app(
@@ -389,6 +432,37 @@ def debug_logs(request):
                 .order_by("-created_at")[:200]
             )
         },
+    )
+
+
+@login_required
+def api_endpoints(request):
+    resolver = get_resolver()
+    rows = []
+    for raw_path, pattern in _iter_url_patterns(resolver.url_patterns):
+        normalized = raw_path.lstrip("^").rstrip("$")
+        if not normalized.startswith("/"):
+            normalized = f"/{normalized}"
+        if not _is_api_endpoint(normalized):
+            continue
+        callback = pattern.callback
+        view_name = getattr(callback, "__name__", callback.__class__.__name__)
+        module_name = getattr(callback, "__module__", "")
+        rows.append(
+            {
+                "path": normalized,
+                "name": pattern.name or "-",
+                "methods": ", ".join(_methods_for_pattern(pattern)),
+                "view_name": view_name,
+                "module_name": module_name,
+            }
+        )
+
+    rows.sort(key=lambda row: row["path"])
+    return render(
+        request,
+        "workbench/api_endpoints.html",
+        {"endpoints": rows, "total_endpoints": len(rows)},
     )
 
 

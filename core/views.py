@@ -18,9 +18,10 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from agenda.models import AgendaItem, WorkLog
+from .dav import DavProvisioningError, caldav_base_url, ensure_user_dav_access
 from .forms import AccountForm, SignUpForm
 from .hero_actions import HERO_ACTIONS
-from .models import MobileApiSession, UserHeroActionsConfig, UserNavConfig
+from .models import DavAccount, MobileApiSession, UserHeroActionsConfig, UserNavConfig
 from .navigation import DEFAULT_APP_OPTIONS, normalize_nav_config, parse_widgets_json
 from planner.models import PlannerItem
 from projects.models import Project, SubProject
@@ -498,7 +499,25 @@ def signup(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect("/")
+            if settings.CALDAV_ENABLED:
+                try:
+                    account, issued_password = ensure_user_dav_access(user, rotate_password=True)
+                except DavProvisioningError as exc:
+                    django_messages.warning(
+                        request,
+                        f"Account creato, ma provisioning DAV non completato: {exc}",
+                    )
+                else:
+                    if issued_password:
+                        request.session["dav_onboarding"] = {
+                            "username": account.dav_username,
+                            "password": issued_password,
+                        }
+                        django_messages.success(
+                            request,
+                            "Credenziali DAV inizializzate. Salva la password applicativa mostrata nel profilo.",
+                        )
+            return redirect("/profile/#dav-access")
     else:
         form = SignUpForm()
     return render(request, "registration/signup.html", {"form": form})
@@ -520,6 +539,23 @@ def profile(request):
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
         custom_text = (request.POST.get("archibald_custom_instructions") or "").strip()
+
+        if action == "rotate_dav_password":
+            if not settings.CALDAV_ENABLED:
+                django_messages.error(request, "CalDAV non abilitato in questa istanza.")
+                return redirect("/profile/#dav-access")
+            try:
+                account, issued_password = ensure_user_dav_access(request.user, rotate_password=True)
+            except DavProvisioningError as exc:
+                django_messages.error(request, f"Rotazione credenziali DAV fallita: {exc}")
+                return redirect("/profile/#dav-access")
+            if issued_password:
+                request.session["dav_onboarding"] = {
+                    "username": account.dav_username,
+                    "password": issued_password,
+                }
+            django_messages.success(request, "Password applicativa DAV rigenerata.")
+            return redirect("/profile/#dav-access")
 
         if action == "save_archibald_instructions":
             persona.custom_instructions = custom_text
@@ -586,11 +622,19 @@ def profile(request):
             return redirect("/profile/#bias-cognitivi")
 
     states = ArchibaldInstructionState.objects.filter(owner=request.user).order_by("-updated_at", "name")
+    dav_account = DavAccount.objects.filter(user=request.user).first()
+    dav_onboarding = request.session.pop("dav_onboarding", None)
     context = {
         "archibald_custom_instructions": persona.custom_instructions or "",
         "archibald_instruction_states": states[:24],
         "archibald_system_preview": build_archibald_system_for_user(request.user),
         "archibald_persona": persona,
+        "caldav_enabled": settings.CALDAV_ENABLED,
+        "caldav_base_url": caldav_base_url(),
+        "dav_account": dav_account,
+        "dav_onboarding_username": (dav_onboarding or {}).get("username", ""),
+        "dav_onboarding_password": (dav_onboarding or {}).get("password", ""),
+        "dav_default_team_collection": settings.CALDAV_DEFAULT_TEAM_COLLECTION,
     }
     return render(request, "core/profile.html", context)
 

@@ -1,0 +1,238 @@
+{% extends "workbench/base.html" %}
+
+{% block title %}MIO - API Endpoints{% endblock %}
+
+{% block content %}
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css"
+  >
+  <style>
+    .workbench-body #endpoint-response-wrap {
+      margin-top: 10px;
+      height: calc(100vh - 120px);
+      overflow: auto;
+      border: 1px solid #28463c;
+      border-radius: 4px;
+      background: #0d1117;
+    }
+
+    .workbench-body #endpoint-response-wrap code.hljs {
+      display: block;
+      margin: 0;
+      padding: 14px 16px;
+      background: transparent !important;
+      color: #c9d1d9 !important;
+      border-radius: 0 !important;
+      font-family: "IBM Plex Mono", "JetBrains Mono", "Fira Code", "Source Code Pro", "Courier New", monospace;
+      line-height: 1.45;
+      font-size: 12px;
+      white-space: pre;
+    }
+
+    .workbench-body #endpoint-response-wrap .hljs-comment,
+    .workbench-body #endpoint-response-wrap .hljs-quote {
+      color: #8b949e !important;
+      font-style: italic;
+    }
+
+    .workbench-body #endpoint-response-wrap .hljs-keyword,
+    .workbench-body #endpoint-response-wrap .hljs-selector-tag,
+    .workbench-body #endpoint-response-wrap .hljs-meta {
+      color: #ff7b72 !important;
+    }
+
+    .workbench-body #endpoint-response-wrap .hljs-string,
+    .workbench-body #endpoint-response-wrap .hljs-attr,
+    .workbench-body #endpoint-response-wrap .hljs-template-variable {
+      color: #a5d6ff !important;
+    }
+
+    .workbench-body #endpoint-response-wrap .hljs-number,
+    .workbench-body #endpoint-response-wrap .hljs-literal,
+    .workbench-body #endpoint-response-wrap .hljs-symbol,
+    .workbench-body #endpoint-response-wrap .hljs-bullet {
+      color: #79c0ff !important;
+    }
+
+    .workbench-body #endpoint-response-wrap .hljs-name,
+    .workbench-body #endpoint-response-wrap .hljs-title,
+    .workbench-body #endpoint-response-wrap .hljs-tag {
+      color: #7ee787 !important;
+    }
+  </style>
+
+  <section class="panel">
+    <div class="card-title">API endpoints del progetto</div>
+    <p class="muted">
+      Elenco dinamico ricavato dal resolver Django.
+      Totale endpoint API: <strong>{{ total_endpoints }}</strong>
+    </p>
+    <div class="uk-margin-small-top">
+      <input class="uk-input uk-form-small" type="search" id="api-endpoints-filter" placeholder="Filtra per path, metodo, view...">
+    </div>
+  </section>
+
+  <section class="panel">
+    {% if endpoints %}
+      <div class="uk-overflow-auto">
+        <table class="uk-table uk-table-divider uk-table-small">
+          <thead>
+            <tr>
+              <th>Path</th>
+              <th>Metodi</th>
+              <th>Name</th>
+              <th>View</th>
+              <th>Modulo</th>
+              <th class="uk-text-right">Risposta</th>
+            </tr>
+          </thead>
+          <tbody id="api-endpoints-body">
+            {% for endpoint in endpoints %}
+              <tr data-endpoint-row>
+                <td><code>{{ endpoint.path }}</code></td>
+                <td>{{ endpoint.methods }}</td>
+                <td>{{ endpoint.name }}</td>
+                <td><code>{{ endpoint.view_name }}</code></td>
+                <td><code>{{ endpoint.module_name }}</code></td>
+                <td class="uk-text-right">
+                  <button
+                    class="uk-button uk-button-default uk-button-small"
+                    type="button"
+                    data-endpoint-inspect
+                    data-endpoint-path="{{ endpoint.path }}"
+                    data-endpoint-methods="{{ endpoint.methods }}"
+                  >Apri</button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="muted" id="api-endpoints-empty" hidden>Nessun endpoint corrisponde al filtro.</div>
+    {% else %}
+      <div class="muted">Nessun endpoint API trovato.</div>
+    {% endif %}
+  </section>
+
+  <div id="endpoint-response-modal" class="uk-modal-full" uk-modal>
+    <div class="uk-modal-dialog uk-modal-body uk-height-viewport" style="padding: 14px 16px; background: #0b1114;">
+      <button class="uk-modal-close-default" type="button" uk-close></button>
+      <h3 class="uk-margin-small-bottom">Risposta endpoint</h3>
+      <div class="uk-text-meta" id="endpoint-response-meta">-</div>
+      <pre id="endpoint-response-wrap"><code id="endpoint-response-code" class="language-json">Seleziona un endpoint.</code></pre>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script>
+    (function () {
+      const input = document.getElementById("api-endpoints-filter");
+      const rows = Array.from(document.querySelectorAll("[data-endpoint-row]"));
+      const empty = document.getElementById("api-endpoints-empty");
+      const responseMeta = document.getElementById("endpoint-response-meta");
+      const responseCode = document.getElementById("endpoint-response-code");
+      if (!input || !rows.length || !empty) return;
+
+      const refresh = () => {
+        const query = String(input.value || "").trim().toLowerCase();
+        let visible = 0;
+        rows.forEach((row) => {
+          const text = String(row.textContent || "").toLowerCase();
+          const show = !query || text.includes(query);
+          row.hidden = !show;
+          if (show) visible += 1;
+        });
+        empty.hidden = visible > 0;
+      };
+
+      const setModalBody = (meta, body, langName) => {
+        if (responseMeta) responseMeta.textContent = meta;
+        if (!responseCode) return;
+        const language = (langName || "plaintext").replace(/^language-/, "");
+        responseCode.className = `hljs language-${language}`;
+        if (window.hljs && typeof window.hljs.highlight === "function") {
+          try {
+            if (window.hljs.getLanguage && window.hljs.getLanguage(language)) {
+              responseCode.innerHTML = window.hljs.highlight(body, {
+                language: language,
+                ignoreIllegals: true,
+              }).value;
+            } else {
+              responseCode.innerHTML = window.hljs.highlightAuto(body).value;
+            }
+          } catch (_err) {
+            responseCode.textContent = body;
+          }
+        } else {
+          responseCode.textContent = body;
+        }
+      };
+
+      const inspectEndpoint = async (btn) => {
+        const path = btn.getAttribute("data-endpoint-path") || "";
+        const methods = String(btn.getAttribute("data-endpoint-methods") || "").toUpperCase();
+        const hasGet = methods.includes("GET") || methods.includes("N/D");
+        if (!path) {
+          setModalBody("Endpoint non valido.", "", "plaintext");
+          return;
+        }
+        if (!hasGet) {
+          setModalBody(
+            `${methods} ${path}`,
+            "Anteprima automatica disponibile solo per endpoint GET.",
+            "plaintext"
+          );
+          return;
+        }
+
+        setModalBody(`GET ${path}`, "Caricamento...", "plaintext");
+        try {
+          const resp = await fetch(path, {
+            method: "GET",
+            credentials: "same-origin",
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+          });
+          const contentType = resp.headers.get("content-type") || "n/d";
+          const rawText = await resp.text();
+          let rendered = rawText;
+          let langClass = "plaintext";
+          if (contentType.includes("application/json")) {
+            try {
+              rendered = JSON.stringify(JSON.parse(rawText), null, 2);
+              langClass = "json";
+            } catch (_err) {
+              rendered = rawText;
+              langClass = "json";
+            }
+          } else if (contentType.includes("text/html")) {
+            langClass = "xml";
+          } else if (contentType.includes("javascript")) {
+            langClass = "javascript";
+          }
+          if (rendered.length > 30000) {
+            rendered = rendered.slice(0, 30000) + "\n\n...[troncato]";
+          }
+          setModalBody(
+            `GET ${path} · ${resp.status} · ${contentType}`,
+            rendered || "[risposta vuota]",
+            langClass
+          );
+        } catch (err) {
+          setModalBody(`GET ${path}`, `Errore richiesta: ${err}`, "plaintext");
+        }
+      };
+
+      document.querySelectorAll("[data-endpoint-inspect]").forEach((btn) => {
+        btn.addEventListener("click", function () {
+          inspectEndpoint(btn);
+          if (window.UIkit && window.UIkit.modal) {
+            window.UIkit.modal("#endpoint-response-modal").show();
+          }
+        });
+      });
+
+      input.addEventListener("input", refresh);
+    })();
+  </script>
+{% endblock %}

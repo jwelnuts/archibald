@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 from common.models import OwnedModel, TimeStampedModel
 
@@ -67,3 +68,23 @@ class MobileApiSession(TimeStampedModel):
 
     def __str__(self):
         return f"MobileApiSession(user={self.user_id}, revoked={bool(self.revoked_at)})"
+
+
+class DavAccount(TimeStampedModel):
+    user = models.OneToOneField(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="dav_account",
+    )
+    dav_username = models.CharField(max_length=150, unique=True)
+    password_hash = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    password_rotated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["is_active", "dav_username"]),
+        ]
+
+    def __str__(self):
+        return f"DavAccount(user={self.user_id}, username={self.dav_username})"

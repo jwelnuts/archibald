@@ -209,6 +209,42 @@
             </div>
 
             <div class="profile-card">
+              <h2 id="dav-access">Accesso DAV</h2>
+              {% if caldav_enabled %}
+                <div class="profile-row">
+                  <span class="label">Endpoint CalDAV/CardDAV</span>
+                  <span>{{ caldav_base_url|default:"-" }}</span>
+                </div>
+                <div class="profile-row">
+                  <span class="label">Username DAV</span>
+                  <span>{{ dav_account.dav_username|default:"-" }}</span>
+                </div>
+                <div class="profile-row">
+                  <span class="label">Collection team default</span>
+                  <span>{{ dav_default_team_collection|default:"team/progetto-generale" }}</span>
+                </div>
+                {% if dav_onboarding_password %}
+                  <div class="warning-box">
+                    <strong>Password DAV (mostrata una sola volta)</strong>
+                    <div class="form-errors">
+                      <div>Username: <code>{{ dav_onboarding_username }}</code></div>
+                      <div>Password: <code>{{ dav_onboarding_password }}</code></div>
+                    </div>
+                  </div>
+                {% endif %}
+                <form method="post" action="">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="rotate_dav_password">
+                  <div class="actions">
+                    <button class="btn primary" type="submit">Rigenera password DAV</button>
+                  </div>
+                </form>
+              {% else %}
+                <p class="muted">Integrazione CalDAV non attiva su questa istanza.</p>
+              {% endif %}
+            </div>
+
+            <div class="profile-card">
               <h2>Sicurezza</h2>
               <div class="profile-row">
                 <span class="label">Cambio password</span>

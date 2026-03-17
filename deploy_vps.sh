@@ -37,4 +37,7 @@ docker compose logs --tail=80 mail_worker || true
 echo "==> Log recenti caddy"
 docker compose logs --tail=80 caddy || true
 
+echo "==> Log recenti radicale"
+docker compose logs --tail=80 radicale || true
+
 echo "==> Deploy completato"

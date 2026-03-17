@@ -24,12 +24,14 @@ services:
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       DJANGO_DB_SSL_REQUIRE: "false"
       DATABASE_URL: postgresql://${POSTGRES_USER:-mio}:${POSTGRES_PASSWORD:-mio_password}@db:5432/${POSTGRES_DB:-mio_master}
+      RADICALE_USERS_FILE: /radicale-data/users
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
+      - radicale_data:/radicale-data
 
   mail_worker:
     build: .
@@ -41,6 +43,7 @@ services:
       DJANGO_ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}
       DJANGO_DB_SSL_REQUIRE: "false"
       DATABASE_URL: postgresql://${POSTGRES_USER:-mio}:${POSTGRES_PASSWORD:-mio_password}@db:5432/${POSTGRES_DB:-mio_master}
+      RADICALE_USERS_FILE: /radicale-data/users
     depends_on:
       db:
         condition: service_healthy
@@ -50,6 +53,18 @@ services:
       --limit ${ARCHIBALD_MAIL_POLL_LIMIT:-0}
       --archi-fast-seconds ${ARCHIBALD_MAIL_ARCHI_FAST_POLL_SECONDS:-5}
       --archi-fast-limit ${ARCHIBALD_MAIL_ARCHI_FAST_LIMIT:-3}"
+    volumes:
+      - radicale_data:/radicale-data
+
+  radicale:
+    image: tomsquest/docker-radicale:latest
+    restart: unless-stopped
+    ports:
+      - "${RADICALE_PUBLISHED_PORT:-5232}:5232"
+    volumes:
+      - ./docker/radicale/config:/config/config:ro
+      - ./docker/radicale/rights:/config/rights:ro
+      - radicale_data:/data
 
   caddy:
     image: caddy:2.8-alpine
@@ -72,5 +87,6 @@ volumes:
   postgres_data:
   static_volume:
   media_volume:
+  radicale_data:
   caddy_data:
   caddy_config:

@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=0.7">
     <title>{% block title %}MIO - Workbench{% endblock %}</title>
     {% include "core/partials/uikit_head.html" %}
+    <link rel="stylesheet" href="{% static 'workbench/irc-debug.css' %}">
   </head>
   <body class="workbench-body">
     <div class="page workbench-page">
@@ -22,6 +23,7 @@
               <a class="workbench-tab{% if current == '/workbench/' %} active{% endif %}" href="/workbench/">Dashboard</a>
               <a class="workbench-tab{% if '/workbench/ai/ui-generator' in current %} active{% endif %}" href="/workbench/ai/ui-generator">UI Generator</a>
               <a class="workbench-tab{% if '/workbench/ai/app-generator' in current %} active{% endif %}" href="/workbench/ai/app-generator">App Generator</a>
+              <a class="workbench-tab{% if '/workbench/debug/api-endpoints' in current %} active{% endif %}" href="/workbench/debug/api-endpoints">API Endpoints</a>
               <a class="workbench-tab{% if '/workbench/debug/schema' in current %} active{% endif %}" href="/workbench/debug/schema">Schema DB</a>
               <a class="workbench-tab{% if '/workbench/debug/logs' in current %} active{% endif %}" href="/workbench/debug/logs">Debug Logs</a>
             </nav>

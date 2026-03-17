@@ -1,15 +1,17 @@
 import json
+import tempfile
 from datetime import timedelta
+from pathlib import Path
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
 from planner.models import PlannerItem
 from routines.models import Routine, RoutineCategory, RoutineItem, RoutineCheck
 from todo.models import Task
-from .models import MobileApiSession, UserNavConfig
+from .models import DavAccount, MobileApiSession, UserNavConfig
 from .views import DEFAULT_DASHBOARD_WIDGET_IDS
 
 
@@ -101,6 +103,72 @@ class ProfileArchibaldInstructionsTests(TestCase):
         self.assertFalse(persona.bias_mind_reading)
         self.assertTrue(persona.bias_negative_filtering)
         self.assertTrue(persona.bias_confirmation_bias)
+
+
+class DavProvisioningTests(TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmpdir.cleanup)
+        users_file = Path(self._tmpdir.name) / "users"
+        lock_file = Path(self._tmpdir.name) / "users.lock"
+        self._override = override_settings(
+            CALDAV_ENABLED=True,
+            CALDAV_BASE_URL="http://localhost:5232/",
+            CALDAV_LOGIN_DOMAIN="miorganizzo.ovh",
+            CALDAV_SERVICE_USERNAME="archibald",
+            CALDAV_SERVICE_PASSWORD="archibald-service-pass",
+            RADICALE_USERS_FILE=str(users_file),
+            RADICALE_USERS_LOCK_FILE=str(lock_file),
+        )
+        self._override.enable()
+        self.addCleanup(self._override.disable)
+        self.users_file = users_file
+
+    def test_signup_provisions_user_and_writes_hashed_users_file(self):
+        response = self.client.post(
+            "/accounts/signup/",
+            {
+                "username": "renee",
+                "email": "renee.suman@miorganizzo.ovh",
+                "password1": "testpass12345A!",
+                "password2": "testpass12345A!",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.url.startswith("/profile/"))
+
+        user = get_user_model().objects.get(username="renee")
+        account = DavAccount.objects.get(user=user)
+        self.assertEqual(account.dav_username, "renee@miorganizzo.ovh")
+
+        session = self.client.session
+        onboarding = session.get("dav_onboarding")
+        self.assertIsNotNone(onboarding)
+        self.assertEqual(onboarding.get("username"), "renee@miorganizzo.ovh")
+        issued_password = onboarding.get("password")
+        self.assertTrue(issued_password)
+
+        content = self.users_file.read_text(encoding="utf-8")
+        self.assertIn("renee@miorganizzo.ovh:{SSHA}", content)
+        self.assertIn("archibald:{SSHA}", content)
+        self.assertNotIn(issued_password, content)
+
+    def test_profile_rotate_dav_password_updates_hash_and_onboarding_secret(self):
+        user = get_user_model().objects.create_user(username="martina", password="testpass12345A!")
+        self.client.login(username="martina", password="testpass12345A!")
+        self.client.post("/profile/", {"action": "rotate_dav_password"})
+        original_hash = DavAccount.objects.get(user=user).password_hash
+
+        rotate = self.client.post("/profile/", {"action": "rotate_dav_password"})
+        self.assertEqual(rotate.status_code, 302)
+        self.assertTrue(rotate.url.startswith("/profile/"))
+
+        account = DavAccount.objects.get(user=user)
+        self.assertNotEqual(account.password_hash, original_hash)
+
+        onboarding = self.client.session.get("dav_onboarding")
+        self.assertTrue(onboarding and onboarding.get("password"))
+        self.assertNotIn(onboarding["password"], self.users_file.read_text(encoding="utf-8"))
 
 
 class NavSettingsTests(TestCase):

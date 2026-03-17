@@ -227,6 +227,15 @@ Opzionali (feature specifiche):
 - `ARCHIBALD_MAIL_ARCHI_FAST_ENABLED` (abilita corsia veloce subject `ARCHI`, default `true`)
 - `ARCHIBALD_MAIL_ARCHI_FAST_POLL_SECONDS` (intervallo corsia veloce ARCHI, default `5`)
 - `ARCHIBALD_MAIL_ARCHI_FAST_LIMIT` (limite email per ciclo veloce ARCHI, default `3`)
+- `CALDAV_ENABLED` (abilita integrazione CalDAV lato app, default `false`)
+- `CALDAV_BASE_URL` (base URL server CalDAV, es. `http://tuo-dominio.it:5232/`)
+- `CALDAV_SERVICE_USERNAME` (utente tecnico per sync via Archibald)
+- `CALDAV_SERVICE_PASSWORD` (password utente tecnico per sync via Archibald)
+- `CALDAV_LOGIN_DOMAIN` (dominio applicato agli username DAV utente, default `miorganizzo.ovh`)
+- `CALDAV_DEFAULT_TEAM_COLLECTION` (collection team default, es. `team/progetto-generale`)
+- `RADICALE_PUBLISHED_PORT` (porta host esposta per Radicale, default `5232`)
+- `RADICALE_USERS_FILE` (path file utenti htpasswd condiviso con Radicale)
+- `RADICALE_USERS_LOCK_FILE` (path lock file per scrittura atomica utenti DAV)
 - `VAULT_ENCRYPTION_KEY` (consigliata in prod)
 - `VAULT_TOTP_ISSUER` (default: `MIO Vault`)
 - `VAULT_SESSION_TIMEOUT_SECONDS` (default: `600`)
@@ -341,6 +350,7 @@ Stack container:
 - `web`: Django + Gunicorn
 - `mail_worker`: polling inbox Archibald a intervallo costante (default 300s)
 - `db`: PostgreSQL 16
+- `radicale`: server CalDAV/CardDAV (calendari e contatti)
 - `caddy`: reverse proxy + static/media + HTTPS automatico
 
 File principali:
@@ -349,6 +359,8 @@ File principali:
 - `docker-compose.yml`
 - `docker/entrypoint.sh`
 - `docker/caddy/Caddyfile`
+- `docker/radicale/config`
+- `docker/radicale/rights`
 - `.env.vps.example`
 - `.env.local.example`
 - `.env.docker.example` (legacy/compatibilita)
@@ -373,6 +385,7 @@ Controlli:
 docker compose ps
 docker compose logs -f web
 docker compose logs -f mail_worker
+docker compose logs -f radicale
 docker compose logs -f caddy
 ```
 
@@ -397,12 +410,37 @@ Note:
   - avvio `gunicorn`
 - In `docker-compose.yml` `DATABASE_URL` e costruita automaticamente verso il servizio `db`.
 - Caddy emette e rinnova certificati TLS automaticamente quando `CADDY_SITE_HOST` e un dominio pubblico risolvibile.
+- Radicale viene esposto direttamente sulla porta host `5232` (configurabile con `RADICALE_PUBLISHED_PORT`).
 - `mail_worker` usa:
   - `ARCHIBALD_MAIL_POLL_SECONDS` (default `300`)
   - `ARCHIBALD_MAIL_POLL_LIMIT` (default `10`)
   - `ARCHIBALD_MAIL_ARCHI_FAST_ENABLED` (default `true`)
   - `ARCHIBALD_MAIL_ARCHI_FAST_POLL_SECONDS` (default `5`)
   - `ARCHIBALD_MAIL_ARCHI_FAST_LIMIT` (default `3`)
+
+## CalDAV Team (Radicale)
+
+Convenzioni operative base:
+
+- endpoint CalDAV/CardDAV: `http://<host>:5232/` (oppure URL reverse proxy personalizzato)
+- utenti DAV applicativi: provisioning automatico alla registrazione utente (password app dedicata)
+- calendario condiviso team: collection sotto `team/<nome-progetto>`
+- utenti autorizzati team (default): tutti gli utenti autenticati (regole in `docker/radicale/rights`)
+
+Esempio URL collection condivisa:
+
+- `http://<host>:5232/team/progetto-generale/`
+
+Nota client CalDAV:
+
+- diversi client scoprono automaticamente solo le collection sotto `/USERNAME/`;
+- le collection condivise sotto `/team/...` vanno quindi aggiunte con URL esplicito.
+
+Provisioning utente:
+
+- su signup (`/accounts/signup/`) viene creato `core.DavAccount` con username DAV dedicato
+- viene generata una password applicativa DAV (mostrata una sola volta in `/profile/#dav-access`)
+- dal profilo puoi ruotare la password DAV senza cambiare la password di login MIO
 
 ## Test
 
@@ -452,4 +490,5 @@ mio_master/
   Dockerfile
   docker-compose.yml
   docker/
+    radicale/
 ```

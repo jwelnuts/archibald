@@ -1,0 +1,24 @@
+[allow-discovery-root]
+user: .+
+collection:
+permissions: R
+
+[allow-user-principal]
+user: .+
+collection: {user}
+permissions: RW
+
+[allow-user-calendars]
+user: .+
+collection: {user}/[^/]+
+permissions: rw
+
+[allow-team-principal]
+user: .+
+collection: team
+permissions: R
+
+[allow-team-calendars]
+user: .+
+collection: team/[^/]+
+permissions: rw
