@@ -13,6 +13,12 @@ from .forms import (
     RoutineItemForm,
 )
 from .models import Routine, RoutineCategory, RoutineCheck, RoutineItem
+from .services import (
+    RoutineCrudError,
+    create_routine_item,
+    delete_routine_item,
+    update_routine_item,
+)
 from projects.models import Project
 
 
@@ -564,10 +570,9 @@ def add_item(request):
                     return render(request, "routines/add_item.html", {"form": form})
                 category = form.resolve_category()
                 project = form.resolve_project()
-                items = []
-                for value, _label in RoutineItem.Weekday.choices:
-                    items.append(
-                        RoutineItem(
+                try:
+                    for value, _label in RoutineItem.Weekday.choices:
+                        create_routine_item(
                             owner=request.user,
                             routine=routine,
                             category=category,
@@ -580,13 +585,31 @@ def add_item(request):
                             schema=form.cleaned_data.get("schema") or {},
                             is_active=form.cleaned_data.get("is_active", True),
                         )
-                    )
-                RoutineItem.objects.bulk_create(items)
+                except RoutineCrudError as error:
+                    form.add_error(None, error.code)
+                    return render(request, "routines/add_item.html", {"form": form})
             else:
-                item = form.save(commit=False)
-                item.owner = request.user
-                item.weekday = weekday
-                item.save()
+                routine = form.resolve_routine()
+                if routine is None:
+                    form.add_error("routine_choice", "Seleziona una routine valida.")
+                    return render(request, "routines/add_item.html", {"form": form})
+                try:
+                    create_routine_item(
+                        owner=request.user,
+                        routine=routine,
+                        category=form.resolve_category(),
+                        project=form.resolve_project(),
+                        title=form.cleaned_data["title"],
+                        weekday=weekday,
+                        time_start=form.cleaned_data.get("time_start"),
+                        time_end=form.cleaned_data.get("time_end"),
+                        note=form.cleaned_data.get("note", ""),
+                        schema=form.cleaned_data.get("schema") or {},
+                        is_active=form.cleaned_data.get("is_active", True),
+                    )
+                except RoutineCrudError as error:
+                    form.add_error(None, error.code)
+                    return render(request, "routines/add_item.html", {"form": form})
             return redirect("/routines/")
     else:
         initial = {}
@@ -607,9 +630,27 @@ def update_item(request):
         if request.method == "POST":
             form = RoutineItemForm(request.POST, instance=item, owner=request.user)
             if form.is_valid():
-                updated = form.save(commit=False)
-                updated.weekday = int(form.cleaned_data["weekday"])
-                updated.save()
+                routine = form.resolve_routine()
+                if routine is None:
+                    form.add_error("routine_choice", "Seleziona una routine valida.")
+                    return render(request, "routines/update_item.html", {"form": form, "item": item})
+                try:
+                    update_routine_item(
+                        item=item,
+                        routine=routine,
+                        category=form.resolve_category(),
+                        project=form.resolve_project(),
+                        title=form.cleaned_data["title"],
+                        weekday=int(form.cleaned_data["weekday"]),
+                        time_start=form.cleaned_data.get("time_start"),
+                        time_end=form.cleaned_data.get("time_end"),
+                        note=form.cleaned_data.get("note", ""),
+                        schema=form.cleaned_data.get("schema"),
+                        is_active=form.cleaned_data.get("is_active"),
+                    )
+                except RoutineCrudError as error:
+                    form.add_error(None, error.code)
+                    return render(request, "routines/update_item.html", {"form": form, "item": item})
                 return redirect("/routines/")
         else:
             form = RoutineItemForm(instance=item, owner=request.user)
@@ -626,7 +667,7 @@ def remove_item(request):
     if item_id:
         item = get_object_or_404(RoutineItem, id=item_id, owner=request.user)
         if request.method == "POST":
-            item.delete()
+            delete_routine_item(item=item)
             return redirect("/routines/")
     items = RoutineItem.objects.filter(owner=request.user).order_by("-created_at")[:20]
     return render(request, "routines/remove_item.html", {"item": item, "items": items})

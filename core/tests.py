@@ -362,6 +362,15 @@ class MobileApiAuthTests(TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response["Access-Control-Allow-Origin"], "http://localhost")
 
+    def test_api_options_preflight_returns_cors_headers(self):
+        response = self.client.options(
+            "/api/routines",
+            HTTP_ORIGIN="http://localhost",
+            HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response["Access-Control-Allow-Origin"], "http://localhost")
+
     def test_mobile_routines_returns_week_items(self):
         routine = Routine.objects.create(owner=self.user, name="Routine Mobile", is_active=True)
         item = RoutineItem.objects.create(
@@ -515,3 +524,129 @@ class MobileApiAuthTests(TestCase):
         )
         self.assertEqual(delete_response.status_code, 200)
         self.assertFalse(RoutineItem.objects.filter(id=item.id).exists())
+
+    def test_unified_routines_api_accepts_session_auth(self):
+        self.client.login(username="mobile_user", password="test12345")
+        routine = Routine.objects.create(owner=self.user, name="Routine Session", is_active=True)
+        week_start = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
+
+        create_response = self.client.post(
+            "/api/routines/items/create",
+            data=json.dumps(
+                {
+                    "routine_id": routine.id,
+                    "title": "Session task",
+                    "weekday": 1,
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(create_response.status_code, 200)
+        item_id = create_response.json()["item_id"]
+
+        list_response = self.client.get(f"/api/routines?week={week_start.isoformat()}")
+        self.assertEqual(list_response.status_code, 200)
+        body = list_response.json()
+        self.assertTrue(any(row["id"] == item_id for row in body["items"]))
+
+    def test_unified_routines_api_accepts_bearer_auth(self):
+        routine = Routine.objects.create(owner=self.user, name="Routine Bearer", is_active=True)
+        payload = self._login()
+        access = payload["access_token"]
+
+        create_response = self.client.post(
+            "/api/routines/items/create",
+            data=json.dumps(
+                {
+                    "routine_id": routine.id,
+                    "title": "Bearer task",
+                    "weekday": 2,
+                }
+            ),
+            content_type="application/json",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(create_response.status_code, 200)
+
+        list_response = self.client.get(
+            "/api/routines",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(list_response.status_code, 200)
+        self.assertTrue(list_response.json()["ok"])
+
+    def test_unified_projects_api_accepts_bearer_auth(self):
+        from projects.models import Project, SubProject
+
+        project = Project.objects.create(owner=self.user, name="Project API", is_archived=False)
+        SubProject.objects.create(
+            owner=self.user,
+            project=project,
+            title="Milestone 1",
+            status=SubProject.Status.DONE,
+            is_archived=False,
+        )
+
+        payload = self._login()
+        access = payload["access_token"]
+        response = self.client.get("/api/projects", HTTP_AUTHORIZATION=f"Bearer {access}")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["stats"]["total"], 1)
+        self.assertEqual(body["stats"]["active"], 1)
+        self.assertEqual(body["items"][0]["name"], "Project API")
+        self.assertEqual(body["items"][0]["subprojects_total"], 1)
+
+    def test_unified_projects_api_accepts_session_auth(self):
+        from projects.models import Project
+
+        Project.objects.create(owner=self.user, name="Project Session", is_archived=False)
+        self.client.login(username="mobile_user", password="test12345")
+        response = self.client.get("/api/projects")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["stats"]["total"], 1)
+
+    def test_unified_agenda_api_accepts_bearer_auth(self):
+        from agenda.models import AgendaItem
+
+        AgendaItem.objects.create(
+            owner=self.user,
+            title="Call cliente",
+            item_type=AgendaItem.ItemType.REMINDER,
+            due_date=timezone.localdate(),
+            status=AgendaItem.Status.PLANNED,
+        )
+        payload = self._login()
+        access = payload["access_token"]
+
+        response = self.client.get(
+            "/api/agenda",
+            HTTP_AUTHORIZATION=f"Bearer {access}",
+        )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["stats"]["total"], 1)
+        self.assertEqual(body["stats"]["reminders"], 1)
+        self.assertEqual(body["items"][0]["title"], "Call cliente")
+
+    def test_unified_agenda_api_accepts_session_auth(self):
+        from agenda.models import AgendaItem
+
+        AgendaItem.objects.create(
+            owner=self.user,
+            title="Workout",
+            item_type=AgendaItem.ItemType.ACTIVITY,
+            due_date=timezone.localdate(),
+            status=AgendaItem.Status.DONE,
+        )
+        self.client.login(username="mobile_user", password="test12345")
+        response = self.client.get("/api/agenda")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(body["ok"])
+        self.assertEqual(body["stats"]["total"], 1)
+        self.assertEqual(body["stats"]["activities"], 1)

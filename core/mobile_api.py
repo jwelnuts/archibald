@@ -5,13 +5,13 @@ from django.http import HttpResponse
 
 
 class MobileApiCorsMiddleware:
-    """Minimal CORS middleware limited to /api/mobile/ endpoints."""
+    """Minimal CORS middleware for API endpoints (/api/*)."""
 
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
-        if not request.path.startswith("/api/mobile/"):
+        if not request.path.startswith("/api/"):
             return self.get_response(request)
 
         if request.method == "OPTIONS":
@@ -25,7 +25,7 @@ class MobileApiCorsMiddleware:
             response["Access-Control-Allow-Origin"] = allowed_origin
             response["Vary"] = "Origin"
 
-        response["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        response["Access-Control-Allow-Methods"] = "GET, POST, PUT, PATCH, DELETE, OPTIONS"
         response["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
         response["Access-Control-Max-Age"] = "600"
         return response
