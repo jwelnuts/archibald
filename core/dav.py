@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import secrets
+import stat
 from pathlib import Path
 
 import bcrypt
@@ -103,9 +104,9 @@ def _build_users_payload() -> dict[str, str]:
     entries: dict[str, str] = {}
     for username, password_hash in DavAccount.objects.filter(is_active=True).values_list("dav_username", "password_hash"):
         if username and password_hash:
-            if password_hash.startswith(_LEGACY_HASH_PREFIXES):
+            if not _is_bcrypt_hash(password_hash):
                 logger.warning(
-                    "Skipping DAV user '%s' with legacy non-bcrypt hash; rotate password to reprovision.",
+                    "Skipping DAV user '%s' with non-bcrypt hash; rotate password to reprovision.",
                     username,
                 )
                 continue
@@ -127,6 +128,20 @@ def sync_radicale_users_file() -> None:
     users_path = _users_file_path()
     lock_path = _users_lock_path(users_path)
     payload = _build_users_payload()
+    existing_uid: int | None = None
+    existing_gid: int | None = None
+    existing_mode: int | None = None
+
+    if users_path.exists():
+        try:
+            existing_stat = users_path.stat()
+            existing_uid = existing_stat.st_uid
+            existing_gid = existing_stat.st_gid
+            existing_mode = stat.S_IMODE(existing_stat.st_mode)
+        except OSError:
+            existing_uid = None
+            existing_gid = None
+            existing_mode = None
 
     users_path.parent.mkdir(parents=True, exist_ok=True)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -137,11 +152,22 @@ def sync_radicale_users_file() -> None:
         with tmp_path.open("w", encoding="utf-8") as tmp_handle:
             for username in sorted(payload):
                 tmp_handle.write(f"{username}:{payload[username]}\n")
+        if existing_uid is not None and existing_gid is not None:
+            try:
+                os.chown(tmp_path, existing_uid, existing_gid)
+            except PermissionError:
+                pass
+        if existing_mode is not None:
+            try:
+                os.chmod(tmp_path, existing_mode)
+            except PermissionError:
+                pass
         os.replace(tmp_path, users_path)
-        try:
-            os.chmod(users_path, 0o600)
-        except PermissionError:
-            pass
+        if existing_mode is None:
+            try:
+                os.chmod(users_path, 0o600)
+            except PermissionError:
+                pass
 
 
 def ensure_user_dav_access(user, rotate_password: bool = False) -> tuple[DavAccount, str | None]:
