@@ -406,6 +406,7 @@ Note:
 
 - Il container `web` esegue automaticamente:
   - `python manage.py migrate --noinput`
+  - `python manage.py sync_radicale_users`
   - `python manage.py collectstatic --noinput`
   - avvio `gunicorn`
 - In `docker-compose.yml` `DATABASE_URL` e costruita automaticamente verso il servizio `db`.
@@ -441,6 +442,12 @@ Provisioning utente:
 - su signup (`/accounts/signup/`) viene creato `core.DavAccount` con username DAV dedicato
 - viene generata una password applicativa DAV (mostrata una sola volta in `/profile/#dav-access`)
 - dal profilo puoi ruotare la password DAV senza cambiare la password di login MIO
+
+Sync manuale file utenti Radicale (se necessario):
+
+```bash
+python manage.py sync_radicale_users
+```
 
 ## Test
 
