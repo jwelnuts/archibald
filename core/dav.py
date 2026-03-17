@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import base64
 import fcntl
-import hashlib
+import logging
 import os
 import re
 import secrets
 from pathlib import Path
 
+import bcrypt
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
@@ -15,6 +15,9 @@ from django.utils import timezone
 from .models import DavAccount
 
 _DAV_USERNAME_SANITIZER = re.compile(r"[^a-z0-9._@+-]+")
+_BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
+_LEGACY_HASH_PREFIXES = ("{SSHA}", "{SHA}", "$6$", "$5$", "$1$", "$apr1$")
+logger = logging.getLogger(__name__)
 
 
 class DavProvisioningError(RuntimeError):
@@ -66,15 +69,21 @@ def _generate_app_password() -> str:
     return secrets.token_urlsafe(24)
 
 
+def _is_bcrypt_hash(value: str) -> bool:
+    return value.startswith(_BCRYPT_PREFIXES)
+
+
 def _hash_password(raw_password: str) -> str:
-    salt = secrets.token_bytes(8)
-    digest = hashlib.sha1(raw_password.encode("utf-8") + salt).digest() + salt
-    return "{SSHA}" + base64.b64encode(digest).decode("ascii")
+    return bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
 
 
 def _hash_or_keep(raw_value: str) -> str:
-    if raw_value.startswith(("{SSHA}", "{SHA}", "$6$", "$5$", "$2a$", "$2b$", "$2y$")):
+    if _is_bcrypt_hash(raw_value):
         return raw_value
+    if raw_value.startswith(_LEGACY_HASH_PREFIXES):
+        raise DavProvisioningError(
+            "Hash DAV legacy non supportato rilevato: usa password in chiaro oppure hash bcrypt ($2a$/$2b$/$2y$)."
+        )
     return _hash_password(raw_value)
 
 
@@ -94,6 +103,12 @@ def _build_users_payload() -> dict[str, str]:
     entries: dict[str, str] = {}
     for username, password_hash in DavAccount.objects.filter(is_active=True).values_list("dav_username", "password_hash"):
         if username and password_hash:
+            if password_hash.startswith(_LEGACY_HASH_PREFIXES):
+                logger.warning(
+                    "Skipping DAV user '%s' with legacy non-bcrypt hash; rotate password to reprovision.",
+                    username,
+                )
+                continue
             entries[username] = password_hash
 
     svc_username = _service_account_username()
@@ -148,7 +163,7 @@ def ensure_user_dav_access(user, rotate_password: bool = False) -> tuple[DavAcco
             )
 
         issued_password = None
-        if rotate_password or not account.password_hash:
+        if rotate_password or not account.password_hash or not _is_bcrypt_hash(account.password_hash):
             issued_password = _generate_app_password()
             account.password_hash = _hash_password(issued_password)
             account.password_rotated_at = timezone.now()

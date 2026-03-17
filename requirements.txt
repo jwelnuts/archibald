@@ -5,4 +5,5 @@ dj-database-url==3.0.1
 psycopg[binary]==3.2.13
 cryptography==44.0.1
 pyotp==2.9.0
+bcrypt==4.2.1
 qrcode==8.2

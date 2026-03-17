@@ -3,6 +3,7 @@ import tempfile
 from datetime import timedelta
 from pathlib import Path
 
+import bcrypt
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
@@ -149,8 +150,11 @@ class DavProvisioningTests(TestCase):
         self.assertTrue(issued_password)
 
         content = self.users_file.read_text(encoding="utf-8")
-        self.assertIn("renee@miorganizzo.ovh:{SSHA}", content)
-        self.assertIn("archibald:{SSHA}", content)
+        self.assertRegex(content, r"renee@miorganizzo\.ovh:\$2[aby]\$.+")
+        self.assertRegex(content, r"archibald:\$2[aby]\$.+")
+        hashed_line = next(line for line in content.splitlines() if line.startswith("renee@miorganizzo.ovh:"))
+        hashed_value = hashed_line.split(":", 1)[1]
+        self.assertTrue(bcrypt.checkpw(issued_password.encode("utf-8"), hashed_value.encode("utf-8")))
         self.assertNotIn(issued_password, content)
 
     def test_profile_rotate_dav_password_updates_hash_and_onboarding_secret(self):
@@ -169,6 +173,24 @@ class DavProvisioningTests(TestCase):
         onboarding = self.client.session.get("dav_onboarding")
         self.assertTrue(onboarding and onboarding.get("password"))
         self.assertNotIn(onboarding["password"], self.users_file.read_text(encoding="utf-8"))
+
+    def test_sync_skips_legacy_ssha_entries_and_keeps_bcrypt_only_file(self):
+        legacy_user = get_user_model().objects.create_user(username="legacy", password="testpass12345A!")
+        DavAccount.objects.create(
+            user=legacy_user,
+            dav_username="legacy@miorganizzo.ovh",
+            password_hash="{SSHA}legacy-hash",
+            is_active=True,
+        )
+
+        current_user = get_user_model().objects.create_user(username="paola", password="testpass12345A!")
+        self.client.login(username="paola", password="testpass12345A!")
+        rotate = self.client.post("/profile/", {"action": "rotate_dav_password"})
+        self.assertEqual(rotate.status_code, 302)
+
+        content = self.users_file.read_text(encoding="utf-8")
+        self.assertNotIn("legacy@miorganizzo.ovh:", content)
+        self.assertRegex(content, r"paola@miorganizzo\.ovh:\$2[aby]\$.+")
 
 
 class NavSettingsTests(TestCase):

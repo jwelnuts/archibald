@@ -1,17 +1,27 @@
 {$CADDY_SITE_HOST} {
     encode zstd gzip
 
-    @static path /static/*
-    handle @static {
+    @dav_root path /dav
+    redir @dav_root /dav/ 308
+
+    @dav_well_known path /.well-known/caldav /.well-known/carddav
+    redir @dav_well_known /dav/ 301
+
+    handle_path /dav/* {
+        reverse_proxy radicale:5232
+    }
+
+    handle_path /static/* {
         root * /srv/static
         file_server
     }
 
-    @media path /media/*
-    handle @media {
+    handle_path /media/* {
         root * /srv/media
         file_server
     }
 
-    reverse_proxy web:8000
+    handle {
+        reverse_proxy web:8000
+    }
 }
