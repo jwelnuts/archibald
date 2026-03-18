@@ -8,16 +8,17 @@ import secrets
 import stat
 from pathlib import Path
 
-import bcrypt
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
+from passlib.context import CryptContext
 
 from .models import DavAccount
 
 _DAV_USERNAME_SANITIZER = re.compile(r"[^a-z0-9._@+-]+")
-_BCRYPT_PREFIXES = ("$2a$", "$2b$", "$2y$")
-_LEGACY_HASH_PREFIXES = ("{SSHA}", "{SHA}", "$6$", "$5$", "$1$", "$apr1$")
+_HASH_CONTEXT = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
+_LEGACY_HASH_PREFIXES = ("{SSHA}", "{SHA}")
+_UNSUPPORTED_HASH_PREFIXES = ("$2a$", "$2b$", "$2y$", "$6$", "$1$", "$apr1$")
 logger = logging.getLogger(__name__)
 
 
@@ -70,20 +71,20 @@ def _generate_app_password() -> str:
     return secrets.token_urlsafe(24)
 
 
-def _is_bcrypt_hash(value: str) -> bool:
-    return value.startswith(_BCRYPT_PREFIXES)
+def _is_supported_hash(value: str) -> bool:
+    return bool(_HASH_CONTEXT.identify(value))
 
 
 def _hash_password(raw_password: str) -> str:
-    return bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
+    return _HASH_CONTEXT.hash(raw_password)
 
 
 def _hash_or_keep(raw_value: str) -> str:
-    if _is_bcrypt_hash(raw_value):
+    if _is_supported_hash(raw_value):
         return raw_value
-    if raw_value.startswith(_LEGACY_HASH_PREFIXES):
+    if raw_value.startswith(_LEGACY_HASH_PREFIXES) or raw_value.startswith(_UNSUPPORTED_HASH_PREFIXES):
         raise DavProvisioningError(
-            "Hash DAV legacy non supportato rilevato: usa password in chiaro oppure hash bcrypt ($2a$/$2b$/$2y$)."
+            "Hash DAV legacy non supportato rilevato: usa password in chiaro oppure hash sha256_crypt."
         )
     return _hash_password(raw_value)
 
@@ -104,9 +105,9 @@ def _build_users_payload() -> dict[str, str]:
     entries: dict[str, str] = {}
     for username, password_hash in DavAccount.objects.filter(is_active=True).values_list("dav_username", "password_hash"):
         if username and password_hash:
-            if not _is_bcrypt_hash(password_hash):
+            if not _is_supported_hash(password_hash):
                 logger.warning(
-                    "Skipping DAV user '%s' with non-bcrypt hash; rotate password to reprovision.",
+                    "Skipping DAV user '%s' with unsupported hash; rotate password to reprovision.",
                     username,
                 )
                 continue
@@ -170,7 +171,11 @@ def sync_radicale_users_file() -> None:
                 pass
 
 
-def ensure_user_dav_access(user, rotate_password: bool = False) -> tuple[DavAccount, str | None]:
+def ensure_user_dav_access(
+    user,
+    rotate_password: bool = False,
+    raw_password: str | None = None,
+) -> tuple[DavAccount, str | None]:
     if not getattr(settings, "CALDAV_ENABLED", False):
         raise DavProvisioningError("Integrazione CalDAV disabilitata.")
 
@@ -189,7 +194,12 @@ def ensure_user_dav_access(user, rotate_password: bool = False) -> tuple[DavAcco
             )
 
         issued_password = None
-        if rotate_password or not account.password_hash or not _is_bcrypt_hash(account.password_hash):
+        if raw_password is not None:
+            if not raw_password:
+                raise DavProvisioningError("Password DAV vuota non consentita.")
+            account.password_hash = _hash_password(raw_password)
+            account.password_rotated_at = timezone.now()
+        elif rotate_password or not account.password_hash or not _is_supported_hash(account.password_hash):
             issued_password = _generate_app_password()
             account.password_hash = _hash_password(issued_password)
             account.password_rotated_at = timezone.now()

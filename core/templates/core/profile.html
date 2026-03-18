@@ -223,22 +223,12 @@
                   <span class="label">Collection team default</span>
                   <span>{{ dav_default_team_collection|default:"team/progetto-generale" }}</span>
                 </div>
-                {% if dav_onboarding_password %}
-                  <div class="warning-box">
-                    <strong>Password DAV (mostrata una sola volta)</strong>
-                    <div class="form-errors">
-                      <div>Username: <code>{{ dav_onboarding_username }}</code></div>
-                      <div>Password: <code>{{ dav_onboarding_password }}</code></div>
-                    </div>
-                  </div>
-                {% endif %}
-                <form method="post" action="">
-                  {% csrf_token %}
-                  <input type="hidden" name="action" value="rotate_dav_password">
-                  <div class="actions">
-                    <button class="btn primary" type="submit">Rigenera password DAV</button>
-                  </div>
-                </form>
+                <p class="muted">
+                  DAV usa le stesse credenziali del tuo account MIO. Se cambi password account, anche DAV viene aggiornato.
+                </p>
+                <div class="actions">
+                  <a class="btn primary" href="/accounts/password_change/">Cambia password account</a>
+                </div>
               {% else %}
                 <p class="muted">Integrazione CalDAV non attiva su questa istanza.</p>
               {% endif %}

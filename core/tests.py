@@ -3,10 +3,10 @@ import tempfile
 from datetime import timedelta
 from pathlib import Path
 
-import bcrypt
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
+from passlib.hash import sha256_crypt
 
 from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
 from planner.models import PlannerItem
@@ -126,13 +126,14 @@ class DavProvisioningTests(TestCase):
         self.users_file = users_file
 
     def test_signup_provisions_user_and_writes_hashed_users_file(self):
+        account_password = "testpass12345A!"
         response = self.client.post(
             "/accounts/signup/",
             {
                 "username": "renee",
                 "email": "renee.suman@miorganizzo.ovh",
-                "password1": "testpass12345A!",
-                "password2": "testpass12345A!",
+                "password1": account_password,
+                "password2": account_password,
             },
         )
         self.assertEqual(response.status_code, 302)
@@ -142,39 +143,36 @@ class DavProvisioningTests(TestCase):
         account = DavAccount.objects.get(user=user)
         self.assertEqual(account.dav_username, "renee@miorganizzo.ovh")
 
-        session = self.client.session
-        onboarding = session.get("dav_onboarding")
-        self.assertIsNotNone(onboarding)
-        self.assertEqual(onboarding.get("username"), "renee@miorganizzo.ovh")
-        issued_password = onboarding.get("password")
-        self.assertTrue(issued_password)
+        self.assertFalse(self.client.session.get("dav_onboarding"))
 
         content = self.users_file.read_text(encoding="utf-8")
-        self.assertRegex(content, r"renee@miorganizzo\.ovh:\$2[aby]\$.+")
-        self.assertRegex(content, r"archibald:\$2[aby]\$.+")
+        self.assertRegex(content, r"renee@miorganizzo\.ovh:\$5\$.+")
+        self.assertRegex(content, r"archibald:\$5\$.+")
         hashed_line = next(line for line in content.splitlines() if line.startswith("renee@miorganizzo.ovh:"))
         hashed_value = hashed_line.split(":", 1)[1]
-        self.assertTrue(bcrypt.checkpw(issued_password.encode("utf-8"), hashed_value.encode("utf-8")))
-        self.assertNotIn(issued_password, content)
+        self.assertTrue(sha256_crypt.verify(account_password, hashed_value))
+        self.assertNotIn(account_password, content)
 
-    def test_profile_rotate_dav_password_updates_hash_and_onboarding_secret(self):
+    def test_password_change_syncs_dav_with_new_account_password(self):
         user = get_user_model().objects.create_user(username="martina", password="testpass12345A!")
         self.client.login(username="martina", password="testpass12345A!")
-        self.client.post("/profile/", {"action": "rotate_dav_password"})
-        original_hash = DavAccount.objects.get(user=user).password_hash
-
-        rotate = self.client.post("/profile/", {"action": "rotate_dav_password"})
-        self.assertEqual(rotate.status_code, 302)
-        self.assertTrue(rotate.url.startswith("/profile/"))
+        change = self.client.post(
+            "/accounts/password_change/",
+            {
+                "old_password": "testpass12345A!",
+                "new_password1": "NuovaPassword12345!",
+                "new_password2": "NuovaPassword12345!",
+            },
+        )
+        self.assertEqual(change.status_code, 302)
+        self.assertIn("/accounts/password_change/done/", change.url)
 
         account = DavAccount.objects.get(user=user)
-        self.assertNotEqual(account.password_hash, original_hash)
+        self.assertEqual(account.dav_username, "martina@miorganizzo.ovh")
+        self.assertTrue(sha256_crypt.verify("NuovaPassword12345!", account.password_hash))
+        self.assertNotIn("NuovaPassword12345!", self.users_file.read_text(encoding="utf-8"))
 
-        onboarding = self.client.session.get("dav_onboarding")
-        self.assertTrue(onboarding and onboarding.get("password"))
-        self.assertNotIn(onboarding["password"], self.users_file.read_text(encoding="utf-8"))
-
-    def test_sync_skips_legacy_ssha_entries_and_keeps_bcrypt_only_file(self):
+    def test_sync_skips_legacy_ssha_entries_and_keeps_supported_hashes_only(self):
         legacy_user = get_user_model().objects.create_user(username="legacy", password="testpass12345A!")
         DavAccount.objects.create(
             user=legacy_user,
@@ -185,12 +183,19 @@ class DavProvisioningTests(TestCase):
 
         current_user = get_user_model().objects.create_user(username="paola", password="testpass12345A!")
         self.client.login(username="paola", password="testpass12345A!")
-        rotate = self.client.post("/profile/", {"action": "rotate_dav_password"})
-        self.assertEqual(rotate.status_code, 302)
+        change = self.client.post(
+            "/accounts/password_change/",
+            {
+                "old_password": "testpass12345A!",
+                "new_password1": "PaolaPassword12345!",
+                "new_password2": "PaolaPassword12345!",
+            },
+        )
+        self.assertEqual(change.status_code, 302)
 
         content = self.users_file.read_text(encoding="utf-8")
         self.assertNotIn("legacy@miorganizzo.ovh:", content)
-        self.assertRegex(content, r"paola@miorganizzo\.ovh:\$2[aby]\$.+")
+        self.assertRegex(content, r"paola@miorganizzo\.ovh:\$5\$.+")
 
 
 class NavSettingsTests(TestCase):

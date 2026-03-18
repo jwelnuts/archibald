@@ -9,6 +9,7 @@ from django.conf import settings
 from django.contrib import messages as django_messages
 from django.contrib.auth import authenticate, get_user_model, login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import PasswordChangeView
 from django.db.models import Count, Sum
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
@@ -493,6 +494,27 @@ def calendar_events(request):
     return JsonResponse({"events": payload})
 
 
+class AccountPasswordChangeView(PasswordChangeView):
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if settings.CALDAV_ENABLED:
+            raw_password = (form.cleaned_data.get("new_password1") or "").strip()
+            if raw_password:
+                try:
+                    ensure_user_dav_access(self.request.user, raw_password=raw_password)
+                except DavProvisioningError as exc:
+                    django_messages.warning(
+                        self.request,
+                        f"Password account aggiornata, ma sync DAV non completata: {exc}",
+                    )
+                else:
+                    django_messages.success(
+                        self.request,
+                        "Credenziali DAV allineate alla nuova password account.",
+                    )
+        return response
+
+
 def signup(request):
     if request.method == "POST":
         form = SignUpForm(request.POST)
@@ -501,22 +523,18 @@ def signup(request):
             login(request, user)
             if settings.CALDAV_ENABLED:
                 try:
-                    account, issued_password = ensure_user_dav_access(user, rotate_password=True)
+                    raw_password = (form.cleaned_data.get("password1") or "").strip()
+                    account, _ = ensure_user_dav_access(user, raw_password=raw_password)
                 except DavProvisioningError as exc:
                     django_messages.warning(
                         request,
                         f"Account creato, ma provisioning DAV non completato: {exc}",
                     )
                 else:
-                    if issued_password:
-                        request.session["dav_onboarding"] = {
-                            "username": account.dav_username,
-                            "password": issued_password,
-                        }
-                        django_messages.success(
-                            request,
-                            "Credenziali DAV inizializzate. Salva la password applicativa mostrata nel profilo.",
-                        )
+                    django_messages.success(
+                        request,
+                        f"Accesso DAV attivo per {account.dav_username}: usa la stessa password del tuo account.",
+                    )
             return redirect("/profile/#dav-access")
     else:
         form = SignUpForm()
@@ -544,18 +562,11 @@ def profile(request):
             if not settings.CALDAV_ENABLED:
                 django_messages.error(request, "CalDAV non abilitato in questa istanza.")
                 return redirect("/profile/#dav-access")
-            try:
-                account, issued_password = ensure_user_dav_access(request.user, rotate_password=True)
-            except DavProvisioningError as exc:
-                django_messages.error(request, f"Rotazione credenziali DAV fallita: {exc}")
-                return redirect("/profile/#dav-access")
-            if issued_password:
-                request.session["dav_onboarding"] = {
-                    "username": account.dav_username,
-                    "password": issued_password,
-                }
-            django_messages.success(request, "Password applicativa DAV rigenerata.")
-            return redirect("/profile/#dav-access")
+            django_messages.info(
+                request,
+                "Le credenziali DAV usano la stessa password account. Aggiorna la password da questa pagina.",
+            )
+            return redirect("/accounts/password_change/")
 
         if action == "save_archibald_instructions":
             persona.custom_instructions = custom_text

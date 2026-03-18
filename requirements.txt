@@ -6,4 +6,5 @@ psycopg[binary]==3.2.13
 cryptography==44.0.1
 pyotp==2.9.0
 bcrypt==4.2.1
+passlib==1.7.4
 qrcode==8.2

@@ -424,7 +424,7 @@ Note:
 Convenzioni operative base:
 
 - endpoint CalDAV/CardDAV: `http://<host>:5232/` (oppure URL reverse proxy personalizzato)
-- utenti DAV applicativi: provisioning automatico alla registrazione utente (password app dedicata)
+- utenti DAV applicativi: provisioning automatico alla registrazione utente (stessa password dell'account Django)
 - calendario condiviso team: collection sotto `team/<nome-progetto>`
 - utenti autorizzati team (default): tutti gli utenti autenticati (regole in `docker/radicale/rights`)
 
@@ -440,8 +440,8 @@ Nota client CalDAV:
 Provisioning utente:
 
 - su signup (`/accounts/signup/`) viene creato `core.DavAccount` con username DAV dedicato
-- viene generata una password applicativa DAV (mostrata una sola volta in `/profile/#dav-access`)
-- dal profilo puoi ruotare la password DAV senza cambiare la password di login MIO
+- la password DAV viene allineata alla stessa password dell'account Django
+- su cambio password (`/accounts/password_change/`) viene sincronizzata anche la credenziale DAV
 
 Sync manuale file utenti Radicale (se necessario):
 

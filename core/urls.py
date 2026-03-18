@@ -26,6 +26,7 @@ urlpatterns = [
     path('dashboard/preferences', views.dashboard_preferences, name='core-dashboard-preferences'),
     path('dashboard/snapshot', views.dashboard_snapshot, name='core-dashboard-snapshot'),
     path('accounts/logout/', views.logout_view, name='logout'),
+    path('accounts/password_change/', views.AccountPasswordChangeView.as_view(), name='password_change'),
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/signup/', views.signup, name='signup'),
     path('profile/', views.profile, name='profile'),
