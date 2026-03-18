@@ -7,7 +7,8 @@
     @dav_well_known path /.well-known/caldav /.well-known/carddav
     redir @dav_well_known /dav/ 301
 
-    handle_path /dav/* {
+    handle /dav* {
+        uri strip_prefix /dav
         reverse_proxy radicale:5232
     }
 
