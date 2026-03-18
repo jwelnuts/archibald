@@ -172,6 +172,25 @@ class DavProvisioningTests(TestCase):
         self.assertTrue(sha256_crypt.verify("NuovaPassword12345!", account.password_hash))
         self.assertNotIn("NuovaPassword12345!", self.users_file.read_text(encoding="utf-8"))
 
+    def test_login_syncs_existing_user_dav_with_account_password(self):
+        get_user_model().objects.create_user(username="luca", password="LucaPassword12345!")
+        login = self.client.post(
+            "/accounts/login/",
+            {
+                "username": "luca",
+                "password": "LucaPassword12345!",
+            },
+        )
+        self.assertEqual(login.status_code, 302)
+
+        account = DavAccount.objects.get(user__username="luca")
+        self.assertEqual(account.dav_username, "luca@miorganizzo.ovh")
+        self.assertTrue(sha256_crypt.verify("LucaPassword12345!", account.password_hash))
+
+        content = self.users_file.read_text(encoding="utf-8")
+        self.assertRegex(content, r"luca@miorganizzo\.ovh:\$5\$.+")
+        self.assertNotIn("LucaPassword12345!", content)
+
     def test_sync_skips_legacy_ssha_entries_and_keeps_supported_hashes_only(self):
         legacy_user = get_user_model().objects.create_user(username="legacy", password="testpass12345A!")
         DavAccount.objects.create(

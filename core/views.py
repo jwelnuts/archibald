@@ -9,7 +9,7 @@ from django.conf import settings
 from django.contrib import messages as django_messages
 from django.contrib.auth import authenticate, get_user_model, login, logout as auth_logout
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import PasswordChangeView
+from django.contrib.auth.views import LoginView, PasswordChangeView
 from django.db.models import Count, Sum
 from django.db.models.functions import Coalesce
 from django.http import JsonResponse
@@ -511,6 +511,22 @@ class AccountPasswordChangeView(PasswordChangeView):
                     django_messages.success(
                         self.request,
                         "Credenziali DAV allineate alla nuova password account.",
+                    )
+        return response
+
+
+class AccountLoginView(LoginView):
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        if settings.CALDAV_ENABLED:
+            raw_password = (form.cleaned_data.get("password") or "").strip()
+            if raw_password:
+                try:
+                    ensure_user_dav_access(self.request.user, raw_password=raw_password)
+                except DavProvisioningError as exc:
+                    django_messages.warning(
+                        self.request,
+                        f"Login completato, ma sync DAV non completata: {exc}",
                     )
         return response
 
