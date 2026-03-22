@@ -24,7 +24,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--minify",
             action="store_true",
-            help="Attiva minificazione output (lesscpy).",
+            help="Attiva minificazione output CSS.",
         )
         parser.add_argument(
             "--quiet",

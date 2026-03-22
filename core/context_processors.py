@@ -20,8 +20,9 @@ def hero_actions_config(request):
 
 def ui_preferences(request):
     path = request.path or ""
+    is_workbench_path = path == "/workbench" or path.startswith("/workbench/")
     return {
         "less_dev_mode": bool(getattr(settings, "LESS_DEV_MODE", False)),
-        "ui_use_global_styles": not path.startswith("/workbench/"),
+        "ui_use_global_styles": not is_workbench_path,
         "ui_theme": "light",
     }

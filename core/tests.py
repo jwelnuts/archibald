@@ -166,6 +166,10 @@ class UiPreferencesContextTests(TestCase):
         self.assertFalse(context["ui_use_global_styles"])
         self.assertEqual(context["ui_theme"], "light")
 
+        no_slash_request = RequestFactory().get("/workbench")
+        no_slash_context = ui_preferences(no_slash_request)
+        self.assertFalse(no_slash_context["ui_use_global_styles"])
+
 
 class DavProvisioningTests(TestCase):
     def setUp(self):

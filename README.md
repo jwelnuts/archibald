@@ -32,6 +32,18 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 - UIKit baseline bridge (`core/static/core/uikit_bridge.js`)
 - Global style system LESS/CSS (`core/static/core/styles.less` -> `core/static/core/styles.css`)
 
+### Sistema stili globale (LESS ibrido)
+
+- Entrypoint unico: `core/static/core/styles.less`
+  - importa foundation condivisa + moduli (`dashboard`, `profile`, `agenda`, `projects`, `routines`, `subscriptions`)
+- Modalita sviluppo: `LESS_DEV_MODE=true`
+  - i template caricano `styles.less` via `less.min.js` runtime
+- Modalita produzione/deploy: `LESS_DEV_MODE=false`
+  - i template caricano `core/styles.css` compilato da `python manage.py compile_less`
+- Workbench e volutamente escluso dal tema globale:
+  - route `/workbench/*` senza `core/styles.less` / `core/styles.css`
+  - stile dedicato: `workbench/static/workbench/irc-debug.css`
+
 Note Stimulus:
 
 - l'app Stimulus viene avviata globalmente da `core/static/core/app.js`
