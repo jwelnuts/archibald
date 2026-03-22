@@ -20,10 +20,29 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from agenda.models import AgendaItem, WorkLog
-from .dav import DavProvisioningError, caldav_base_url, ensure_user_dav_access
+from .dav import (
+    DavProvisioningError,
+    caldav_base_url,
+    create_external_dav_account,
+    create_managed_calendar,
+    ensure_user_dav_access,
+    grant_external_access_to_calendar,
+    rotate_external_dav_password,
+    set_calendar_grant_active,
+    set_external_dav_account_active,
+    set_managed_calendar_active,
+)
 from .forms import AccountForm, SignUpForm
 from .hero_actions import HERO_ACTIONS
-from .models import DavAccount, MobileApiSession, UserHeroActionsConfig, UserNavConfig
+from .models import (
+    DavAccount,
+    DavCalendarGrant,
+    DavExternalAccount,
+    DavManagedCalendar,
+    MobileApiSession,
+    UserHeroActionsConfig,
+    UserNavConfig,
+)
 from .navigation import DEFAULT_APP_OPTIONS, normalize_nav_config, parse_widgets_json
 from planner.models import PlannerItem
 from projects.models import Project, SubProject
@@ -579,6 +598,10 @@ def profile(request):
         action = (request.POST.get("action") or "").strip()
         custom_text = (request.POST.get("archibald_custom_instructions") or "").strip()
 
+        if action.startswith("dav_") and not settings.CALDAV_ENABLED:
+            django_messages.error(request, "CalDAV non abilitato in questa istanza.")
+            return redirect("/profile/#dav-access")
+
         if action == "rotate_dav_password":
             if not settings.CALDAV_ENABLED:
                 django_messages.error(request, "CalDAV non abilitato in questa istanza.")
@@ -588,6 +611,156 @@ def profile(request):
                 "Le credenziali DAV usano la stessa password account. Aggiorna la password da questa pagina.",
             )
             return redirect("/accounts/password_change/")
+
+        if action == "dav_create_external_user":
+            try:
+                account, issued_password = create_external_dav_account(
+                    owner=request.user,
+                    label=request.POST.get("dav_external_label") or "",
+                    username_hint=request.POST.get("dav_external_username_hint") or "",
+                    raw_password=request.POST.get("dav_external_password") or "",
+                )
+            except DavProvisioningError as exc:
+                django_messages.error(request, f"Creazione utente DAV esterno fallita: {exc}")
+            else:
+                request.session["dav_external_onboarding"] = {
+                    "username": account.dav_username,
+                    "password": issued_password,
+                }
+                django_messages.success(
+                    request,
+                    f"Utente DAV esterno creato: {account.dav_username}. Password disponibile in questa pagina.",
+                )
+            return redirect("/profile/#dav-external-access")
+
+        if action == "dav_rotate_external_password":
+            external_id = request.POST.get("external_id")
+            external = DavExternalAccount.objects.filter(owner=request.user, id=external_id).first()
+            if not external:
+                django_messages.error(request, "Utente DAV esterno non trovato.")
+                return redirect("/profile/#dav-external-access")
+            try:
+                issued_password = rotate_external_dav_password(
+                    owner=request.user,
+                    external_account=external,
+                    raw_password=request.POST.get("dav_external_password") or "",
+                )
+            except DavProvisioningError as exc:
+                django_messages.error(request, f"Rotazione password DAV esterna fallita: {exc}")
+            else:
+                request.session["dav_external_onboarding"] = {
+                    "username": external.dav_username,
+                    "password": issued_password,
+                }
+                django_messages.success(
+                    request,
+                    f"Password aggiornata per {external.dav_username}.",
+                )
+            return redirect("/profile/#dav-external-access")
+
+        if action in {"dav_activate_external_user", "dav_deactivate_external_user"}:
+            external_id = request.POST.get("external_id")
+            external = DavExternalAccount.objects.filter(owner=request.user, id=external_id).first()
+            if not external:
+                django_messages.error(request, "Utente DAV esterno non trovato.")
+                return redirect("/profile/#dav-external-access")
+            try:
+                set_external_dav_account_active(
+                    owner=request.user,
+                    external_account=external,
+                    is_active=(action == "dav_activate_external_user"),
+                )
+            except DavProvisioningError as exc:
+                django_messages.error(request, f"Aggiornamento stato utente DAV esterno fallito: {exc}")
+            else:
+                label = "riattivato" if action == "dav_activate_external_user" else "disattivato"
+                django_messages.success(request, f"Utente DAV esterno {label}: {external.dav_username}.")
+            return redirect("/profile/#dav-external-access")
+
+        if action == "dav_create_calendar":
+            try:
+                calendar = create_managed_calendar(
+                    owner=request.user,
+                    principal=request.POST.get("dav_calendar_principal") or "team",
+                    calendar_slug=request.POST.get("dav_calendar_slug") or "",
+                    display_name=request.POST.get("dav_calendar_display_name") or "",
+                )
+            except DavProvisioningError as exc:
+                django_messages.error(request, f"Creazione calendario DAV fallita: {exc}")
+            else:
+                django_messages.success(
+                    request,
+                    f"Calendario DAV pronto: {calendar.collection_path}",
+                )
+            return redirect("/profile/#dav-external-access")
+
+        if action in {"dav_activate_calendar", "dav_deactivate_calendar"}:
+            calendar_id = request.POST.get("calendar_id")
+            calendar = DavManagedCalendar.objects.filter(owner=request.user, id=calendar_id).first()
+            if not calendar:
+                django_messages.error(request, "Calendario DAV non trovato.")
+                return redirect("/profile/#dav-external-access")
+            try:
+                set_managed_calendar_active(
+                    owner=request.user,
+                    calendar=calendar,
+                    is_active=(action == "dav_activate_calendar"),
+                )
+            except DavProvisioningError as exc:
+                django_messages.error(request, f"Aggiornamento stato calendario DAV fallito: {exc}")
+            else:
+                label = "riattivato" if action == "dav_activate_calendar" else "disattivato"
+                django_messages.success(request, f"Calendario DAV {label}: {calendar.collection_path}.")
+            return redirect("/profile/#dav-external-access")
+
+        if action == "dav_grant_calendar_access":
+            external_id = request.POST.get("external_id")
+            calendar_id = request.POST.get("calendar_id")
+            access_level = (request.POST.get("access_level") or "").strip().lower()
+            external = DavExternalAccount.objects.filter(owner=request.user, id=external_id, is_active=True).first()
+            calendar = DavManagedCalendar.objects.filter(owner=request.user, id=calendar_id, is_active=True).first()
+            if not external or not calendar:
+                django_messages.error(request, "Seleziona utente esterno e calendario validi.")
+                return redirect("/profile/#dav-external-access")
+            try:
+                grant_external_access_to_calendar(
+                    owner=request.user,
+                    external_account=external,
+                    calendar=calendar,
+                    access_level=access_level,
+                )
+            except DavProvisioningError as exc:
+                django_messages.error(request, f"Assegnazione permesso DAV fallita: {exc}")
+            else:
+                django_messages.success(
+                    request,
+                    f"Permesso aggiornato: {external.dav_username} -> {calendar.collection_path}.",
+                )
+            return redirect("/profile/#dav-external-access")
+
+        if action in {"dav_activate_grant", "dav_revoke_grant"}:
+            grant_id = request.POST.get("grant_id")
+            grant = DavCalendarGrant.objects.select_related("external_account", "calendar").filter(
+                owner=request.user, id=grant_id
+            ).first()
+            if not grant:
+                django_messages.error(request, "Permesso DAV non trovato.")
+                return redirect("/profile/#dav-external-access")
+            try:
+                set_calendar_grant_active(
+                    owner=request.user,
+                    grant=grant,
+                    is_active=(action == "dav_activate_grant"),
+                )
+            except DavProvisioningError as exc:
+                django_messages.error(request, f"Aggiornamento permesso DAV fallito: {exc}")
+            else:
+                label = "riattivato" if action == "dav_activate_grant" else "revocato"
+                django_messages.success(
+                    request,
+                    f"Permesso {label}: {grant.external_account.dav_username} -> {grant.calendar.collection_path}.",
+                )
+            return redirect("/profile/#dav-external-access")
 
         if action == "save_archibald_instructions":
             persona.custom_instructions = custom_text
@@ -656,6 +829,18 @@ def profile(request):
     states = ArchibaldInstructionState.objects.filter(owner=request.user).order_by("-updated_at", "name")
     dav_account = DavAccount.objects.filter(user=request.user).first()
     dav_onboarding = request.session.pop("dav_onboarding", None)
+    dav_external_onboarding = request.session.pop("dav_external_onboarding", None)
+    managed_calendars_qs = DavManagedCalendar.objects.filter(owner=request.user).order_by("-is_active", "principal", "calendar_slug")
+    external_accounts_qs = (
+        DavExternalAccount.objects.filter(owner=request.user)
+        .prefetch_related("grants__calendar")
+        .order_by("-is_active", "dav_username")
+    )
+    grants_qs = (
+        DavCalendarGrant.objects.filter(owner=request.user)
+        .select_related("external_account", "calendar")
+        .order_by("-is_active", "external_account__dav_username", "calendar__principal", "calendar__calendar_slug")
+    )
     context = {
         "archibald_custom_instructions": persona.custom_instructions or "",
         "archibald_instruction_states": states[:24],
@@ -667,6 +852,13 @@ def profile(request):
         "dav_onboarding_username": (dav_onboarding or {}).get("username", ""),
         "dav_onboarding_password": (dav_onboarding or {}).get("password", ""),
         "dav_default_team_collection": settings.CALDAV_DEFAULT_TEAM_COLLECTION,
+        "dav_external_onboarding_username": (dav_external_onboarding or {}).get("username", ""),
+        "dav_external_onboarding_password": (dav_external_onboarding or {}).get("password", ""),
+        "dav_external_accounts": external_accounts_qs[:200],
+        "dav_managed_calendars": managed_calendars_qs[:200],
+        "dav_active_external_accounts": external_accounts_qs.filter(is_active=True)[:200],
+        "dav_active_managed_calendars": managed_calendars_qs.filter(is_active=True)[:200],
+        "dav_grants": grants_qs[:400],
     }
     return render(request, "core/profile.html", context)
 

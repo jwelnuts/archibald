@@ -1,4 +1,5 @@
 import json
+import re
 import tempfile
 from datetime import timedelta
 from pathlib import Path
@@ -16,7 +17,7 @@ from routines.models import Routine, RoutineCategory, RoutineItem, RoutineCheck
 from todo.models import Task
 from .context_processors import ui_preferences
 from .middleware import DevLessCompileMiddleware
-from .models import DavAccount, MobileApiSession, UserNavConfig
+from .models import DavAccount, DavCalendarGrant, DavExternalAccount, DavManagedCalendar, MobileApiSession, UserNavConfig
 from .views import DEFAULT_DASHBOARD_WIDGET_IDS
 
 
@@ -351,6 +352,75 @@ class DavProvisioningTests(TestCase):
         content = self.users_file.read_text(encoding="utf-8")
         self.assertNotIn("legacy@miorganizzo.ovh:", content)
         self.assertRegex(content, r"paola@miorganizzo\.ovh:\$2[aby]\$.+")
+
+
+class DavExternalAccessTests(TestCase):
+    def setUp(self):
+        self._tmpdir = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmpdir.cleanup)
+        users_file = Path(self._tmpdir.name) / "users"
+        lock_file = Path(self._tmpdir.name) / "users.lock"
+        rights_file = Path(self._tmpdir.name) / "rights"
+        self._override = override_settings(
+            CALDAV_ENABLED=True,
+            CALDAV_BASE_URL="http://localhost:5232/",
+            CALDAV_SERVICE_USERNAME="archibald",
+            CALDAV_SERVICE_PASSWORD="archibald-service-pass",
+            RADICALE_USERS_FILE=str(users_file),
+            RADICALE_USERS_LOCK_FILE=str(lock_file),
+            RADICALE_RIGHTS_FILE=str(rights_file),
+        )
+        self._override.enable()
+        self.addCleanup(self._override.disable)
+        self.users_file = users_file
+        self.rights_file = rights_file
+        self.owner = get_user_model().objects.create_user(username="owner", password="OwnerPassword12345!")
+        self.client.login(username="owner", password="OwnerPassword12345!")
+
+    def test_owner_can_create_external_user_calendar_and_grant_permissions(self):
+        response = self.client.post(
+            "/profile/",
+            {
+                "action": "dav_create_external_user",
+                "dav_external_label": "Fornitore Test",
+                "dav_external_username_hint": "fornitore-test",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        external = DavExternalAccount.objects.get(owner=self.owner)
+        self.assertTrue(external.is_active)
+
+        response = self.client.post(
+            "/profile/",
+            {
+                "action": "dav_create_calendar",
+                "dav_calendar_principal": "team",
+                "dav_calendar_slug": "progetto-test",
+                "dav_calendar_display_name": "Progetto Test",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        calendar = DavManagedCalendar.objects.get(owner=self.owner, principal="team", calendar_slug="progetto-test")
+
+        response = self.client.post(
+            "/profile/",
+            {
+                "action": "dav_grant_calendar_access",
+                "external_id": str(external.id),
+                "calendar_id": str(calendar.id),
+                "access_level": "rw",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        grant = DavCalendarGrant.objects.get(owner=self.owner, external_account=external, calendar=calendar)
+        self.assertEqual(grant.access_level, DavCalendarGrant.ACCESS_READWRITE)
+        self.assertTrue(grant.is_active)
+
+        users_content = self.users_file.read_text(encoding="utf-8")
+        self.assertIn(f"{external.dav_username}:", users_content)
+        rights_content = self.rights_file.read_text(encoding="utf-8")
+        self.assertIn(f"user: ^{re.escape(external.dav_username)}$", rights_content)
+        self.assertIn("collection: ^team/progetto\\-test$", rights_content)
 
 
 class NavSettingsTests(TestCase):

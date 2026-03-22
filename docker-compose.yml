@@ -25,6 +25,7 @@ services:
       DJANGO_DB_SSL_REQUIRE: "false"
       DATABASE_URL: postgresql://${POSTGRES_USER:-mio}:${POSTGRES_PASSWORD:-mio_password}@db:5432/${POSTGRES_DB:-mio_master}
       RADICALE_USERS_FILE: /radicale-data/users
+      RADICALE_RIGHTS_FILE: /radicale-data/rights
     depends_on:
       db:
         condition: service_healthy
@@ -49,6 +50,7 @@ services:
       DJANGO_DB_SSL_REQUIRE: "false"
       DATABASE_URL: postgresql://${POSTGRES_USER:-mio}:${POSTGRES_PASSWORD:-mio_password}@db:5432/${POSTGRES_DB:-mio_master}
       RADICALE_USERS_FILE: /radicale-data/users
+      RADICALE_RIGHTS_FILE: /radicale-data/rights
     depends_on:
       db:
         condition: service_healthy
@@ -67,8 +69,11 @@ services:
     command: >
       sh -c "mkdir -p /data/collections &&
       touch /data/users &&
+      touch /data/rights &&
       chown 2999:2999 /data/users &&
-      chmod 600 /data/users"
+      chown 2999:2999 /data/rights &&
+      chmod 600 /data/users &&
+      chmod 600 /data/rights"
     volumes:
       - radicale_data:/data
 
@@ -82,7 +87,6 @@ services:
       - "${RADICALE_PUBLISHED_PORT:-5232}:5232"
     volumes:
       - ./docker/radicale/config:/config/config:ro
-      - ./docker/radicale/rights:/config/rights:ro
       - radicale_data:/data
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.create_connection(('127.0.0.1', 5232), 3); s.close()\""]

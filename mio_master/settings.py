@@ -94,6 +94,7 @@ CALDAV_LOGIN_DOMAIN = os.getenv("CALDAV_LOGIN_DOMAIN", "").strip()
 CALDAV_DEFAULT_TEAM_COLLECTION = os.getenv("CALDAV_DEFAULT_TEAM_COLLECTION", "team/progetto-generale").strip()
 RADICALE_USERS_FILE = os.getenv("RADICALE_USERS_FILE", str(BASE_DIR / "runtime" / "radicale" / "users")).strip()
 RADICALE_USERS_LOCK_FILE = os.getenv("RADICALE_USERS_LOCK_FILE", "").strip()
+RADICALE_RIGHTS_FILE = os.getenv("RADICALE_RIGHTS_FILE", str(BASE_DIR / "runtime" / "radicale" / "rights")).strip()
 
 
 # Application definition

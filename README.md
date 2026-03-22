@@ -247,6 +247,7 @@ Opzionali (feature specifiche):
 - `RADICALE_PUBLISHED_PORT` (porta host esposta per Radicale, default `5232`)
 - `RADICALE_USERS_FILE` (path file utenti htpasswd condiviso con Radicale)
 - `RADICALE_USERS_LOCK_FILE` (path lock file per scrittura atomica utenti DAV)
+- `RADICALE_RIGHTS_FILE` (path file permessi Radicale condiviso con app)
 - `VAULT_ENCRYPTION_KEY` (consigliata in prod)
 - `VAULT_TOTP_ISSUER` (default: `MIO Vault`)
 - `VAULT_SESSION_TIMEOUT_SECONDS` (default: `600`)
@@ -373,7 +374,6 @@ File principali:
 - `docker/entrypoint.sh`
 - `docker/caddy/Caddyfile`
 - `docker/radicale/config`
-- `docker/radicale/rights`
 - `.env.vps.example`
 - `.env.local.example`
 - `.env.docker.example` (legacy/compatibilita)
@@ -452,7 +452,7 @@ Convenzioni operative base:
 - endpoint CalDAV/CardDAV: `http://<host>:5232/` (oppure URL reverse proxy personalizzato)
 - utenti DAV applicativi: provisioning automatico alla registrazione utente (stessa password dell'account Django)
 - calendario condiviso team: collection sotto `team/<nome-progetto>`
-- utenti autorizzati team (default): tutti gli utenti autenticati (regole in `docker/radicale/rights`)
+- utenti esterni DAV: gestibili da profilo utente con permessi per calendario (sync su file `RADICALE_RIGHTS_FILE`)
 
 Esempio URL collection condivisa:
 

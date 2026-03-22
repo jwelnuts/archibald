@@ -88,3 +88,90 @@ class DavAccount(TimeStampedModel):
 
     def __str__(self):
         return f"DavAccount(user={self.user_id}, username={self.dav_username})"
+
+
+class DavExternalAccount(TimeStampedModel):
+    owner = models.ForeignKey(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="dav_external_accounts",
+    )
+    label = models.CharField(max_length=120, blank=True)
+    dav_username = models.CharField(max_length=150, unique=True)
+    password_hash = models.CharField(max_length=255)
+    is_active = models.BooleanField(default=True)
+    password_rotated_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["owner", "is_active", "dav_username"]),
+        ]
+
+    def __str__(self):
+        return f"DavExternalAccount(owner={self.owner_id}, username={self.dav_username})"
+
+
+class DavManagedCalendar(TimeStampedModel):
+    owner = models.ForeignKey(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="dav_managed_calendars",
+    )
+    principal = models.CharField(max_length=150, default="team")
+    calendar_slug = models.CharField(max_length=120)
+    display_name = models.CharField(max_length=120, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = [("owner", "principal", "calendar_slug")]
+        indexes = [
+            models.Index(fields=["owner", "is_active", "principal", "calendar_slug"]),
+        ]
+
+    @property
+    def collection_path(self) -> str:
+        return f"{self.principal}/{self.calendar_slug}"
+
+    def __str__(self):
+        return f"DavManagedCalendar(owner={self.owner_id}, path={self.collection_path})"
+
+
+class DavCalendarGrant(TimeStampedModel):
+    ACCESS_READONLY = "ro"
+    ACCESS_READWRITE = "rw"
+    ACCESS_CHOICES = [
+        (ACCESS_READONLY, "Sola lettura"),
+        (ACCESS_READWRITE, "Lettura e scrittura"),
+    ]
+
+    owner = models.ForeignKey(
+        "auth.User",
+        on_delete=models.CASCADE,
+        related_name="dav_calendar_grants",
+    )
+    external_account = models.ForeignKey(
+        DavExternalAccount,
+        on_delete=models.CASCADE,
+        related_name="grants",
+    )
+    calendar = models.ForeignKey(
+        DavManagedCalendar,
+        on_delete=models.CASCADE,
+        related_name="grants",
+    )
+    access_level = models.CharField(max_length=2, choices=ACCESS_CHOICES, default=ACCESS_READONLY)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = [("owner", "external_account", "calendar")]
+        indexes = [
+            models.Index(fields=["owner", "is_active", "access_level"]),
+        ]
+
+    def __str__(self):
+        return (
+            "DavCalendarGrant("
+            f"owner={self.owner_id}, ext={self.external_account_id}, "
+            f"calendar={self.calendar_id}, access={self.access_level}"
+            ")"
+        )

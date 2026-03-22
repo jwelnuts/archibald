@@ -9,7 +9,7 @@ strip_domain = True
 
 [rights]
 type = from_file
-file = /config/rights
+file = /data/rights
 
 [storage]
 filesystem_folder = /data/collections
