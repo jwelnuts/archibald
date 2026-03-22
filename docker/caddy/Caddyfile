@@ -10,8 +10,6 @@
     @dav_preflight {
         path /dav*
         method OPTIONS
-        header Origin *
-        header Access-Control-Request-Method *
     }
     handle @dav_preflight {
         header {
@@ -27,7 +25,7 @@
 
     @dav_cors {
         path /dav*
-        header Origin *
+        header_regexp Origin Origin .+
     }
     header @dav_cors {
         Access-Control-Allow-Origin "{http.request.header.Origin}"
