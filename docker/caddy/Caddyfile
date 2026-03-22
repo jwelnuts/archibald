@@ -7,6 +7,35 @@
     @dav_well_known path /.well-known/caldav /.well-known/carddav
     redir @dav_well_known /dav/ 301
 
+    @dav_preflight {
+        path /dav*
+        method OPTIONS
+        header Origin *
+        header Access-Control-Request-Method *
+    }
+    handle @dav_preflight {
+        header {
+            Access-Control-Allow-Origin "{http.request.header.Origin}"
+            Access-Control-Allow-Credentials "true"
+            Access-Control-Allow-Methods "OPTIONS, GET, HEAD, POST, PUT, DELETE, PROPFIND, PROPPATCH, REPORT, MKCOL, MKCALENDAR, MOVE, COPY"
+            Access-Control-Allow-Headers "Authorization, Content-Type, Depth, If-Match, If-None-Match, Destination, Overwrite, Prefer"
+            Access-Control-Max-Age "86400"
+            Vary "Origin, Access-Control-Request-Method, Access-Control-Request-Headers"
+        }
+        respond "" 204
+    }
+
+    @dav_cors {
+        path /dav*
+        header Origin *
+    }
+    header @dav_cors {
+        Access-Control-Allow-Origin "{http.request.header.Origin}"
+        Access-Control-Allow-Credentials "true"
+        Access-Control-Expose-Headers "DAV, ETag"
+        Vary "Origin"
+    }
+
     handle /dav* {
         uri strip_prefix /dav
         reverse_proxy radicale:5232 {
