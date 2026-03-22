@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 import dj_database_url
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -73,7 +74,7 @@ CALDAV_ENABLED = os.getenv("CALDAV_ENABLED", "false").lower() in {"1", "true", "
 CALDAV_BASE_URL = os.getenv("CALDAV_BASE_URL", "").strip()
 CALDAV_SERVICE_USERNAME = os.getenv("CALDAV_SERVICE_USERNAME", "").strip()
 CALDAV_SERVICE_PASSWORD = os.getenv("CALDAV_SERVICE_PASSWORD", "").strip()
-CALDAV_LOGIN_DOMAIN = os.getenv("CALDAV_LOGIN_DOMAIN", "miorganizzo.ovh").strip()
+CALDAV_LOGIN_DOMAIN = os.getenv("CALDAV_LOGIN_DOMAIN", "").strip()
 CALDAV_DEFAULT_TEAM_COLLECTION = os.getenv("CALDAV_DEFAULT_TEAM_COLLECTION", "team/progetto-generale").strip()
 RADICALE_USERS_FILE = os.getenv("RADICALE_USERS_FILE", str(BASE_DIR / "runtime" / "radicale" / "users")).strip()
 RADICALE_USERS_LOCK_FILE = os.getenv("RADICALE_USERS_LOCK_FILE", "").strip()
@@ -88,7 +89,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'core',
+    'core.apps.CoreConfig',
     'income',
     'outcome',
     'projects',
@@ -143,20 +144,22 @@ TEMPLATES = [
 WSGI_APPLICATION = 'mio_master.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
-
 database_url = os.getenv("DATABASE_URL")
 db_ssl_require = os.getenv("DJANGO_DB_SSL_REQUIRE", "false").lower() in {"1", "true", "yes", "on"}
-if database_url:
-    DATABASES["default"] = dj_database_url.parse(database_url, conn_max_age=600, ssl_require=db_ssl_require)
+if not database_url:
+    raise ImproperlyConfigured(
+        "DATABASE_URL is required. This project uses PostgreSQL only (Docker/local/VPS)."
+    )
+
+# Database
+# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+DATABASES = {
+    "default": dj_database_url.parse(
+        database_url,
+        conn_max_age=600,
+        ssl_require=db_ssl_require,
+    )
+}
 
 
 # Password validation

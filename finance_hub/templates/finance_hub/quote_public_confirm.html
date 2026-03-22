@@ -1,0 +1,229 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Preventivo cliente</title>
+    {% include "core/partials/uikit_head.html" %}
+    <style>
+      body { background: #f4f5f8; }
+      .quote-public-shell { max-width: 960px; margin: 24px auto; padding: 0 12px 30px; }
+      .quote-public-card { border: 1px solid rgba(25, 28, 33, 0.12); box-shadow: 0 12px 34px rgba(18, 24, 33, 0.08); }
+      .quote-public-title { font-size: 26px; margin: 0 0 8px; }
+      .quote-public-meta { color: #5d6370; font-size: 14px; }
+      .quote-public-totals { background: #f8fafc; border-radius: 10px; padding: 12px; }
+      .quote-public-sign { border-top: 1px dashed rgba(25, 28, 33, 0.25); margin-top: 18px; padding-top: 18px; }
+    </style>
+  </head>
+  <body>
+    <main class="quote-public-shell">
+      {% if invalid_link %}
+        <section class="uk-card uk-card-default uk-card-body quote-public-card">
+          <h1 class="quote-public-title">Link non valido o scaduto</h1>
+          <p class="uk-text-meta uk-margin-remove">Chiedi al mittente di rigenerare il link del preventivo.</p>
+        </section>
+      {% else %}
+        <section class="uk-card uk-card-default quote-public-card">
+          <div class="uk-card-header">
+            <h1 class="quote-public-title">
+              Preventivo {{ item.code|default:"-" }} · {{ item.title }}
+            </h1>
+            <p class="quote-public-meta uk-margin-remove">
+              Cliente: {% if item.customer %}{{ item.customer.name }}{% else %}-{% endif %}
+              · Progetto: {% if item.project %}{{ item.project.name }}{% else %}-{% endif %}
+              · Emissione: {{ item.issue_date|date:"d/m/Y" }}
+              {% if item.valid_until %} · Valido fino al: {{ item.valid_until|date:"d/m/Y" }}{% endif %}
+            </p>
+          </div>
+          <div class="uk-card-body">
+            {% if just_confirmed %}
+              <div class="uk-alert-success" uk-alert>
+                Preventivo confermato con successo. Grazie.
+              </div>
+            {% endif %}
+            {% if just_rejected %}
+              <div class="uk-alert-warning" uk-alert>
+                Preventivo rifiutato. Grazie per il riscontro.
+              </div>
+            {% endif %}
+            {% if public_form.non_field_errors %}
+              <div class="uk-alert-danger" uk-alert>
+                {% for err in public_form.non_field_errors %}
+                  <div>{{ err }}</div>
+                {% endfor %}
+              </div>
+            {% endif %}
+
+            <h3 class="uk-margin-small-bottom">Pagamento e spedizione</h3>
+            <p class="uk-margin-small-bottom uk-text-meta">
+              Modalita pagamento: <strong>{% if item.payment_method %}{{ item.payment_method.name }}{% else %}-{% endif %}</strong>
+              · Modalita spedizione: <strong>{% if item.shipping_method %}{{ item.shipping_method.name }}{% else %}-{% endif %}</strong>
+            </p>
+
+            <h3 class="uk-margin-small-bottom">Destinazione merce</h3>
+            {% if item.delivery_address %}
+              <div class="uk-margin-small-bottom">
+                <strong>{{ item.delivery_address.label }}</strong>
+                {% if item.delivery_address.recipient_name %}<div class="uk-text-meta">{{ item.delivery_address.recipient_name }}</div>{% endif %}
+                <div>{{ item.delivery_address.line1 }}</div>
+                {% if item.delivery_address.line2 %}<div>{{ item.delivery_address.line2 }}</div>{% endif %}
+                <div class="uk-text-meta">
+                  {% if item.delivery_address.postal_code %}{{ item.delivery_address.postal_code }} {% endif %}{{ item.delivery_address.city }}{% if item.delivery_address.province %} ({{ item.delivery_address.province }}){% endif %}
+                  {% if item.delivery_address.country %} · {{ item.delivery_address.country }}{% endif %}
+                </div>
+              </div>
+            {% else %}
+              <p class="uk-text-meta uk-margin-small-bottom">Nessuna destinazione merce specificata.</p>
+            {% endif %}
+
+            <h3 class="uk-margin-small-bottom">Dettaglio righe</h3>
+            <ul class="uk-list uk-list-divider uk-margin-remove-top">
+              {% for row in item.lines.all %}
+                <li class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap uk-gap-small">
+                  <div>
+                    <strong>{{ row.code }}</strong> · {{ row.description }}
+                    <div class="uk-text-meta">Qta {{ row.quantity }} · Sconto {{ row.discount }}%</div>
+                  </div>
+                  <div class="uk-text-right">
+                    <strong>{{ row.net_total|floatformat:2 }} {{ item.currency.code }}</strong>
+                  </div>
+                </li>
+              {% empty %}
+                <li class="uk-text-meta">Nessuna riga articolo.</li>
+              {% endfor %}
+            </ul>
+
+            <div class="quote-public-totals uk-margin">
+              <div>Totale netto: <strong>{{ item.amount_net|floatformat:2 }} {{ item.currency.code }}</strong></div>
+              <div>Imposta: <strong>{{ item.tax_amount|floatformat:2 }} {{ item.currency.code }}</strong></div>
+              <div>Totale documento: <strong>{{ item.total_amount|floatformat:2 }} {{ item.currency.code }}</strong></div>
+            </div>
+
+            {% if item.note %}
+              <div class="uk-margin">
+                <h4 class="uk-margin-small-bottom">Note</h4>
+                <p class="uk-margin-remove">{{ item.note|linebreaksbr }}</p>
+              </div>
+            {% endif %}
+
+            <div class="quote-public-sign">
+              {% if decision_locked %}
+                {% if item.status == "REJECTED" %}
+                  <div class="uk-alert-danger" uk-alert>
+                    Preventivo rifiutato da <strong>{{ item.customer_signed_name|default:"-" }}</strong>
+                    il {{ item.customer_signed_at|date:"d/m/Y H:i" }}.
+                    {% if item.customer_decision_note %}
+                      <div class="uk-margin-small-top"><strong>Motivazione:</strong> {{ item.customer_decision_note|linebreaksbr }}</div>
+                    {% endif %}
+                  </div>
+                {% else %}
+                  <div class="uk-alert-success" uk-alert>
+                    Firmato da <strong>{{ item.customer_signed_name|default:"-" }}</strong>
+                    il {{ item.customer_signed_at|date:"d/m/Y H:i" }}.
+                  </div>
+                {% endif %}
+              {% else %}
+                <form method="post" class="uk-form-stacked">
+                  {% csrf_token %}
+                  <h4 class="uk-margin-small-bottom">Dati anagrafici</h4>
+                  <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@s" uk-grid>
+                    <div>
+                      <label class="uk-form-label" for="{{ public_form.customer_name.id_for_label }}">{{ public_form.customer_name.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.customer_name }}</div>
+                      {% if public_form.customer_name.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.customer_name.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div>
+                      <label class="uk-form-label" for="{{ public_form.customer_email.id_for_label }}">{{ public_form.customer_email.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.customer_email }}</div>
+                      {% if public_form.customer_email.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.customer_email.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div>
+                      <label class="uk-form-label" for="{{ public_form.customer_phone.id_for_label }}">{{ public_form.customer_phone.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.customer_phone }}</div>
+                      {% if public_form.customer_phone.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.customer_phone.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="uk-width-1-1">
+                      <label class="uk-form-label" for="{{ public_form.customer_notes.id_for_label }}">{{ public_form.customer_notes.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.customer_notes }}</div>
+                      {% if public_form.customer_notes.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.customer_notes.errors|striptags }}</div>{% endif %}
+                    </div>
+                  </div>
+
+                  <h4 class="uk-margin">Indirizzo di consegna</h4>
+                  <div class="uk-grid-small uk-child-width-1-1 uk-child-width-1-2@s" uk-grid>
+                    <div>
+                      <label class="uk-form-label" for="{{ public_form.delivery_label.id_for_label }}">{{ public_form.delivery_label.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.delivery_label }}</div>
+                      {% if public_form.delivery_label.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.delivery_label.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div>
+                      <label class="uk-form-label" for="{{ public_form.delivery_recipient_name.id_for_label }}">{{ public_form.delivery_recipient_name.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.delivery_recipient_name }}</div>
+                      {% if public_form.delivery_recipient_name.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.delivery_recipient_name.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="uk-width-1-1">
+                      <label class="uk-form-label" for="{{ public_form.delivery_line1.id_for_label }}">{{ public_form.delivery_line1.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.delivery_line1 }}</div>
+                      {% if public_form.delivery_line1.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.delivery_line1.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div class="uk-width-1-1">
+                      <label class="uk-form-label" for="{{ public_form.delivery_line2.id_for_label }}">{{ public_form.delivery_line2.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.delivery_line2 }}</div>
+                      {% if public_form.delivery_line2.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.delivery_line2.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div>
+                      <label class="uk-form-label" for="{{ public_form.delivery_postal_code.id_for_label }}">{{ public_form.delivery_postal_code.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.delivery_postal_code }}</div>
+                      {% if public_form.delivery_postal_code.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.delivery_postal_code.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div>
+                      <label class="uk-form-label" for="{{ public_form.delivery_city.id_for_label }}">{{ public_form.delivery_city.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.delivery_city }}</div>
+                      {% if public_form.delivery_city.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.delivery_city.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div>
+                      <label class="uk-form-label" for="{{ public_form.delivery_province.id_for_label }}">{{ public_form.delivery_province.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.delivery_province }}</div>
+                      {% if public_form.delivery_province.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.delivery_province.errors|striptags }}</div>{% endif %}
+                    </div>
+                    <div>
+                      <label class="uk-form-label" for="{{ public_form.delivery_country.id_for_label }}">{{ public_form.delivery_country.label }}</label>
+                      <div class="uk-form-controls">{{ public_form.delivery_country }}</div>
+                      {% if public_form.delivery_country.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.delivery_country.errors|striptags }}</div>{% endif %}
+                    </div>
+                  </div>
+
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ public_form.signer_name.id_for_label }}">{{ public_form.signer_name.label }}</label>
+                    <div class="uk-form-controls">
+                      {{ public_form.signer_name }}
+                    </div>
+                    {% if public_form.signer_name.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.signer_name.errors|striptags }}</div>{% endif %}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ public_form.reject_reason.id_for_label }}">{{ public_form.reject_reason.label }}</label>
+                    <div class="uk-form-controls">{{ public_form.reject_reason }}</div>
+                    {% if public_form.reject_reason.errors %}<div class="uk-text-danger uk-text-small">{{ public_form.reject_reason.errors|striptags }}</div>{% endif %}
+                    <p class="uk-text-meta uk-margin-small-top uk-margin-remove-bottom">
+                      La motivazione e obbligatoria solo se scegli "Rifiuta preventivo".
+                    </p>
+                  </div>
+                  <div class="uk-flex uk-flex-wrap uk-gap-small">
+                    <button class="uk-button uk-button-primary" type="submit" name="decision" value="approve">Conferma preventivo</button>
+                    <button class="uk-button uk-button-danger" type="submit" name="decision" value="reject">Rifiuta preventivo</button>
+                  </div>
+                </form>
+              {% endif %}
+            </div>
+
+            <div class="uk-margin-top uk-flex uk-flex-wrap uk-gap-small">
+              <a class="uk-button uk-button-default" href="{{ public_pdf_url }}">Scarica PDF</a>
+            </div>
+          </div>
+        </section>
+      {% endif %}
+    </main>
+    {% include "core/partials/uikit_body.html" %}
+  </body>
+</html>

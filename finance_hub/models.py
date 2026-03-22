@@ -1,4 +1,6 @@
+from datetime import timedelta
 from decimal import Decimal
+from secrets import token_urlsafe
 
 from django.db import models
 from django.db.models import Q
@@ -27,6 +29,40 @@ class VatCode(OwnedModel, TimeStampedModel):
         return f"{self.code} ({self.rate}%)"
 
 
+class PaymentMethod(OwnedModel, TimeStampedModel):
+    name = models.CharField(max_length=120)
+    description = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = [("owner", "name")]
+        indexes = [
+            models.Index(fields=["owner", "is_active"], name="fh_pm_owner_active_idx"),
+            models.Index(fields=["owner", "name"], name="fh_pm_owner_name_idx"),
+        ]
+        ordering = ["name", "id"]
+
+    def __str__(self):
+        return self.name
+
+
+class ShippingMethod(OwnedModel, TimeStampedModel):
+    name = models.CharField(max_length=120)
+    description = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = [("owner", "name")]
+        indexes = [
+            models.Index(fields=["owner", "is_active"], name="fh_sm_owner_active_idx"),
+            models.Index(fields=["owner", "name"], name="fh_sm_owner_name_idx"),
+        ]
+        ordering = ["name", "id"]
+
+    def __str__(self):
+        return self.name
+
+
 class Quote(OwnedModel, TimeStampedModel):
     class Status(models.TextChoices):
         DRAFT = "DRAFT", "Bozza"
@@ -39,6 +75,13 @@ class Quote(OwnedModel, TimeStampedModel):
     title = models.CharField(max_length=180)
     customer = models.ForeignKey(
         "projects.Customer",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="finance_quotes",
+    )
+    delivery_address = models.ForeignKey(
+        "contacts.ContactDeliveryAddress",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -61,11 +104,32 @@ class Quote(OwnedModel, TimeStampedModel):
         on_delete=models.SET_NULL,
         related_name="quotes",
     )
+    payment_method = models.ForeignKey(
+        "finance_hub.PaymentMethod",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="quotes",
+    )
+    shipping_method = models.ForeignKey(
+        "finance_hub.ShippingMethod",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="quotes",
+    )
     amount_net = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT)
     note = models.TextField(blank=True)
+    public_access_token = models.CharField(max_length=96, blank=True, null=True, unique=True)
+    public_access_expires_at = models.DateTimeField(null=True, blank=True)
+    customer_signed_name = models.CharField(max_length=180, blank=True)
+    customer_signed_at = models.DateTimeField(null=True, blank=True)
+    customer_signed_ip = models.GenericIPAddressField(null=True, blank=True)
+    customer_signed_user_agent = models.CharField(max_length=255, blank=True)
+    customer_decision_note = models.TextField(blank=True)
 
     class Meta:
         constraints = [
@@ -102,6 +166,29 @@ class Quote(OwnedModel, TimeStampedModel):
 
     def __str__(self):
         return self.code or self.title
+
+    def issue_public_access(self, *, days_valid=14, force_new=False):
+        now = timezone.now()
+        if (
+            not force_new
+            and self.public_access_token
+            and self.public_access_expires_at
+            and self.public_access_expires_at > now
+        ):
+            return self.public_access_token
+
+        token = token_urlsafe(36)
+        self.public_access_token = token
+        self.public_access_expires_at = now + timedelta(days=days_valid)
+        self.save(update_fields=["public_access_token", "public_access_expires_at", "updated_at"])
+        return token
+
+    def has_active_public_access(self):
+        return bool(
+            self.public_access_token
+            and self.public_access_expires_at
+            and self.public_access_expires_at > timezone.now()
+        )
 
 
 class Invoice(OwnedModel, TimeStampedModel):

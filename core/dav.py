@@ -16,9 +16,9 @@ from passlib.context import CryptContext
 from .models import DavAccount
 
 _DAV_USERNAME_SANITIZER = re.compile(r"[^a-z0-9._@+-]+")
-_HASH_CONTEXT = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
+_HASH_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _LEGACY_HASH_PREFIXES = ("{SSHA}", "{SHA}")
-_UNSUPPORTED_HASH_PREFIXES = ("$2a$", "$2b$", "$2y$", "$6$", "$1$", "$apr1$")
+_UNSUPPORTED_HASH_PREFIXES = ("$5$", "$6$", "$1$", "$apr1$")
 logger = logging.getLogger(__name__)
 
 
@@ -84,7 +84,7 @@ def _hash_or_keep(raw_value: str) -> str:
         return raw_value
     if raw_value.startswith(_LEGACY_HASH_PREFIXES) or raw_value.startswith(_UNSUPPORTED_HASH_PREFIXES):
         raise DavProvisioningError(
-            "Hash DAV legacy non supportato rilevato: usa password in chiaro oppure hash sha256_crypt."
+            "Hash DAV legacy non supportato rilevato: usa password in chiaro oppure hash bcrypt."
         )
     return _hash_password(raw_value)
 

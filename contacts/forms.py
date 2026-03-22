@@ -2,7 +2,7 @@ from django import forms
 from django.core.exceptions import ValidationError
 from django.forms import inlineformset_factory
 
-from .models import Contact, ContactPriceList, ContactPriceListItem, ContactToolbox
+from .models import Contact, ContactDeliveryAddress, ContactPriceList, ContactPriceListItem, ContactToolbox
 
 
 class ContactForm(forms.ModelForm):
@@ -61,6 +61,60 @@ class ContactToolboxForm(forms.ModelForm):
         widgets = {
             "internal_notes": forms.Textarea(attrs={"rows": 5}),
         }
+
+
+class ContactDeliveryAddressForm(forms.ModelForm):
+    class Meta:
+        model = ContactDeliveryAddress
+        fields = (
+            "row_order",
+            "label",
+            "recipient_name",
+            "line1",
+            "line2",
+            "postal_code",
+            "city",
+            "province",
+            "country",
+            "notes",
+            "is_default",
+            "is_active",
+        )
+        widgets = {
+            "row_order": forms.HiddenInput(),
+            "notes": forms.Textarea(attrs={"rows": 2}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["row_order"].required = False
+
+    def clean_label(self):
+        return (self.cleaned_data.get("label") or "").strip()
+
+    def clean_recipient_name(self):
+        return (self.cleaned_data.get("recipient_name") or "").strip()
+
+    def clean_line1(self):
+        return (self.cleaned_data.get("line1") or "").strip()
+
+    def clean_line2(self):
+        return (self.cleaned_data.get("line2") or "").strip()
+
+    def clean_postal_code(self):
+        return (self.cleaned_data.get("postal_code") or "").strip()
+
+    def clean_city(self):
+        return (self.cleaned_data.get("city") or "").strip()
+
+    def clean_province(self):
+        return (self.cleaned_data.get("province") or "").strip()
+
+    def clean_country(self):
+        return (self.cleaned_data.get("country") or "").strip() or "Italia"
+
+    def clean_notes(self):
+        return (self.cleaned_data.get("notes") or "").strip()
 
 
 class ContactPriceListForm(forms.ModelForm):
@@ -122,6 +176,15 @@ ContactPriceListItemFormSet = inlineformset_factory(
     ContactPriceList,
     ContactPriceListItem,
     form=ContactPriceListItemForm,
+    extra=1,
+    can_delete=True,
+)
+
+
+ContactDeliveryAddressFormSet = inlineformset_factory(
+    Contact,
+    ContactDeliveryAddress,
+    form=ContactDeliveryAddressForm,
     extra=1,
     can_delete=True,
 )

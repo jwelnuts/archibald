@@ -58,6 +58,11 @@
           Inserisci guadagno
         </a>
       {% endif %}
+      {% if "quote" in allowed_actions %}
+        <a class="uk-button uk-button-default uk-button-small" href="/projects/quotes/add?project={{ project.id }}" data-action="quote">
+          Nuovo preventivo
+        </a>
+      {% endif %}
       {% if "planner" in allowed_actions %}
         <button
           class="uk-button uk-button-default uk-button-small"
@@ -99,6 +104,8 @@
                   <li><a href="/transactions/?open=new&tx_type=OUT&project={{ project.id }}">{{ action.label }}</a></li>
                 {% elif action.key == "income" %}
                   <li><a href="/transactions/?open=new&tx_type=IN&project={{ project.id }}">{{ action.label }}</a></li>
+                {% elif action.key == "quote" %}
+                  <li><a href="/projects/quotes/add?project={{ project.id }}">{{ action.label }}</a></li>
                 {% elif action.key == "planner" %}
                   <li><a href="#project-planner-modal" uk-toggle>{{ action.label }}</a></li>
                 {% elif action.key == "routine_item" %}
@@ -115,7 +122,7 @@
       {% endif %}
     </div>
 
-    <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-5@xl uk-margin-top" uk-grid>
+    <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-6@xl uk-margin-top" uk-grid>
       <div>
         <article class="project-detail-kpi">
           <div class="project-detail-kpi-label">Transazioni</div>
@@ -132,6 +139,12 @@
         <article class="project-detail-kpi">
           <div class="project-detail-kpi-label">Planner</div>
           <div class="project-detail-kpi-value">{{ counts.planner_items }}</div>
+        </article>
+      </div>
+      <div>
+        <article class="project-detail-kpi">
+          <div class="project-detail-kpi-label">Preventivi</div>
+          <div class="project-detail-kpi-value">{{ counts.quotes }}</div>
         </article>
       </div>
       <div>
@@ -334,6 +347,41 @@
           </ul>
         {% else %}
           <div class="uk-alert-primary uk-margin-top">Nessun item in planner collegato.</div>
+        {% endif %}
+      </article>
+    </div>
+    <div>
+      <article class="uk-card uk-card-default uk-card-small uk-card-body project-detail-card">
+        <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+          <h2 class="uk-margin-remove">Preventivi collegati</h2>
+          <a class="uk-button uk-button-primary uk-button-small" href="/projects/quotes/add?project={{ project.id }}">
+            Nuovo preventivo
+          </a>
+        </div>
+        {% if quotes %}
+          <ul class="uk-list uk-list-divider uk-margin-top">
+            {% for quote in quotes %}
+              <li class="project-compact-row">
+                <div>
+                  <div class="project-row-title">{% if quote.code %}{{ quote.code }}{% else %}#{{ quote.id }}{% endif %} · {{ quote.title }}</div>
+                  <div class="uk-text-meta">
+                    {{ quote.get_status_display }}
+                    {% if quote.valid_until %} · Valido fino al {{ quote.valid_until|date:"d/m/Y" }}{% endif %}
+                  </div>
+                </div>
+                <div class="uk-text-right">
+                  <strong>{{ quote.total_amount }} {{ quote.currency.code }}</strong>
+                  <div class="uk-text-meta">Emissione {{ quote.issue_date|date:"d/m/Y" }}</div>
+                  <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top uk-flex-right">
+                    <a class="uk-button uk-button-default uk-button-small" href="/finance/quotes/update?id={{ quote.id }}">Apri</a>
+                    <a class="uk-button uk-button-default uk-button-small" href="/finance/quotes/share?id={{ quote.id }}">Link cliente</a>
+                  </div>
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="uk-alert-primary uk-margin-top">Nessun preventivo collegato.</div>
         {% endif %}
       </article>
     </div>

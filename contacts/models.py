@@ -46,6 +46,41 @@ class Contact(OwnedModel, TimeStampedModel):
         return self.display_name
 
 
+class ContactDeliveryAddress(OwnedModel, TimeStampedModel):
+    contact = models.ForeignKey("contacts.Contact", on_delete=models.CASCADE, related_name="delivery_addresses")
+    row_order = models.PositiveSmallIntegerField(default=0)
+    label = models.CharField(max_length=120)
+    recipient_name = models.CharField(max_length=160, blank=True)
+    line1 = models.CharField(max_length=180)
+    line2 = models.CharField(max_length=180, blank=True)
+    postal_code = models.CharField(max_length=20, blank=True)
+    city = models.CharField(max_length=120)
+    province = models.CharField(max_length=120, blank=True)
+    country = models.CharField(max_length=120, default="Italia")
+    notes = models.TextField(blank=True)
+    is_default = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["owner", "contact", "is_active"]),
+            models.Index(fields=["owner", "contact", "row_order"]),
+        ]
+        ordering = ["row_order", "id"]
+
+    def save(self, *args, **kwargs):
+        if self.contact_id and self.owner_id != self.contact.owner_id:
+            self.owner = self.contact.owner
+        super().save(*args, **kwargs)
+        if self.is_default and self.contact_id:
+            ContactDeliveryAddress.objects.filter(owner=self.owner, contact=self.contact, is_default=True).exclude(
+                id=self.id
+            ).update(is_default=False)
+
+    def __str__(self):
+        return f"{self.contact.display_name} - {self.label}"
+
+
 def _to_decimal(value, default="0.00"):
     raw = value if value is not None else default
     return Decimal(str(raw))

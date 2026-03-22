@@ -17,6 +17,12 @@
         </div>
       </div>
     {% endif %}
+    {% if address_formset and address_formset.non_form_errors %}
+      <div class="warning-box">
+        Controlla gli indirizzi di destinazione merce.
+        <div class="form-errors">{{ address_formset.non_form_errors }}</div>
+      </div>
+    {% endif %}
     {% if item %}
       <form class="form" method="post" action="" enctype="multipart/form-data">
         {% csrf_token %}
@@ -41,6 +47,39 @@
         <div class="field"><label for="id_phone">Telefono</label>{{ form.phone }}</div>
         <div class="field"><label for="id_website">Sito</label>{{ form.website }}</div>
         <div class="field"><label for="id_city">Citta</label>{{ form.city }}</div>
+
+        <div class="field">
+          <label>Indirizzi destinazione merce</label>
+          <p class="muted" style="margin-top: 4px;">Gestisci i diversi indirizzi di consegna associati al contatto.</p>
+        </div>
+        {{ address_formset.management_form }}
+        <div id="delivery-addresses">
+          {% for address_form in address_formset %}
+            <div class="note delivery-address-card" data-delivery-form style="margin-bottom: 12px;">
+              {{ address_form.id }}
+              {{ address_form.row_order }}
+              <div class="field"><label>Etichetta</label>{{ address_form.label }}</div>
+              <div class="field"><label>Destinatario</label>{{ address_form.recipient_name }}</div>
+              <div class="field"><label>Indirizzo</label>{{ address_form.line1 }}</div>
+              <div class="field"><label>Indirizzo (seconda riga)</label>{{ address_form.line2 }}</div>
+              <div class="field"><label>CAP</label>{{ address_form.postal_code }}</div>
+              <div class="field"><label>Citta</label>{{ address_form.city }}</div>
+              <div class="field"><label>Provincia</label>{{ address_form.province }}</div>
+              <div class="field"><label>Nazione</label>{{ address_form.country }}</div>
+              <div class="field"><label>Note consegna</label>{{ address_form.notes }}</div>
+              <div class="field"><label>Predefinito</label>{{ address_form.is_default }}</div>
+              <div class="field"><label>Attivo</label>{{ address_form.is_active }}</div>
+              <div class="field" style="display:none;">{{ address_form.DELETE }}</div>
+              <div class="actions" style="margin-top: 4px;">
+                <button class="btn" type="button" data-delivery-remove>Rimuovi indirizzo</button>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="actions" style="margin-top: 0;">
+          <button class="btn" type="button" id="add-delivery-address">Aggiungi indirizzo destinazione</button>
+        </div>
+
         <div class="field"><label for="id_role_customer">Ruolo Cliente</label>{{ form.role_customer }}</div>
         <div class="field"><label for="id_role_supplier">Ruolo Fornitore</label>{{ form.role_supplier }}</div>
         <div class="field"><label for="id_role_payee">Ruolo Beneficiario</label>{{ form.role_payee }}</div>
@@ -52,6 +91,27 @@
           <a class="btn" href="/contacts/">Annulla</a>
         </div>
       </form>
+      <template id="empty-delivery-address-template">
+        <div class="note delivery-address-card" data-delivery-form style="margin-bottom: 12px;">
+          {{ address_formset.empty_form.id }}
+          {{ address_formset.empty_form.row_order }}
+          <div class="field"><label>Etichetta</label>{{ address_formset.empty_form.label }}</div>
+          <div class="field"><label>Destinatario</label>{{ address_formset.empty_form.recipient_name }}</div>
+          <div class="field"><label>Indirizzo</label>{{ address_formset.empty_form.line1 }}</div>
+          <div class="field"><label>Indirizzo (seconda riga)</label>{{ address_formset.empty_form.line2 }}</div>
+          <div class="field"><label>CAP</label>{{ address_formset.empty_form.postal_code }}</div>
+          <div class="field"><label>Citta</label>{{ address_formset.empty_form.city }}</div>
+          <div class="field"><label>Provincia</label>{{ address_formset.empty_form.province }}</div>
+          <div class="field"><label>Nazione</label>{{ address_formset.empty_form.country }}</div>
+          <div class="field"><label>Note consegna</label>{{ address_formset.empty_form.notes }}</div>
+          <div class="field"><label>Predefinito</label>{{ address_formset.empty_form.is_default }}</div>
+          <div class="field"><label>Attivo</label>{{ address_formset.empty_form.is_active }}</div>
+          <div class="field" style="display:none;">{{ address_formset.empty_form.DELETE }}</div>
+          <div class="actions" style="margin-top: 4px;">
+            <button class="btn" type="button" data-delivery-remove>Rimuovi indirizzo</button>
+          </div>
+        </div>
+      </template>
     {% else %}
       {% if rows %}
         <ul class="list">
@@ -67,4 +127,40 @@
       {% endif %}
     {% endif %}
   </section>
+  <script>
+    (function () {
+      var container = document.getElementById("delivery-addresses");
+      var addBtn = document.getElementById("add-delivery-address");
+      var totalInput = document.getElementById("id_delivery-TOTAL_FORMS");
+      var template = document.getElementById("empty-delivery-address-template");
+      if (!container || !addBtn || !totalInput || !template) return;
+
+      function bindRemove(scope) {
+        var removeBtn = scope.querySelector("[data-delivery-remove]");
+        if (!removeBtn) return;
+        removeBtn.addEventListener("click", function () {
+          var deleteInput = scope.querySelector("input[type='checkbox'][name$='-DELETE']");
+          if (deleteInput) {
+            deleteInput.checked = true;
+            scope.style.display = "none";
+          } else {
+            scope.remove();
+          }
+        });
+      }
+
+      container.querySelectorAll("[data-delivery-form]").forEach(bindRemove);
+      addBtn.addEventListener("click", function () {
+        var nextIndex = parseInt(totalInput.value || "0", 10);
+        var html = template.innerHTML.replace(/__prefix__/g, String(nextIndex));
+        var holder = document.createElement("div");
+        holder.innerHTML = html;
+        var node = holder.firstElementChild;
+        if (!node) return;
+        container.appendChild(node);
+        totalInput.value = String(nextIndex + 1);
+        bindRemove(node);
+      });
+    })();
+  </script>
 {% endblock %}

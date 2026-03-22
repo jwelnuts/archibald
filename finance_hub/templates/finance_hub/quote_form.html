@@ -28,11 +28,27 @@
     <section class="quote-editor-shell">
       <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap quote-editor-head">
         <div>
-          <h1 class="uk-margin-remove">{% if mode == "add" %}Nuovo preventivo{% else %}Aggiorna preventivo{% endif %}</h1>
-          <p class="muted uk-margin-small-top">Compila i dettagli generali e aggiungi le righe articolo con i relativi importi.</p>
+          <h1 class="uk-margin-remove">
+            {% if project_quote_mode %}
+              Nuovo preventivo · {{ locked_project.name }}
+            {% else %}
+              {% if mode == "add" %}Nuovo preventivo{% else %}Aggiorna preventivo{% endif %}
+            {% endif %}
+          </h1>
+          <p class="muted uk-margin-small-top">
+            {% if project_quote_mode %}
+              Preventivo collegato al progetto corrente con supporto import righe da listino contatto.
+            {% else %}
+              Compila i dettagli generali e aggiungi le righe articolo con i relativi importi.
+            {% endif %}
+          </p>
         </div>
         <div class="uk-flex uk-flex-wrap uk-gap-small uk-visible@l">
-          <a class="uk-button uk-button-default" href="/finance/quotes/">Annulla</a>
+          {% if mode == "update" and item %}
+            <a class="uk-button uk-button-default" href="/finance/quotes/pdf?id={{ item.id }}">Scarica PDF</a>
+            <a class="uk-button uk-button-default" href="{{ quote_share_url|default:'/finance/quotes/' }}">Link cliente</a>
+          {% endif %}
+          <a class="uk-button uk-button-default" href="{{ project_quote_back_url|default:'/finance/quotes/' }}">Annulla</a>
           <button class="uk-button uk-button-primary" type="submit" form="quote-editor-form">Salva preventivo</button>
         </div>
       </div>
@@ -55,11 +71,30 @@
           <div class="form-errors">{{ line_formset.non_form_errors }}</div>
         </div>
       {% endif %}
+      {% if mode == "update" and item %}
+        <div class="uk-alert-primary uk-margin-medium-top" uk-alert>
+          <p class="uk-margin-remove">
+            Conferma cliente:
+            {% if item.customer_signed_at %}
+              <strong>firmato da {{ item.customer_signed_name|default:"-" }} il {{ item.customer_signed_at|date:"d/m/Y H:i" }}</strong>.
+            {% else %}
+              <strong>in attesa</strong>.
+            {% endif %}
+            {% if quote_public_url %}
+              <br>Link attivo fino al {{ item.public_access_expires_at|date:"d/m/Y H:i" }}:
+              <a href="{{ quote_public_url }}" target="_blank" rel="noopener">{{ quote_public_url }}</a>
+            {% endif %}
+          </p>
+        </div>
+      {% endif %}
 
       <div class="uk-grid-large" uk-grid>
         <div class="uk-width-1-1 uk-width-expand@l">
           <form id="quote-editor-form" class="uk-form-stacked" method="post" action="">
             {% csrf_token %}
+            {% if locked_project %}
+              <input type="hidden" name="project_id" value="{{ locked_project.id }}">
+            {% endif %}
 
             <section class="uk-card uk-card-default uk-card-small quote-card">
               <div class="uk-card-header">
@@ -75,17 +110,50 @@
                     <label class="uk-form-label" for="id_title">Titolo</label>
                     <div class="uk-form-controls">{{ form.title }}</div>
                   </div>
-                  <div class="quote-field">
-                    <label class="uk-form-label" for="id_customer">Cliente</label>
-                    <div class="uk-form-controls">{{ form.customer }}</div>
-                  </div>
-                  <div class="quote-field">
-                    <label class="uk-form-label" for="id_project_choice">Progetto</label>
-                    <div class="uk-form-controls">
-                      {{ form.project_choice }}
-                      <input id="id_project_name" name="project_name" type="text" placeholder="Nome nuovo progetto" value="{{ form.project_name.value|default:'' }}" style="display:none;" class="uk-input uk-margin-small-top">
+                  {% if locked_customer %}
+                    <div class="quote-field">
+                      <label class="uk-form-label" for="id_customer_locked">Cliente</label>
+                      <div class="uk-form-controls">
+                        <input id="id_customer_locked" class="uk-input" type="text" value="{{ locked_customer.name }}" readonly>
+                        <input type="hidden" name="customer" value="{{ locked_customer.id }}">
+                      </div>
                     </div>
+                  {% else %}
+                    <div class="quote-field">
+                      <label class="uk-form-label" for="id_customer">Cliente</label>
+                      <div class="uk-form-controls">{{ form.customer }}</div>
+                    </div>
+                  {% endif %}
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_delivery_address">Destinazione merce</label>
+                    <div class="uk-form-controls">{{ form.delivery_address }}</div>
                   </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_payment_method">Modalita di pagamento</label>
+                    <div class="uk-form-controls">{{ form.payment_method }}</div>
+                  </div>
+                  <div class="quote-field">
+                    <label class="uk-form-label" for="id_shipping_method">Modalita di spedizione</label>
+                    <div class="uk-form-controls">{{ form.shipping_method }}</div>
+                  </div>
+                  {% if locked_project %}
+                    <div class="quote-field">
+                      <label class="uk-form-label" for="id_project_locked">Progetto</label>
+                      <div class="uk-form-controls">
+                        <input id="id_project_locked" class="uk-input" type="text" value="{{ locked_project.name }}" readonly>
+                        <input id="id_project_choice" name="project_choice" type="hidden" value="{{ locked_project.id }}">
+                        <input id="id_project_name" name="project_name" type="hidden" value="">
+                      </div>
+                    </div>
+                  {% else %}
+                    <div class="quote-field">
+                      <label class="uk-form-label" for="id_project_choice">Progetto</label>
+                      <div class="uk-form-controls">
+                        {{ form.project_choice }}
+                        <input id="id_project_name" name="project_name" type="text" placeholder="Nome nuovo progetto" value="{{ form.project_name.value|default:'' }}" style="display:none;" class="uk-input uk-margin-small-top">
+                      </div>
+                    </div>
+                  {% endif %}
                   <div class="quote-field">
                     <label class="uk-form-label" for="id_issue_date">Data emissione</label>
                     <div class="uk-form-controls">{{ form.issue_date }}</div>
@@ -135,6 +203,31 @@
                 </div>
               </div>
               <div class="uk-card-body">
+                {% if price_lists_payload %}
+                  <section class="uk-alert-primary uk-margin-bottom">
+                    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap uk-gap-small">
+                      <div>
+                        <strong>Listini contatto · {{ price_lists_contact.display_name }}</strong>
+                        <p class="uk-text-meta uk-margin-small-top">Puoi importare automaticamente le righe articolo dal listino selezionato.</p>
+                      </div>
+                      <div class="uk-flex uk-flex-wrap uk-gap-small uk-width-expand@s uk-width-auto@l">
+                        <select id="contact-price-list-select" class="uk-select">
+                          <option value="">Seleziona listino</option>
+                          {% for list_row in price_lists_payload %}
+                            <option value="{{ list_row.id }}">{{ list_row.title }} ({{ list_row.currency_code }})</option>
+                          {% endfor %}
+                        </select>
+                        <button class="uk-button uk-button-primary" type="button" id="import-price-list-lines">
+                          Importa righe listino
+                        </button>
+                      </div>
+                    </div>
+                  </section>
+                {% elif locked_customer %}
+                  <section class="uk-alert-warning uk-margin-bottom">
+                    Nessun listino attivo disponibile nel toolbox del contatto collegato.
+                  </section>
+                {% endif %}
                 {{ line_formset.management_form }}
                 <div id="quote-lines" class="quote-lines-stack">
                   {% for line_form in line_formset %}
@@ -184,8 +277,12 @@
               Se sono presenti righe articolo, il totale netto viene ricalcolato dal dettaglio righe e l'IVA viene applicata dal codice IVA selezionato sul preventivo.
             </div>
             <div class="uk-flex uk-flex-wrap uk-gap-small uk-hidden@l quote-mobile-actions">
+              {% if mode == "update" and item %}
+                <a class="uk-button uk-button-default uk-width-1-1" href="/finance/quotes/pdf?id={{ item.id }}">Scarica PDF</a>
+                <a class="uk-button uk-button-default uk-width-1-1" href="{{ quote_share_url|default:'/finance/quotes/' }}">Link cliente</a>
+              {% endif %}
               <button class="uk-button uk-button-primary uk-width-1-1" type="submit">Salva preventivo</button>
-              <a class="uk-button uk-button-default uk-width-1-1" href="/finance/quotes/">Annulla</a>
+              <a class="uk-button uk-button-default uk-width-1-1" href="{{ project_quote_back_url|default:'/finance/quotes/' }}">Annulla</a>
             </div>
           </form>
         </div>
@@ -255,6 +352,9 @@
       </template>
     </section>
     {{ vat_rates|json_script:"quote-vat-rates-data" }}
+    {% if price_lists_payload %}
+      {{ price_lists_payload|json_script:"quote-price-lists-data" }}
+    {% endif %}
   {% endif %}
 {% endblock %}
 
@@ -273,7 +373,11 @@
       var summaryCurrency2 = document.getElementById("quote-summary-currency-2");
       var vatRatesPayload = document.getElementById("quote-vat-rates-data");
       var vatSelect = document.getElementById("id_vat_code");
+      var priceListsPayload = document.getElementById("quote-price-lists-data");
+      var priceListSelect = document.getElementById("contact-price-list-select");
+      var importPriceListBtn = document.getElementById("import-price-list-lines");
       var vatRates = {};
+      var priceListsMap = {};
 
       if (!container || !addBtn || !template || !totalForms) return;
 
@@ -284,6 +388,15 @@
           });
         } catch (err) {
           vatRates = {};
+        }
+      }
+      if (priceListsPayload) {
+        try {
+          JSON.parse(priceListsPayload.textContent || "[]").forEach(function (row) {
+            priceListsMap[String(row.id)] = row;
+          });
+        } catch (err) {
+          priceListsMap = {};
         }
       }
 
@@ -306,6 +419,12 @@
       function activeRows() {
         return Array.from(container.querySelectorAll("[data-line-form]")).filter(function (row) {
           return row.dataset.deleted !== "1" && rowHasContent(row);
+        });
+      }
+
+      function visibleRows() {
+        return Array.from(container.querySelectorAll("[data-line-form]")).filter(function (row) {
+          return row.dataset.deleted !== "1";
         });
       }
 
@@ -344,7 +463,7 @@
       }
 
       function renumberRows() {
-        activeRows().forEach(function (row, idx) {
+        visibleRows().forEach(function (row, idx) {
           var orderInput = row.querySelector('input[name$="-row_order"]');
           var indexLabel = row.querySelector("[data-line-index]");
           if (orderInput) orderInput.value = String(idx + 1);
@@ -352,14 +471,19 @@
         });
       }
 
+      function markRowDeleted(row) {
+        var deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+        if (deleteInput) deleteInput.checked = true;
+        row.dataset.deleted = "1";
+        row.hidden = true;
+      }
+
       function bindRemove(row) {
         var removeBtn = row.querySelector("[data-line-remove]");
         var deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
         if (!removeBtn || !deleteInput) return;
         removeBtn.addEventListener("click", function () {
-          deleteInput.checked = true;
-          row.dataset.deleted = "1";
-          row.hidden = true;
+          markRowDeleted(row);
           renumberRows();
           updateSummary();
         });
@@ -409,6 +533,73 @@
       }
       if (vatSelect) {
         vatSelect.addEventListener("change", updateSummary);
+      }
+
+      if (importPriceListBtn && priceListSelect) {
+        importPriceListBtn.addEventListener("click", function () {
+          var selectedId = String(priceListSelect.value || "");
+          var selectedList = priceListsMap[selectedId];
+          if (!selectedList) {
+            window.alert("Seleziona un listino da importare.");
+            return;
+          }
+
+          var items = Array.isArray(selectedList.items) ? selectedList.items : [];
+          if (!items.length) {
+            window.alert("Il listino selezionato non contiene righe attive.");
+            return;
+          }
+
+          if (activeRows().length && !window.confirm("Le righe esistenti verranno sostituite. Continuare?")) {
+            return;
+          }
+
+          visibleRows().forEach(function (row) {
+            markRowDeleted(row);
+          });
+
+          items.forEach(function () {
+            addRow();
+          });
+
+          var rows = visibleRows();
+          rows.forEach(function (row, idx) {
+            var item = items[idx] || {};
+            var codeInput = row.querySelector('input[name$="-code"]');
+            var descInput = row.querySelector('input[name$="-description"]');
+            var netInput = row.querySelector('input[name$="-net_amount"]');
+            var qtyInput = row.querySelector('input[name$="-quantity"]');
+            var discountInput = row.querySelector('input[name$="-discount"]');
+            var deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+
+            if (codeInput) codeInput.value = item.code || "";
+            if (descInput) descInput.value = (item.description || "").trim() || item.title || "";
+            if (netInput) netInput.value = parseDecimal(item.unit_price).toFixed(2);
+
+            var minQty = parseDecimal(item.min_quantity || "1");
+            if (qtyInput) qtyInput.value = (minQty > 0 ? minQty : 1).toFixed(2);
+            if (discountInput) discountInput.value = "0.00";
+            if (deleteInput) deleteInput.checked = false;
+
+            row.dataset.deleted = "0";
+            row.hidden = false;
+          });
+
+          if (selectedList.currency_code) {
+            var currencySelect = document.getElementById("id_currency");
+            if (currencySelect && currencySelect.options) {
+              var wanted = String(selectedList.currency_code).toUpperCase();
+              Array.from(currencySelect.options).forEach(function (opt, optionIndex) {
+                if ((opt.textContent || "").trim().toUpperCase() === wanted) {
+                  currencySelect.selectedIndex = optionIndex;
+                }
+              });
+            }
+          }
+
+          renumberRows();
+          updateSummary();
+        });
       }
 
       addBtn.addEventListener("click", addRow);

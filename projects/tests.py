@@ -4,6 +4,8 @@ from decimal import Decimal
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
+from contacts.models import Contact, ContactDeliveryAddress, ContactPriceList, ContactPriceListItem, ContactToolbox
+from finance_hub.models import PaymentMethod, Quote, ShippingMethod
 from planner.models import PlannerItem
 from routines.models import Routine, RoutineItem
 from subscriptions.models import Account, Currency, Subscription
@@ -390,3 +392,126 @@ class ProjectDetailPlannerModalTests(TestCase):
         self.assertEqual(response.status_code, 302)
         subproject.refresh_from_db()
         self.assertEqual(subproject.status, SubProject.Status.DONE)
+
+
+class ProjectQuoteBuilderTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="project_quote_user", password="test1234")
+        self.client.login(username="project_quote_user", password="test1234")
+        self.customer = Customer.objects.create(owner=self.user, name="Cliente Preventivi", email="cliente@example.com")
+        self.project = Project.objects.create(owner=self.user, name="Progetto Preventivo", customer=self.customer)
+        self.currency, _ = Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
+
+        self.contact = Contact.objects.create(
+            owner=self.user,
+            display_name=self.customer.name,
+            entity_type=Contact.EntityType.HYBRID,
+            role_customer=True,
+        )
+        toolbox = ContactToolbox.objects.create(owner=self.user, contact=self.contact)
+        self.price_list = ContactPriceList.objects.create(
+            owner=self.user,
+            toolbox=toolbox,
+            title="Listino progetto",
+            currency_code="EUR",
+            is_active=True,
+        )
+        ContactPriceListItem.objects.create(
+            owner=self.user,
+            price_list=self.price_list,
+            row_order=1,
+            code="LST-001",
+            title="Voce listino",
+            description="Servizio standard",
+            min_quantity=Decimal("2.00"),
+            unit_price=Decimal("150.00"),
+            is_active=True,
+        )
+        self.delivery_address = ContactDeliveryAddress.objects.create(
+            owner=self.user,
+            contact=self.contact,
+            label="Magazzino Cliente Preventivi",
+            recipient_name="Ufficio acquisti",
+            line1="Via Consegna 15",
+            postal_code="40100",
+            city="Bologna",
+            province="BO",
+            country="Italia",
+            is_default=True,
+            is_active=True,
+        )
+        self.payment_method = PaymentMethod.objects.create(owner=self.user, name="Bonifico bancario", is_active=True)
+        self.shipping_method = ShippingMethod.objects.create(owner=self.user, name="Corriere espresso", is_active=True)
+
+    def test_project_quote_page_loads_with_price_list_selector(self):
+        response = self.client.get(f"/projects/quotes/add?project={self.project.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nuovo preventivo")
+        self.assertContains(response, self.price_list.title)
+        self.assertContains(response, "quote-price-lists-data")
+        self.assertContains(response, "Destinazione merce")
+        self.assertContains(response, "Modalita di pagamento")
+        self.assertContains(response, "Modalita di spedizione")
+        self.assertContains(response, self.delivery_address.label)
+        self.assertContains(response, self.payment_method.name)
+        self.assertContains(response, self.shipping_method.name)
+
+    def test_project_quote_post_creates_quote(self):
+        response = self.client.post(
+            "/projects/quotes/add",
+            data={
+                "project_id": str(self.project.id),
+                "project_choice": str(self.project.id),
+                "project_name": "",
+                "code": "PRJ-Q-001",
+                "title": "Preventivo dal progetto",
+                "delivery_address": self.delivery_address.id,
+                "payment_method": self.payment_method.id,
+                "shipping_method": self.shipping_method.id,
+                "issue_date": "2026-03-22",
+                "valid_until": "2026-04-22",
+                "currency": self.currency.id,
+                "vat_code": "",
+                "amount_net": "300.00",
+                "status": Quote.Status.DRAFT,
+                "note": "Creato da projects",
+                "lines-TOTAL_FORMS": "1",
+                "lines-INITIAL_FORMS": "0",
+                "lines-MIN_NUM_FORMS": "0",
+                "lines-MAX_NUM_FORMS": "1000",
+                "lines-0-row_order": "1",
+                "lines-0-code": "LST-001",
+                "lines-0-description": "Servizio standard",
+                "lines-0-net_amount": "150.00",
+                "lines-0-quantity": "2.00",
+                "lines-0-discount": "0.00",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, f"/projects/view?id={self.project.id}")
+        quote = Quote.objects.get(owner=self.user, code="PRJ-Q-001")
+        self.assertEqual(quote.project_id, self.project.id)
+        self.assertEqual(quote.customer_id, self.customer.id)
+        self.assertEqual(quote.delivery_address_id, self.delivery_address.id)
+        self.assertEqual(quote.payment_method_id, self.payment_method.id)
+        self.assertEqual(quote.shipping_method_id, self.shipping_method.id)
+        self.assertEqual(quote.lines.count(), 1)
+
+    def test_project_detail_lists_linked_quotes(self):
+        quote = Quote.objects.create(
+            owner=self.user,
+            code="PRJ-Q-DET-001",
+            title="Preventivo visibile nel dettaglio",
+            customer=self.customer,
+            project=self.project,
+            issue_date=date(2026, 3, 22),
+            currency=self.currency,
+            amount_net=Decimal("100.00"),
+            status=Quote.Status.DRAFT,
+        )
+
+        response = self.client.get(f"/projects/view?id={self.project.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Preventivi collegati")
+        self.assertContains(response, quote.code)
+        self.assertContains(response, f"/finance/quotes/update?id={quote.id}")

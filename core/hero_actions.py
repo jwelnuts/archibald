@@ -27,6 +27,7 @@ HERO_ACTIONS = {
         {"key": "edit", "label": "Modifica", "default": True},
         {"key": "expense", "label": "Inserisci spesa", "default": True},
         {"key": "income", "label": "Inserisci guadagno", "default": True},
+        {"key": "quote", "label": "Nuovo preventivo", "default": True},
         {"key": "planner", "label": "Aggiungi promemoria", "default": True},
         {"key": "routine_item", "label": "Aggiungi routine", "default": True},
         {"key": "storyboard", "label": "Storyboard", "default": True},

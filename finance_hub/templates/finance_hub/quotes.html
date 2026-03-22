@@ -23,7 +23,12 @@
             <span class="muted">
               {{ row.get_status_display }} · {% if row.vat_code %}IVA {{ row.vat_code.code }} ({{ row.vat_code.rate }}%){% else %}IVA 0%{% endif %} · {{ row.total_amount }} {{ row.currency.code }} ·
               righe articolo: {{ row.lines.count }}
+              {% if row.delivery_address %} · consegna: {{ row.delivery_address.label }}{% endif %}
+              {% if row.payment_method %} · pagamento: {{ row.payment_method.name }}{% endif %}
+              {% if row.shipping_method %} · spedizione: {{ row.shipping_method.name }}{% endif %}
             </span>
+            <a class="btn" href="/finance/quotes/pdf?id={{ row.id }}">PDF</a>
+            <a class="btn" href="/finance/quotes/share?id={{ row.id }}">Link cliente</a>
             <a class="btn" href="/finance/quotes/update?id={{ row.id }}">Modifica</a>
             <a class="btn" href="/finance/quotes/remove?id={{ row.id }}">Rimuovi</a>
           </li>

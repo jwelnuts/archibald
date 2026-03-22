@@ -10,6 +10,10 @@ urlpatterns = [
     path("quotes/add", views.add_quote, name="finance-hub-quotes-add"),
     path("quotes/update", views.update_quote, name="finance-hub-quotes-update"),
     path("quotes/remove", views.remove_quote, name="finance-hub-quotes-remove"),
+    path("quotes/share", views.share_quote, name="finance-hub-quotes-share"),
+    path("quotes/pdf", views.quote_pdf, name="finance-hub-quotes-pdf"),
+    path("quotes/confirm/<str:token>", views.public_quote_confirm, name="finance-hub-quotes-public"),
+    path("quotes/confirm/<str:token>/pdf", views.public_quote_pdf, name="finance-hub-quotes-public-pdf"),
 
     path("invoices/", views.invoices, name="finance-hub-invoices"),
     path("invoices/add", views.add_invoice, name="finance-hub-invoices-add"),

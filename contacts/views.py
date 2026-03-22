@@ -6,7 +6,13 @@ from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 
-from .forms import ContactForm, ContactPriceListForm, ContactPriceListItemFormSet, ContactToolboxForm
+from .forms import (
+    ContactDeliveryAddressFormSet,
+    ContactForm,
+    ContactPriceListForm,
+    ContactPriceListItemFormSet,
+    ContactToolboxForm,
+)
 from .models import Contact, ContactPriceList, ContactToolbox
 from .services import ensure_legacy_records_for_contact, sync_contacts_from_legacy
 
@@ -27,6 +33,29 @@ def _safe_next_url(request):
     ):
         return next_url
     return ""
+
+
+def _contact_post_with_delivery_defaults(request):
+    post_data = request.POST.copy()
+    if "delivery-TOTAL_FORMS" not in post_data:
+        post_data["delivery-TOTAL_FORMS"] = "0"
+        post_data["delivery-INITIAL_FORMS"] = "0"
+        post_data["delivery-MIN_NUM_FORMS"] = "0"
+        post_data["delivery-MAX_NUM_FORMS"] = "1000"
+    return post_data
+
+
+def _save_delivery_addresses(formset, *, owner, contact):
+    formset.instance = contact
+    address_items = formset.save(commit=False)
+    for deleted in formset.deleted_objects:
+        deleted.delete()
+    for idx, address in enumerate(address_items, start=1):
+        address.owner = owner
+        address.contact = contact
+        if not address.row_order:
+            address.row_order = idx
+        address.save()
 
 
 @login_required
@@ -121,17 +150,27 @@ def add_contact(request):
     sync_contacts_from_legacy(request.user)
     next_url = _safe_next_url(request)
     if request.method == "POST":
-        form = ContactForm(request.POST, request.FILES)
-        if form.is_valid():
-            item = form.save(commit=False)
-            item.owner = request.user
-            item.save()
-            _ensure_toolbox(item)
-            ensure_legacy_records_for_contact(item)
+        post_data = _contact_post_with_delivery_defaults(request)
+        form = ContactForm(post_data, request.FILES)
+        temp_item = Contact(owner=request.user)
+        address_formset = ContactDeliveryAddressFormSet(post_data, instance=temp_item, prefix="delivery")
+        if form.is_valid() and address_formset.is_valid():
+            with transaction.atomic():
+                item = form.save(commit=False)
+                item.owner = request.user
+                item.save()
+                _save_delivery_addresses(address_formset, owner=request.user, contact=item)
+                _ensure_toolbox(item)
+                ensure_legacy_records_for_contact(item)
             return redirect(next_url or "/contacts/")
     else:
         form = ContactForm()
-    return render(request, "contacts/add_contact.html", {"form": form, "next_url": next_url})
+        address_formset = ContactDeliveryAddressFormSet(instance=Contact(owner=request.user), prefix="delivery")
+    return render(
+        request,
+        "contacts/add_contact.html",
+        {"form": form, "address_formset": address_formset, "next_url": next_url},
+    )
 
 
 @login_required
@@ -142,15 +181,20 @@ def update_contact(request):
     if item_id:
         item = get_object_or_404(Contact, id=item_id, owner=request.user)
         if request.method == "POST":
-            form = ContactForm(request.POST, request.FILES, instance=item)
-            if form.is_valid():
-                saved = form.save()
-                _ensure_toolbox(saved)
-                ensure_legacy_records_for_contact(saved)
+            post_data = _contact_post_with_delivery_defaults(request)
+            form = ContactForm(post_data, request.FILES, instance=item)
+            address_formset = ContactDeliveryAddressFormSet(post_data, instance=item, prefix="delivery")
+            if form.is_valid() and address_formset.is_valid():
+                with transaction.atomic():
+                    saved = form.save()
+                    _save_delivery_addresses(address_formset, owner=request.user, contact=saved)
+                    _ensure_toolbox(saved)
+                    ensure_legacy_records_for_contact(saved)
                 return redirect("/contacts/")
         else:
             form = ContactForm(instance=item)
-        return render(request, "contacts/update_contact.html", {"form": form, "item": item})
+            address_formset = ContactDeliveryAddressFormSet(instance=item, prefix="delivery")
+        return render(request, "contacts/update_contact.html", {"form": form, "address_formset": address_formset, "item": item})
     rows = Contact.objects.filter(owner=request.user).order_by("display_name")[:30]
     return render(request, "contacts/update_contact.html", {"rows": rows})
 

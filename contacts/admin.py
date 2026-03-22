@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Contact, ContactPriceList, ContactPriceListItem, ContactToolbox
+from .models import Contact, ContactDeliveryAddress, ContactPriceList, ContactPriceListItem, ContactToolbox
 
 
 @admin.register(Contact)
@@ -37,3 +37,10 @@ class ContactPriceListAdmin(admin.ModelAdmin):
     list_filter = ("is_active", "currency_code")
     search_fields = ("title", "toolbox__contact__display_name")
     inlines = [ContactPriceListItemInline]
+
+
+@admin.register(ContactDeliveryAddress)
+class ContactDeliveryAddressAdmin(admin.ModelAdmin):
+    list_display = ("id", "owner", "contact", "label", "city", "is_default", "is_active")
+    list_filter = ("is_default", "is_active", "country")
+    search_fields = ("contact__display_name", "label", "recipient_name", "line1", "city", "postal_code")

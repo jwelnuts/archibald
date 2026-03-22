@@ -4,3 +4,5 @@ __pycache__/
 *.pyc
 staticfiles/
 media/
+*.sqlite3
+*.sqlite3.bak*

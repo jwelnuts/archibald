@@ -1,16 +1,21 @@
 from datetime import timedelta
 from decimal import Decimal
+from urllib.parse import quote as urlquote
 
-from contacts.models import Contact
+from contacts.models import Contact, ContactDeliveryAddress
 from contacts.services import ensure_legacy_records_for_contact, upsert_contact
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Max, Sum
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
+from projects.models import Customer
 
-from .forms import InvoiceForm, QuoteForm, QuoteLineFormSet, VatCodeForm, WorkOrderForm
+from .forms import InvoiceForm, PublicQuoteConfirmationForm, QuoteForm, QuoteLineFormSet, VatCodeForm, WorkOrderForm
 from .models import Invoice, Quote, VatCode, WorkOrder
+from .quote_pdf import build_quote_pdf_bytes
 
 
 def _sync_contact_from_customer(owner, customer):
@@ -71,6 +76,133 @@ def _sync_quote_lines_vat(quote):
     for line in quote.lines.all():
         _apply_quote_vat_to_line(line, quote)
         line.save(update_fields=["vat_code", "gross_amount", "updated_at"])
+
+
+def _client_ip(request):
+    forwarded = (request.META.get("HTTP_X_FORWARDED_FOR") or "").strip()
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return (request.META.get("REMOTE_ADDR") or "").strip() or None
+
+
+def _quote_public_urls(request, token):
+    public_url = request.build_absolute_uri(reverse("finance-hub-quotes-public", args=[token]))
+    public_pdf_url = request.build_absolute_uri(reverse("finance-hub-quotes-public-pdf", args=[token]))
+    return public_url, public_pdf_url
+
+
+def _public_quote_form_initial(item):
+    customer = item.customer
+    delivery = item.delivery_address
+    return {
+        "signer_name": item.customer_signed_name or "",
+        "customer_name": customer.name if customer else "",
+        "customer_email": customer.email if customer else "",
+        "customer_phone": customer.phone if customer else "",
+        "customer_notes": customer.notes if customer else "",
+        "delivery_label": delivery.label if delivery else "",
+        "delivery_recipient_name": delivery.recipient_name if delivery else "",
+        "delivery_line1": delivery.line1 if delivery else "",
+        "delivery_line2": delivery.line2 if delivery else "",
+        "delivery_postal_code": delivery.postal_code if delivery else "",
+        "delivery_city": delivery.city if delivery else "",
+        "delivery_province": delivery.province if delivery else "",
+        "delivery_country": delivery.country if delivery else "Italia",
+        "reject_reason": item.customer_decision_note or "",
+    }
+
+
+def _apply_public_quote_customer_updates(item, cleaned_data):
+    name = (cleaned_data.get("customer_name") or "").strip()
+    email = (cleaned_data.get("customer_email") or "").strip()
+    phone = (cleaned_data.get("customer_phone") or "").strip()
+    notes = (cleaned_data.get("customer_notes") or "").strip()
+
+    customer = item.customer
+    if not name:
+        return customer
+
+    existing = (
+        Customer.objects.filter(owner=item.owner, name=name)
+        .exclude(id=customer.id if customer else None)
+        .first()
+    )
+    if existing:
+        customer = existing
+    elif customer is None:
+        customer = Customer(owner=item.owner, name=name)
+    else:
+        customer.name = name
+
+    customer.email = email
+    customer.phone = phone
+    customer.notes = notes
+    customer.save()
+    _sync_contact_from_customer(item.owner, customer)
+    item.customer = customer
+    return customer
+
+
+def _apply_public_quote_delivery_updates(item, cleaned_data, customer):
+    if not cleaned_data.get("has_delivery_address"):
+        item.delivery_address = None
+        return
+
+    label = (cleaned_data.get("delivery_label") or "").strip() or "Destinazione principale"
+    recipient_name = (cleaned_data.get("delivery_recipient_name") or "").strip()
+    line1 = (cleaned_data.get("delivery_line1") or "").strip()
+    line2 = (cleaned_data.get("delivery_line2") or "").strip()
+    postal_code = (cleaned_data.get("delivery_postal_code") or "").strip()
+    city = (cleaned_data.get("delivery_city") or "").strip()
+    province = (cleaned_data.get("delivery_province") or "").strip()
+    country = (cleaned_data.get("delivery_country") or "").strip() or "Italia"
+
+    delivery = item.delivery_address
+    contact = delivery.contact if delivery and delivery.contact_id else None
+    if contact is None:
+        contact_name = customer.name if customer else (cleaned_data.get("customer_name") or "").strip()
+        contact = upsert_contact(
+            item.owner,
+            contact_name,
+            entity_type=Contact.EntityType.HYBRID,
+            email=customer.email if customer else cleaned_data.get("customer_email", ""),
+            phone=customer.phone if customer else cleaned_data.get("customer_phone", ""),
+            notes=customer.notes if customer else cleaned_data.get("customer_notes", ""),
+            roles={"role_customer"},
+        )
+        ensure_legacy_records_for_contact(contact)
+
+    if contact is None:
+        item.delivery_address = None
+        return
+
+    if delivery is None:
+        max_order = (
+            ContactDeliveryAddress.objects.filter(owner=item.owner, contact=contact).aggregate(value=Max("row_order"))[
+                "value"
+            ]
+            or 0
+        )
+        delivery = ContactDeliveryAddress(
+            owner=item.owner,
+            contact=contact,
+            row_order=max_order + 1,
+            is_default=False,
+            is_active=True,
+        )
+
+    delivery.contact = contact
+    delivery.label = label
+    delivery.recipient_name = recipient_name
+    delivery.line1 = line1
+    delivery.line2 = line2
+    delivery.postal_code = postal_code
+    delivery.city = city
+    delivery.province = province
+    delivery.country = country
+    delivery.is_active = True
+    delivery.save()
+    item.delivery_address = delivery
 
 
 @login_required
@@ -145,7 +277,16 @@ def quotes(request):
     _ensure_default_vat_codes(request.user)
     rows = (
         Quote.objects.filter(owner=request.user)
-        .select_related("customer", "project", "currency", "vat_code")
+        .select_related(
+            "customer",
+            "delivery_address",
+            "delivery_address__contact",
+            "project",
+            "currency",
+            "vat_code",
+            "payment_method",
+            "shipping_method",
+        )
         .prefetch_related("lines")
         .order_by("-issue_date", "-id")[:100]
     )
@@ -224,6 +365,10 @@ def update_quote(request):
         else:
             form = QuoteForm(instance=item, owner=request.user)
             line_formset = QuoteLineFormSet(instance=item, prefix="lines")
+        quote_public_url = None
+        quote_public_pdf_url = None
+        if item.has_active_public_access():
+            quote_public_url, quote_public_pdf_url = _quote_public_urls(request, item.public_access_token)
         return render(
             request,
             "finance_hub/quote_form.html",
@@ -233,6 +378,9 @@ def update_quote(request):
                 "mode": "update",
                 "item": item,
                 "vat_rates": _vat_rates_payload(request.user),
+                "quote_share_url": f"/finance/quotes/share?id={item.id}",
+                "quote_public_url": quote_public_url,
+                "quote_public_pdf_url": quote_public_pdf_url,
             },
         )
     rows = Quote.objects.filter(owner=request.user).order_by("-issue_date", "-id")[:20]
@@ -251,6 +399,175 @@ def remove_quote(request):
             return redirect("/finance/quotes/")
     rows = Quote.objects.filter(owner=request.user).order_by("-issue_date", "-id")[:20]
     return render(request, "finance_hub/quote_remove.html", {"item": item, "rows": rows})
+
+
+@login_required
+def share_quote(request):
+    quote_id = request.GET.get("id")
+    item = get_object_or_404(Quote.objects.select_related("customer"), id=quote_id, owner=request.user)
+    force_new = request.GET.get("renew") == "1"
+    token = item.issue_public_access(force_new=force_new)
+    public_url, public_pdf_url = _quote_public_urls(request, token)
+    customer_email = item.customer.email if item.customer and item.customer.email else ""
+    subject = f"Preventivo {item.code or item.title}"
+    body = (
+        f"Ciao,\n\n"
+        f"ti condivido il preventivo \"{item.title}\".\n"
+        f"Puoi visualizzarlo, scaricarlo in PDF e confermarlo da qui:\n{public_url}\n\n"
+        f"Grazie."
+    )
+    mailto_url = ""
+    if customer_email:
+        mailto_url = f"mailto:{urlquote(customer_email)}?subject={urlquote(subject)}&body={urlquote(body)}"
+
+    return render(
+        request,
+        "finance_hub/quote_share_link.html",
+        {
+            "item": item,
+            "public_url": public_url,
+            "public_pdf_url": public_pdf_url,
+            "expires_at": item.public_access_expires_at,
+            "mailto_url": mailto_url,
+        },
+    )
+
+
+@login_required
+def quote_pdf(request):
+    quote_id = request.GET.get("id")
+    item = get_object_or_404(
+        Quote.objects.select_related(
+            "customer",
+            "delivery_address",
+            "delivery_address__contact",
+            "project",
+            "currency",
+            "vat_code",
+            "payment_method",
+            "shipping_method",
+        ).prefetch_related("lines"),
+        id=quote_id,
+        owner=request.user,
+    )
+    payload = build_quote_pdf_bytes(item)
+    filename = (item.code or f"quote-{item.id}").replace(" ", "_")
+    response = HttpResponse(payload, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
+    return response
+
+
+def public_quote_confirm(request, token):
+    item = (
+        Quote.objects.select_related(
+            "customer",
+            "delivery_address",
+            "delivery_address__contact",
+            "project",
+            "currency",
+            "vat_code",
+            "payment_method",
+            "shipping_method",
+        )
+        .prefetch_related("lines")
+        .filter(public_access_token=token)
+        .first()
+    )
+    if item is None:
+        return render(request, "finance_hub/quote_public_confirm.html", {"invalid_link": True}, status=404)
+    if not item.has_active_public_access():
+        return render(
+            request,
+            "finance_hub/quote_public_confirm.html",
+            {"invalid_link": True, "item": item},
+            status=410,
+        )
+
+    decision_locked = bool(item.customer_signed_at or item.status in {Quote.Status.APPROVED, Quote.Status.REJECTED})
+    just_confirmed = False
+    just_rejected = False
+    decision = ""
+    public_form = PublicQuoteConfirmationForm(initial=_public_quote_form_initial(item))
+
+    if request.method == "POST" and not decision_locked:
+        decision = (request.POST.get("decision") or "").strip().lower()
+        public_form = PublicQuoteConfirmationForm(request.POST, decision=decision)
+        if public_form.is_valid():
+            with transaction.atomic():
+                customer = _apply_public_quote_customer_updates(item, public_form.cleaned_data)
+                _apply_public_quote_delivery_updates(item, public_form.cleaned_data, customer)
+
+                item.customer_signed_name = (public_form.cleaned_data.get("signer_name") or "").strip()
+                item.customer_signed_at = timezone.now()
+                item.customer_signed_ip = _client_ip(request)
+                item.customer_signed_user_agent = (request.META.get("HTTP_USER_AGENT") or "")[:255]
+
+                if public_form.current_decision == "reject":
+                    item.status = Quote.Status.REJECTED
+                    item.customer_decision_note = (public_form.cleaned_data.get("reject_reason") or "").strip()
+                    just_rejected = True
+                else:
+                    item.status = Quote.Status.APPROVED
+                    item.customer_decision_note = ""
+                    just_confirmed = True
+
+                item.save(
+                    update_fields=[
+                        "customer_id",
+                        "delivery_address_id",
+                        "customer_signed_name",
+                        "customer_signed_at",
+                        "customer_signed_ip",
+                        "customer_signed_user_agent",
+                        "customer_decision_note",
+                        "status",
+                        "updated_at",
+                    ]
+                )
+            decision_locked = True
+            decision = public_form.current_decision
+
+    public_pdf_url = reverse("finance-hub-quotes-public-pdf", args=[token])
+    return render(
+        request,
+        "finance_hub/quote_public_confirm.html",
+        {
+            "item": item,
+            "invalid_link": False,
+            "just_confirmed": just_confirmed,
+            "just_rejected": just_rejected,
+            "decision_locked": decision_locked,
+            "decision": decision,
+            "public_form": public_form,
+            "public_pdf_url": public_pdf_url,
+        },
+    )
+
+
+def public_quote_pdf(request, token):
+    item = (
+        Quote.objects.select_related(
+            "customer",
+            "delivery_address",
+            "delivery_address__contact",
+            "project",
+            "currency",
+            "vat_code",
+            "payment_method",
+            "shipping_method",
+        )
+        .prefetch_related("lines")
+        .filter(public_access_token=token)
+        .first()
+    )
+    if item is None or not item.has_active_public_access():
+        return HttpResponse("Link non valido o scaduto.", status=404)
+
+    payload = build_quote_pdf_bytes(item)
+    filename = (item.code or f"quote-{item.id}").replace(" ", "_")
+    response = HttpResponse(payload, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
+    return response
 
 
 @login_required

@@ -7,7 +7,7 @@ from core.models import Payee
 from income.models import IncomeSource
 from projects.models import Customer
 
-from .models import Contact, ContactPriceList, ContactPriceListItem, ContactToolbox
+from .models import Contact, ContactDeliveryAddress, ContactPriceList, ContactPriceListItem, ContactToolbox
 from .services import sync_contacts_from_legacy
 
 
@@ -118,6 +118,147 @@ class ContactsViewsTests(TestCase):
 
         contact.refresh_from_db()
         self.assertEqual(contact.entity_type, Contact.EntityType.ENTITY)
+
+    def test_add_contact_can_store_multiple_delivery_addresses(self):
+        self.client.login(username="contacts_user", password="pwd12345")
+        response = self.client.post(
+            "/contacts/add",
+            {
+                "display_name": "Cliente con consegne",
+                "entity_type": Contact.EntityType.COMPANY,
+                "person_name": "",
+                "business_name": "Cliente con consegne SRL",
+                "email": "cliente.consegne@example.com",
+                "phone": "",
+                "website": "",
+                "city": "Milano",
+                "role_customer": "on",
+                "role_supplier": "",
+                "role_payee": "",
+                "role_income_source": "",
+                "notes": "",
+                "is_active": "on",
+                "delivery-TOTAL_FORMS": "2",
+                "delivery-INITIAL_FORMS": "0",
+                "delivery-MIN_NUM_FORMS": "0",
+                "delivery-MAX_NUM_FORMS": "1000",
+                "delivery-0-row_order": "1",
+                "delivery-0-label": "Magazzino Nord",
+                "delivery-0-recipient_name": "Ufficio spedizioni",
+                "delivery-0-line1": "Via Test 10",
+                "delivery-0-line2": "",
+                "delivery-0-postal_code": "20100",
+                "delivery-0-city": "Milano",
+                "delivery-0-province": "MI",
+                "delivery-0-country": "Italia",
+                "delivery-0-notes": "",
+                "delivery-0-is_default": "on",
+                "delivery-0-is_active": "on",
+                "delivery-1-row_order": "2",
+                "delivery-1-label": "Punto Sud",
+                "delivery-1-recipient_name": "Magazzino",
+                "delivery-1-line1": "Via Consegna 22",
+                "delivery-1-line2": "",
+                "delivery-1-postal_code": "70100",
+                "delivery-1-city": "Bari",
+                "delivery-1-province": "BA",
+                "delivery-1-country": "Italia",
+                "delivery-1-notes": "Consegna mattina",
+                "delivery-1-is_default": "",
+                "delivery-1-is_active": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/contacts/")
+
+        contact = Contact.objects.get(owner=self.user, display_name="Cliente con consegne")
+        addresses = ContactDeliveryAddress.objects.filter(owner=self.user, contact=contact).order_by("row_order", "id")
+        self.assertEqual(addresses.count(), 2)
+        self.assertEqual(addresses[0].label, "Magazzino Nord")
+        self.assertTrue(addresses[0].is_default)
+        self.assertEqual(addresses[1].city, "Bari")
+
+    def test_update_contact_can_add_new_delivery_address(self):
+        contact = Contact.objects.create(
+            owner=self.user,
+            display_name="Cliente update indirizzi",
+            entity_type=Contact.EntityType.COMPANY,
+            role_customer=True,
+        )
+        base_address = ContactDeliveryAddress.objects.create(
+            owner=self.user,
+            contact=contact,
+            row_order=1,
+            label="Sede principale",
+            recipient_name="Ricezione merci",
+            line1="Via Centrale 1",
+            postal_code="10100",
+            city="Torino",
+            province="TO",
+            country="Italia",
+            is_default=True,
+            is_active=True,
+        )
+
+        self.client.login(username="contacts_user", password="pwd12345")
+        response = self.client.post(
+            f"/contacts/update?id={contact.id}",
+            {
+                "display_name": "Cliente update indirizzi",
+                "entity_type": Contact.EntityType.COMPANY,
+                "person_name": "",
+                "business_name": "",
+                "email": "",
+                "phone": "",
+                "website": "",
+                "city": "Torino",
+                "role_customer": "on",
+                "role_supplier": "",
+                "role_payee": "",
+                "role_income_source": "",
+                "notes": "",
+                "is_active": "on",
+                "delivery-TOTAL_FORMS": "2",
+                "delivery-INITIAL_FORMS": "1",
+                "delivery-MIN_NUM_FORMS": "0",
+                "delivery-MAX_NUM_FORMS": "1000",
+                "delivery-0-id": str(base_address.id),
+                "delivery-0-row_order": "1",
+                "delivery-0-label": "Sede principale",
+                "delivery-0-recipient_name": "Ricezione merci",
+                "delivery-0-line1": "Via Centrale 1",
+                "delivery-0-line2": "",
+                "delivery-0-postal_code": "10100",
+                "delivery-0-city": "Torino",
+                "delivery-0-province": "TO",
+                "delivery-0-country": "Italia",
+                "delivery-0-notes": "",
+                "delivery-0-is_default": "",
+                "delivery-0-is_active": "on",
+                "delivery-1-id": "",
+                "delivery-1-row_order": "2",
+                "delivery-1-label": "Deposito secondario",
+                "delivery-1-recipient_name": "Capo magazzino",
+                "delivery-1-line1": "Via Logistica 99",
+                "delivery-1-line2": "",
+                "delivery-1-postal_code": "10040",
+                "delivery-1-city": "Leini",
+                "delivery-1-province": "TO",
+                "delivery-1-country": "Italia",
+                "delivery-1-notes": "",
+                "delivery-1-is_default": "on",
+                "delivery-1-is_active": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/contacts/")
+
+        addresses = ContactDeliveryAddress.objects.filter(owner=self.user, contact=contact).order_by("row_order", "id")
+        self.assertEqual(addresses.count(), 2)
+        self.assertEqual(addresses[1].label, "Deposito secondario")
+        self.assertTrue(addresses[1].is_default)
+        addresses = list(addresses)
+        self.assertFalse(addresses[0].is_default)
 
     def test_sync_from_legacy_does_not_override_manual_entity_type(self):
         contact = Contact.objects.create(

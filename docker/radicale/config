@@ -5,6 +5,7 @@ hosts = 0.0.0.0:5232
 type = htpasswd
 htpasswd_filename = /data/users
 htpasswd_encryption = bcrypt
+strip_domain = True
 
 [rights]
 type = from_file

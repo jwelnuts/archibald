@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Invoice, Quote, QuoteLine, VatCode, WorkOrder
+from .models import Invoice, PaymentMethod, Quote, QuoteLine, ShippingMethod, VatCode, WorkOrder
 
 
 class QuoteLineInline(admin.TabularInline):
@@ -12,9 +12,29 @@ class QuoteLineInline(admin.TabularInline):
 
 @admin.register(Quote)
 class QuoteAdmin(admin.ModelAdmin):
-    list_display = ("id", "owner", "code", "title", "vat_code", "status", "valid_until", "total_amount")
+    list_display = (
+        "id",
+        "owner",
+        "code",
+        "title",
+        "delivery_address",
+        "payment_method",
+        "shipping_method",
+        "vat_code",
+        "status",
+        "valid_until",
+        "total_amount",
+    )
     list_filter = ("status",)
-    search_fields = ("code", "title", "customer__name", "project__name")
+    search_fields = (
+        "code",
+        "title",
+        "customer__name",
+        "project__name",
+        "delivery_address__label",
+        "payment_method__name",
+        "shipping_method__name",
+    )
     inlines = [QuoteLineInline]
 
 
@@ -23,6 +43,20 @@ class VatCodeAdmin(admin.ModelAdmin):
     list_display = ("id", "owner", "code", "description", "rate", "is_active")
     list_filter = ("is_active",)
     search_fields = ("code", "description", "owner__username")
+
+
+@admin.register(PaymentMethod)
+class PaymentMethodAdmin(admin.ModelAdmin):
+    list_display = ("id", "owner", "name", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("name", "description", "owner__username")
+
+
+@admin.register(ShippingMethod)
+class ShippingMethodAdmin(admin.ModelAdmin):
+    list_display = ("id", "owner", "name", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("name", "description", "owner__username")
 
 
 @admin.register(Invoice)

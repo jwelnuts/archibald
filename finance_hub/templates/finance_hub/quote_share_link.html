@@ -1,0 +1,52 @@
+{% extends "finance_hub/base.html" %}
+
+{% block title %}MIO - Link Preventivo{% endblock %}
+
+{% block content %}
+  <section class="panel">
+    <h1>Condivisione preventivo</h1>
+    <p class="muted">
+      {{ item.code|default:"-" }} · {{ item.title }}
+      {% if expires_at %} · link valido fino al {{ expires_at|date:"d/m/Y H:i" }}{% endif %}
+    </p>
+
+    <div class="uk-margin">
+      <label class="uk-form-label" for="share-link">Link cliente</label>
+      <div class="uk-form-controls uk-flex uk-gap-small uk-flex-wrap">
+        <input id="share-link" class="uk-input" type="text" value="{{ public_url }}" readonly style="min-width: 320px; max-width: 920px;">
+        <button class="uk-button uk-button-default" type="button" id="copy-share-link">Copia link</button>
+      </div>
+    </div>
+
+    <div class="uk-flex uk-flex-wrap uk-gap-small">
+      <a class="uk-button uk-button-primary" href="{{ public_url }}" target="_blank" rel="noopener">Apri pagina cliente</a>
+      <a class="uk-button uk-button-default" href="{{ public_pdf_url }}" target="_blank" rel="noopener">Apri PDF pubblico</a>
+      <a class="uk-button uk-button-default" href="/finance/quotes/pdf?id={{ item.id }}">PDF interno</a>
+      <a class="uk-button uk-button-default" href="/finance/quotes/share?id={{ item.id }}&renew=1">Rigenera link</a>
+      {% if mailto_url %}
+        <a class="uk-button uk-button-secondary" href="{{ mailto_url }}">Invia email al cliente</a>
+      {% endif %}
+      <a class="uk-button uk-button-default" href="/finance/quotes/update?id={{ item.id }}">Torna al preventivo</a>
+    </div>
+  </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script>
+    (function () {
+      var copyBtn = document.getElementById("copy-share-link");
+      var linkField = document.getElementById("share-link");
+      if (!copyBtn || !linkField) return;
+      copyBtn.addEventListener("click", async function () {
+        try {
+          await navigator.clipboard.writeText(linkField.value || "");
+          copyBtn.textContent = "Copiato";
+          setTimeout(function () { copyBtn.textContent = "Copia link"; }, 1200);
+        } catch (_err) {
+          linkField.focus();
+          linkField.select();
+        }
+      });
+    })();
+  </script>
+{% endblock %}

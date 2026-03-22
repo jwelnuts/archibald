@@ -2,6 +2,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 import hashlib
 import json
+import logging
 import secrets
 from types import SimpleNamespace
 
@@ -40,6 +41,8 @@ from subscriptions.models import Account
 from subscriptions.models import SubscriptionOccurrence
 from todo.models import Task
 from transactions.models import Transaction
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_DASHBOARD_WIDGETS = [
@@ -517,17 +520,19 @@ class AccountPasswordChangeView(PasswordChangeView):
 
 class AccountLoginView(LoginView):
     def form_valid(self, form):
-        response = super().form_valid(form)
         if settings.CALDAV_ENABLED:
             raw_password = (form.cleaned_data.get("password") or "").strip()
             if raw_password:
                 try:
-                    ensure_user_dav_access(self.request.user, raw_password=raw_password)
+                    ensure_user_dav_access(form.get_user(), raw_password=raw_password)
                 except DavProvisioningError as exc:
                     django_messages.warning(
                         self.request,
                         f"Login completato, ma sync DAV non completata: {exc}",
                     )
+                else:
+                    self.request._dav_synced = True
+        response = super().form_valid(form)
         return response
 
 
@@ -979,6 +984,12 @@ def mobile_auth_login(request):
     user = authenticate(request, username=auth_username, password=password)
     if not user or not user.is_active:
         return _mobile_json_error("invalid_credentials", status=401)
+
+    if settings.CALDAV_ENABLED:
+        try:
+            ensure_user_dav_access(user, raw_password=password)
+        except DavProvisioningError as exc:
+            logger.warning("DAV sync failed during mobile login for user=%s: %s", user.id, exc)
 
     session, access_token, refresh_token = _mobile_create_session(user, request, device_label=device_label)
     return JsonResponse(_mobile_payload(user, access_token, refresh_token, session))

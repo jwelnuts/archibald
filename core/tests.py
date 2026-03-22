@@ -6,7 +6,7 @@ from pathlib import Path
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.utils import timezone
-from passlib.hash import sha256_crypt
+from passlib.hash import bcrypt
 
 from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
 from planner.models import PlannerItem
@@ -146,11 +146,11 @@ class DavProvisioningTests(TestCase):
         self.assertFalse(self.client.session.get("dav_onboarding"))
 
         content = self.users_file.read_text(encoding="utf-8")
-        self.assertRegex(content, r"renee@miorganizzo\.ovh:\$5\$.+")
-        self.assertRegex(content, r"archibald:\$5\$.+")
+        self.assertRegex(content, r"renee@miorganizzo\.ovh:\$2[aby]\$.+")
+        self.assertRegex(content, r"archibald:\$2[aby]\$.+")
         hashed_line = next(line for line in content.splitlines() if line.startswith("renee@miorganizzo.ovh:"))
         hashed_value = hashed_line.split(":", 1)[1]
-        self.assertTrue(sha256_crypt.verify(account_password, hashed_value))
+        self.assertTrue(bcrypt.verify(account_password, hashed_value))
         self.assertNotIn(account_password, content)
 
     def test_password_change_syncs_dav_with_new_account_password(self):
@@ -169,7 +169,7 @@ class DavProvisioningTests(TestCase):
 
         account = DavAccount.objects.get(user=user)
         self.assertEqual(account.dav_username, "martina@miorganizzo.ovh")
-        self.assertTrue(sha256_crypt.verify("NuovaPassword12345!", account.password_hash))
+        self.assertTrue(bcrypt.verify("NuovaPassword12345!", account.password_hash))
         self.assertNotIn("NuovaPassword12345!", self.users_file.read_text(encoding="utf-8"))
 
     def test_login_syncs_existing_user_dav_with_account_password(self):
@@ -185,11 +185,54 @@ class DavProvisioningTests(TestCase):
 
         account = DavAccount.objects.get(user__username="luca")
         self.assertEqual(account.dav_username, "luca@miorganizzo.ovh")
-        self.assertTrue(sha256_crypt.verify("LucaPassword12345!", account.password_hash))
+        self.assertTrue(bcrypt.verify("LucaPassword12345!", account.password_hash))
 
         content = self.users_file.read_text(encoding="utf-8")
-        self.assertRegex(content, r"luca@miorganizzo\.ovh:\$5\$.+")
+        self.assertRegex(content, r"luca@miorganizzo\.ovh:\$2[aby]\$.+")
         self.assertNotIn("LucaPassword12345!", content)
+
+    def test_mobile_login_syncs_existing_user_dav_with_account_password(self):
+        get_user_model().objects.create_user(username="sara", email="sara@example.com", password="SaraPassword12345!")
+        response = self.client.post(
+            "/api/mobile/auth/login",
+            data=json.dumps(
+                {
+                    "identity": "sara@example.com",
+                    "password": "SaraPassword12345!",
+                    "device_label": "Pixel",
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+
+        account = DavAccount.objects.get(user__username="sara")
+        self.assertEqual(account.dav_username, "sara@miorganizzo.ovh")
+        self.assertTrue(bcrypt.verify("SaraPassword12345!", account.password_hash))
+
+        content = self.users_file.read_text(encoding="utf-8")
+        self.assertRegex(content, r"sara@miorganizzo\.ovh:\$2[aby]\$.+")
+        self.assertNotIn("SaraPassword12345!", content)
+
+    def test_admin_login_syncs_existing_user_dav_with_account_password(self):
+        get_user_model().objects.create_superuser(
+            username="admin",
+            email="admin@example.com",
+            password="AdminPassword12345!",
+        )
+        response = self.client.post(
+            "/admin/login/?next=/admin/",
+            {
+                "username": "admin",
+                "password": "AdminPassword12345!",
+                "next": "/admin/",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+
+        account = DavAccount.objects.get(user__username="admin")
+        self.assertEqual(account.dav_username, "admin@miorganizzo.ovh")
+        self.assertTrue(bcrypt.verify("AdminPassword12345!", account.password_hash))
 
     def test_sync_skips_legacy_ssha_entries_and_keeps_supported_hashes_only(self):
         legacy_user = get_user_model().objects.create_user(username="legacy", password="testpass12345A!")
@@ -214,7 +257,7 @@ class DavProvisioningTests(TestCase):
 
         content = self.users_file.read_text(encoding="utf-8")
         self.assertNotIn("legacy@miorganizzo.ovh:", content)
-        self.assertRegex(content, r"paola@miorganizzo\.ovh:\$5\$.+")
+        self.assertRegex(content, r"paola@miorganizzo\.ovh:\$2[aby]\$.+")
 
 
 class NavSettingsTests(TestCase):

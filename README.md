@@ -7,7 +7,7 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 ## Stato attuale (snapshot)
 
 - Backend: Django `6.0.1` con app multi-modulo e ownership per utente (`OwnedModel`).
-- DB: SQLite in locale (`db.sqlite3`) + PostgreSQL in produzione via `DATABASE_URL`.
+- DB: PostgreSQL via `DATABASE_URL` (locale Docker + VPS).
 - Deploy: VPS con Docker Compose (Django + Postgres + Caddy).
 - AI: integrazione OpenAI Responses API per Archibald e generatori Workbench.
 - Sicurezza: login richiesto su quasi tutte le viste, Vault con TOTP + cifratura contenuti.
@@ -169,15 +169,11 @@ Note Stimulus:
 ```bash
 cd mio_master
 cp .env.local.example .env
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py createsuperuser
-python manage.py runserver
+docker compose up -d --build
+docker compose exec web python manage.py createsuperuser
 ```
 
-Apri: `http://127.0.0.1:8000/`
+Apri: `http://127.0.0.1/`
 
 ## Variabili ambiente
 
@@ -193,7 +189,7 @@ In pratica:
 - locale -> copia `.env.local.example` in `.env`
 - vps -> copia `.env.vps.example` in `.env`
 
-Obbligatorie in produzione:
+Obbligatorie (locale Docker e produzione):
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG=false`

@@ -11,7 +11,7 @@ permissions: RW
 [allow-user-calendars]
 user: .+
 collection: {user}/[^/]+
-permissions: rw
+permissions: RWrw
 
 [allow-team-principal]
 user: .+
@@ -21,4 +21,4 @@ permissions: R
 [allow-team-calendars]
 user: .+
 collection: team/[^/]+
-permissions: rw
+permissions: RWrw

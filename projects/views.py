@@ -2,13 +2,17 @@ from datetime import date, datetime, time
 from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Count, Max, Min, Q, Sum
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.html import strip_tags
 
-from contacts.models import Contact
+from contacts.models import Contact, ContactPriceList, ContactToolbox
+from contacts.services import ensure_legacy_records_for_contact, upsert_contact
+from finance_hub.forms import QuoteForm, QuoteLineFormSet
+from finance_hub.models import Quote, VatCode
 from .category_forms import CategoryForm
 from .note_forms import ProjectNoteForm
 from .forms import ProjectForm, ProjectPlannerQuickForm, SubProjectActivityForm, SubProjectForm
@@ -269,6 +273,110 @@ def _subproject_counts(queryset):
     }
 
 
+def _ensure_default_vat_codes(user):
+    defaults = [
+        ("22", "IVA ordinaria", Decimal("22.00")),
+        ("10", "IVA ridotta", Decimal("10.00")),
+        ("4", "IVA super ridotta", Decimal("4.00")),
+        ("ESENTE", "Operazione esente", Decimal("0.00")),
+    ]
+    for code, description, rate in defaults:
+        VatCode.objects.get_or_create(
+            owner=user,
+            code=code,
+            defaults={
+                "description": description,
+                "rate": rate,
+                "is_active": True,
+            },
+        )
+
+
+def _vat_rates_payload(user):
+    rows = VatCode.objects.filter(owner=user, is_active=True).order_by("rate", "code")
+    return [
+        {
+            "id": row.id,
+            "code": row.code,
+            "rate": str(row.rate),
+            "description": row.description,
+        }
+        for row in rows
+    ]
+
+
+def _sync_contact_from_customer(owner, customer):
+    if owner is None or customer is None:
+        return
+    contact = upsert_contact(
+        owner,
+        customer.name,
+        entity_type=Contact.EntityType.HYBRID,
+        email=customer.email,
+        phone=customer.phone,
+        notes=customer.notes,
+        roles={"role_customer"},
+    )
+    ensure_legacy_records_for_contact(contact)
+
+
+def _apply_quote_vat_to_line(line, quote):
+    vat_rate = quote.vat_code.rate if quote.vat_code_id else Decimal("0.00")
+    multiplier = Decimal("1.00") + (vat_rate / Decimal("100.00"))
+    line.vat_code = quote.vat_code.code if quote.vat_code_id else ""
+    line.gross_amount = ((line.net_amount or Decimal("0.00")) * multiplier).quantize(Decimal("0.01"))
+
+
+def _sync_quote_lines_vat(quote):
+    for line in quote.lines.all():
+        _apply_quote_vat_to_line(line, quote)
+        line.save(update_fields=["vat_code", "gross_amount", "updated_at"])
+
+
+def _project_quote_price_lists(user, customer):
+    if user is None or customer is None:
+        return None, []
+
+    contact = upsert_contact(
+        user,
+        customer.name,
+        entity_type=Contact.EntityType.HYBRID,
+        email=customer.email,
+        phone=customer.phone,
+        notes=customer.notes,
+        roles={"role_customer"},
+    )
+    if contact is None:
+        return None, []
+
+    toolbox, _ = ContactToolbox.objects.get_or_create(owner=user, contact=contact)
+    price_lists = (
+        ContactPriceList.objects.filter(owner=user, toolbox=toolbox, is_active=True)
+        .prefetch_related("items")
+        .order_by("-updated_at", "-id")
+    )
+    payload = []
+    for price_list in price_lists:
+        payload.append(
+            {
+                "id": price_list.id,
+                "title": price_list.title,
+                "currency_code": price_list.currency_code,
+                "items": [
+                    {
+                        "code": item.code,
+                        "title": item.title,
+                        "description": item.description,
+                        "min_quantity": str(item.min_quantity),
+                        "unit_price": str(item.unit_price),
+                    }
+                    for item in price_list.items.filter(is_active=True).order_by("row_order", "id")
+                ],
+            }
+        )
+    return contact, payload
+
+
 # Create your views here.
 @login_required
 def dashboard(request):
@@ -459,6 +567,73 @@ def update_project(request):
 
 
 @login_required
+def add_project_quote(request):
+    project_id = request.GET.get("project") or request.POST.get("project_id")
+    if not project_id:
+        return redirect("/projects/")
+
+    project = get_object_or_404(Project.objects.select_related("customer"), id=project_id, owner=request.user)
+    locked_customer = project.customer
+    _ensure_default_vat_codes(request.user)
+    price_lists_contact, price_lists_payload = _project_quote_price_lists(request.user, locked_customer)
+
+    form_initial = {
+        "project": project.id,
+        "customer": locked_customer.id if locked_customer else None,
+        "title": f"Preventivo {project.name}",
+    }
+
+    if request.method == "POST":
+        form = QuoteForm(request.POST, owner=request.user, initial=form_initial)
+        temp_item = Quote(owner=request.user, project=project, customer=locked_customer)
+        line_formset = QuoteLineFormSet(request.POST, instance=temp_item, prefix="lines")
+        if form.is_valid() and line_formset.is_valid():
+            with transaction.atomic():
+                item = form.save(commit=False)
+                item.owner = request.user
+                item.project = project
+                if locked_customer:
+                    item.customer = locked_customer
+                item.save()
+                line_formset.instance = item
+                line_items = line_formset.save(commit=False)
+                for deleted in line_formset.deleted_objects:
+                    deleted.delete()
+                for idx, line in enumerate(line_items, start=1):
+                    line.owner = request.user
+                    line.quote = item
+                    if not line.row_order:
+                        line.row_order = idx
+                    _apply_quote_vat_to_line(line, item)
+                    line.save()
+                _sync_quote_lines_vat(item)
+                item.refresh_totals_from_lines(save=True)
+                _sync_contact_from_customer(request.user, item.customer)
+            return redirect(f"/projects/view?id={project.id}")
+    else:
+        form = QuoteForm(owner=request.user, initial=form_initial)
+        temp_item = Quote(owner=request.user, project=project, customer=locked_customer)
+        line_formset = QuoteLineFormSet(instance=temp_item, prefix="lines")
+
+    return render(
+        request,
+        "finance_hub/quote_form.html",
+        {
+            "form": form,
+            "line_formset": line_formset,
+            "mode": "add",
+            "vat_rates": _vat_rates_payload(request.user),
+            "project_quote_mode": True,
+            "locked_project": project,
+            "locked_customer": locked_customer,
+            "project_quote_back_url": f"/projects/view?id={project.id}",
+            "price_lists_contact": price_lists_contact,
+            "price_lists_payload": price_lists_payload,
+        },
+    )
+
+
+@login_required
 def project_detail(request):
     project_id = request.GET.get("id")
     if not project_id:
@@ -549,6 +724,7 @@ def project_detail(request):
     tx_qs = Transaction.objects.filter(owner=request.user, project=project)
     sub_qs = Subscription.objects.filter(owner=request.user, project=project)
     planner_qs = PlannerItem.objects.filter(owner=request.user, project=project)
+    quote_qs = Quote.objects.filter(owner=request.user, project=project)
     routine_qs = RoutineItem.objects.filter(owner=request.user, project=project, is_active=True)
     subproject_qs = (
         SubProject.objects.filter(owner=request.user, project=project)
@@ -577,11 +753,13 @@ def project_detail(request):
         "transactions": tx_qs.select_related("currency").order_by("-date", "-id")[:5],
         "subscriptions": sub_qs.select_related("currency").order_by("next_due_date", "id")[:5],
         "planner_items": planner_qs.order_by("due_date", "id")[:5],
+        "quotes": quote_qs.select_related("currency", "customer").order_by("-issue_date", "-id")[:5],
         "routine_items": routine_qs.order_by("weekday", "time_start", "time_end", "title")[:5],
         "counts": {
             "transactions": tx_qs.count(),
             "subscriptions": sub_qs.count(),
             "planner_items": planner_qs.count(),
+            "quotes": quote_qs.count(),
             "routine_items": routine_qs.count(),
             "subprojects": subproject_qs.count(),
         },
