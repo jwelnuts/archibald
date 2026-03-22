@@ -111,6 +111,30 @@ class ProfileArchibaldInstructionsTests(TestCase):
         self.assertTrue(persona.bias_confirmation_bias)
 
 
+class DavManagementPageTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="dav_page_user", password="test12345")
+
+    def test_dav_management_requires_login(self):
+        response = self.client.get("/profile/dav/")
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response.url)
+
+    @override_settings(CALDAV_ENABLED=True, CALDAV_BASE_URL="https://example.com/dav/")
+    def test_dav_management_shows_access_pattern(self):
+        self.client.login(username="dav_page_user", password="test12345")
+        DavAccount.objects.create(
+            user=self.user,
+            dav_username="dav_page_user",
+            password_hash=bcrypt.hash("TestPassword12345!"),
+            is_active=True,
+        )
+        response = self.client.get("/profile/dav/")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "https://example.com/dav/{username}/{collezione}/")
+        self.assertContains(response, "https://example.com/dav/dav_page_user/")
+
+
 class UiStyleLoadingTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(username="style_user", password="test12345")
@@ -420,7 +444,7 @@ class DavExternalAccessTests(TestCase):
         self.assertIn(f"{external.dav_username}:", users_content)
         rights_content = self.rights_file.read_text(encoding="utf-8")
         self.assertIn(f"user: ^{re.escape(external.dav_username)}$", rights_content)
-        self.assertIn("collection: ^team/progetto\\-test$", rights_content)
+        self.assertIn("collection: ^team/progetto\\-test(?:/.*)?$", rights_content)
 
 
 class NavSettingsTests(TestCase):

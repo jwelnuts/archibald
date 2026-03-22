@@ -268,12 +268,12 @@ def _build_rights_payload() -> str:
             [
                 f"[allow-app-principal-{idx}]",
                 f"user: ^{re.escape(username)}$",
-                "collection: {user}",
+                "collection: {user}/?",
                 "permissions: RW",
                 "",
                 f"[allow-app-calendars-{idx}]",
                 f"user: ^{re.escape(username)}$",
-                "collection: {user}/[^/]+",
+                "collection: {user}/[^/]+(?:/.*)?",
                 "permissions: RWrw",
                 "",
             ]
@@ -285,12 +285,12 @@ def _build_rights_payload() -> str:
             [
                 "[allow-app-team-principal]",
                 f"user: {app_users_regex}",
-                "collection: team",
+                "collection: team/?",
                 "permissions: R",
                 "",
                 "[allow-app-team-calendars]",
                 f"user: {app_users_regex}",
-                "collection: team/[^/]+",
+                "collection: team/[^/]+(?:/.*)?",
                 "permissions: RWrw",
                 "",
             ]
@@ -304,12 +304,12 @@ def _build_rights_payload() -> str:
             [
                 f"[allow-ext-principal-{idx}]",
                 f"user: ^{re.escape(username)}$",
-                "collection: {user}",
+                "collection: {user}/?",
                 "permissions: RW",
                 "",
                 f"[allow-ext-calendars-{idx}]",
                 f"user: ^{re.escape(username)}$",
-                "collection: {user}/[^/]+",
+                "collection: {user}/[^/]+(?:/.*)?",
                 "permissions: RWrw",
                 "",
             ]
@@ -348,7 +348,7 @@ def _build_rights_payload() -> str:
                 [
                     f"[allow-ext-shared-principal-{idx}-{re.sub(r'[^a-z0-9]+', '-', principal)}]",
                     f"user: ^{re.escape(username)}$",
-                    f"collection: ^{re.escape(principal)}$",
+                    f"collection: ^{re.escape(principal)}/?$",
                     "permissions: R",
                     "",
                 ]
@@ -359,7 +359,7 @@ def _build_rights_payload() -> str:
             [
                 f"[allow-ext-shared-calendar-{idx}]",
                 f"user: ^{re.escape(username)}$",
-                f"collection: ^{re.escape(path)}$",
+                f"collection: ^{re.escape(path)}(?:/.*)?$",
                 f"permissions: {_rights_permissions_for_grant(access_level)}",
                 "",
             ]

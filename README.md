@@ -468,6 +468,7 @@ Provisioning utente:
 - su signup (`/accounts/signup/`) viene creato `core.DavAccount` con username DAV dedicato
 - la password DAV viene allineata alla stessa password dell'account Django
 - su cambio password (`/accounts/password_change/`) viene sincronizzata anche la credenziale DAV
+- gestione DAV avanzata da UI: `/profile/dav/` (calendari, utenti esterni, grant)
 
 Sync manuale file utenti Radicale (se necessario):
 

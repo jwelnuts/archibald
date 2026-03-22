@@ -1,0 +1,266 @@
+{% load static %}
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MIO - Gestione DAV</title>
+    {% include "core/partials/uikit_head.html" %}
+  </head>
+  <body class="profile-body">
+    <div class="shell profile-shell">
+      <header class="shell-header profile-header">
+        <div class="brand">
+          <div class="brand-mark">MIO</div>
+          <div class="brand-text">
+            <div class="brand-title">Gestione DAV</div>
+            <div class="brand-sub">Calendari, utenti esterni e permessi</div>
+          </div>
+        </div>
+        <nav class="shell-nav">
+          <a href="/profile/">Profilo</a>
+          <a href="/">Dashboard</a>
+        </nav>
+      </header>
+
+      {% if messages %}
+        <section class="profile-flash-stack">
+          {% for message in messages %}
+            <div class="profile-flash {{ message.tags|default:'info' }}">{{ message }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
+
+      <section class="panel profile-card" id="dav-access">
+        <h2>Accesso DAV</h2>
+        {% if caldav_enabled %}
+          <div class="profile-list">
+            <div class="profile-row">
+              <span class="label">Endpoint server</span>
+              <code>{{ caldav_base_url|default:"-" }}</code>
+            </div>
+            <div class="profile-row">
+              <span class="label">Formato URL accesso</span>
+              <code>{{ dav_access_pattern_url|default:"-" }}</code>
+            </div>
+            <div class="profile-row">
+              <span class="label">Root utente</span>
+              <code>{{ dav_account_root_url|default:"-" }}</code>
+            </div>
+            <div class="profile-row">
+              <span class="label">Collection team default</span>
+              <code>{{ dav_default_team_collection_url|default:"-" }}</code>
+            </div>
+          </div>
+          <p class="muted">Formato supportato: <code>{domain}/dav/{username}/{collezione}/</code></p>
+          {% if dav_external_onboarding_username and dav_external_onboarding_password %}
+            <div class="uk-alert-primary uk-margin-small-top">
+              <strong>Nuove credenziali DAV esterne</strong><br>
+              Username: <code>{{ dav_external_onboarding_username }}</code><br>
+              Password: <code>{{ dav_external_onboarding_password }}</code>
+            </div>
+          {% endif %}
+        {% else %}
+          <p class="muted">Integrazione CalDAV non attiva su questa istanza.</p>
+        {% endif %}
+      </section>
+
+      {% if caldav_enabled %}
+        <section class="panel profile-card" id="dav-external-access">
+          <h2>DAV Team e Sub-Utenti</h2>
+          <p class="muted">Crea calendari condivisi e utenti DAV esterni senza account MIO.</p>
+
+          <h3>Nuovo calendario condiviso</h3>
+          <form method="post" class="uk-form-stacked uk-margin-small-top">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="dav_create_calendar">
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Principal</label>
+              <div class="uk-form-controls">
+                <input class="uk-input" type="text" name="dav_calendar_principal" value="team" required>
+              </div>
+            </div>
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Slug calendario</label>
+              <div class="uk-form-controls">
+                <input class="uk-input" type="text" name="dav_calendar_slug" placeholder="progetto-marketing" required>
+              </div>
+            </div>
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Nome visibile (opzionale)</label>
+              <div class="uk-form-controls">
+                <input class="uk-input" type="text" name="dav_calendar_display_name" placeholder="Project Marketing Team">
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit">Crea calendario</button>
+            </div>
+          </form>
+
+          <h3 class="uk-margin-top">Nuovo utente DAV esterno</h3>
+          <form method="post" class="uk-form-stacked uk-margin-small-top">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="dav_create_external_user">
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Etichetta</label>
+              <div class="uk-form-controls">
+                <input class="uk-input" type="text" name="dav_external_label" placeholder="Fornitore ABC">
+              </div>
+            </div>
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Hint username</label>
+              <div class="uk-form-controls">
+                <input class="uk-input" type="text" name="dav_external_username_hint" placeholder="fornitore-abc">
+              </div>
+            </div>
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Password (vuoto = generata)</label>
+              <div class="uk-form-controls">
+                <input class="uk-input" type="text" name="dav_external_password" placeholder="Password sicura (opzionale)">
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit">Crea utente esterno</button>
+            </div>
+          </form>
+
+          <h3 class="uk-margin-top">Assegna accesso calendario</h3>
+          <form method="post" class="uk-form-stacked uk-margin-small-top">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="dav_grant_calendar_access">
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Utente esterno</label>
+              <div class="uk-form-controls">
+                <select class="uk-select" name="external_id" required>
+                  <option value="">Seleziona...</option>
+                  {% for external in dav_active_external_accounts %}
+                    <option value="{{ external.id }}">{{ external.dav_username }}{% if external.label %} ({{ external.label }}){% endif %}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Calendario</label>
+              <div class="uk-form-controls">
+                <select class="uk-select" name="calendar_id" required>
+                  <option value="">Seleziona...</option>
+                  {% for calendar in dav_active_managed_calendars %}
+                    <option value="{{ calendar.id }}">{{ calendar.collection_path }}{% if calendar.display_name %} ({{ calendar.display_name }}){% endif %}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Permesso</label>
+              <div class="uk-form-controls">
+                <select class="uk-select" name="access_level" required>
+                  <option value="ro">Sola lettura</option>
+                  <option value="rw">Lettura e scrittura</option>
+                </select>
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit">Assegna permesso</button>
+            </div>
+          </form>
+
+          <h3 class="uk-margin-top">Utenti DAV esterni</h3>
+          <div class="profile-list">
+            {% for external in dav_external_accounts %}
+              <div class="profile-row">
+                <div>
+                  <strong>{{ external.dav_username }}</strong>
+                  {% if external.label %}<span class="muted"> ({{ external.label }})</span>{% endif %}
+                  {% if not external.is_active %}<span class="muted"> - disattivato</span>{% endif %}
+                </div>
+                <div class="actions">
+                  <form method="post" style="display:inline-block">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="dav_rotate_external_password">
+                    <input type="hidden" name="external_id" value="{{ external.id }}">
+                    <button class="btn" type="submit">Nuova password</button>
+                  </form>
+                  <form method="post" style="display:inline-block">
+                    {% csrf_token %}
+                    <input type="hidden" name="external_id" value="{{ external.id }}">
+                    {% if external.is_active %}
+                      <input type="hidden" name="action" value="dav_deactivate_external_user">
+                      <button class="btn" type="submit">Disattiva</button>
+                    {% else %}
+                      <input type="hidden" name="action" value="dav_activate_external_user">
+                      <button class="btn" type="submit">Riattiva</button>
+                    {% endif %}
+                  </form>
+                </div>
+              </div>
+            {% empty %}
+              <p class="muted">Nessun utente DAV esterno creato.</p>
+            {% endfor %}
+          </div>
+
+          <h3 class="uk-margin-top">Calendari gestiti</h3>
+          <div class="profile-list">
+            {% for row in dav_managed_calendar_rows %}
+              <div class="profile-row">
+                <div>
+                  <code>{{ row.calendar.collection_path }}</code>
+                  {% if row.calendar.display_name %}<span class="muted"> ({{ row.calendar.display_name }})</span>{% endif %}
+                  {% if row.url %}<div><code>{{ row.url }}</code></div>{% endif %}
+                  {% if not row.calendar.is_active %}<span class="muted"> - disattivato</span>{% endif %}
+                </div>
+                <div class="actions">
+                  <form method="post" style="display:inline-block">
+                    {% csrf_token %}
+                    <input type="hidden" name="calendar_id" value="{{ row.calendar.id }}">
+                    {% if row.calendar.is_active %}
+                      <input type="hidden" name="action" value="dav_deactivate_calendar">
+                      <button class="btn" type="submit">Disattiva</button>
+                    {% else %}
+                      <input type="hidden" name="action" value="dav_activate_calendar">
+                      <button class="btn" type="submit">Riattiva</button>
+                    {% endif %}
+                  </form>
+                </div>
+              </div>
+            {% empty %}
+              <p class="muted">Nessun calendario condiviso gestito.</p>
+            {% endfor %}
+          </div>
+
+          <h3 class="uk-margin-top">Permessi attivi</h3>
+          <div class="profile-list">
+            {% for row in dav_grant_rows %}
+              <div class="profile-row">
+                <div>
+                  <strong>{{ row.grant.external_account.dav_username }}</strong>
+                  <span class="muted">→</span>
+                  <code>{{ row.grant.calendar.collection_path }}</code>
+                  <span class="muted">({{ row.grant.get_access_level_display }})</span>
+                  {% if row.url %}<div><code>{{ row.url }}</code></div>{% endif %}
+                  {% if not row.grant.is_active %}<span class="muted"> - revocato</span>{% endif %}
+                </div>
+                <div class="actions">
+                  <form method="post" style="display:inline-block">
+                    {% csrf_token %}
+                    <input type="hidden" name="grant_id" value="{{ row.grant.id }}">
+                    {% if row.grant.is_active %}
+                      <input type="hidden" name="action" value="dav_revoke_grant">
+                      <button class="btn" type="submit">Revoca</button>
+                    {% else %}
+                      <input type="hidden" name="action" value="dav_activate_grant">
+                      <button class="btn" type="submit">Riattiva</button>
+                    {% endif %}
+                  </form>
+                </div>
+              </div>
+            {% empty %}
+              <p class="muted">Nessun permesso configurato.</p>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+    </div>
+    {% include "core/partials/uikit_body.html" %}
+    <script type="module" src="{% static 'core/app.js' %}"></script>
+  </body>
+</html>

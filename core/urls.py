@@ -31,6 +31,7 @@ urlpatterns = [
     path('accounts/', include('django.contrib.auth.urls')),
     path('accounts/signup/', views.signup, name='signup'),
     path('profile/', views.profile, name='profile'),
+    path('profile/dav/', views.dav_management, name='dav-management'),
     path('profile/hero-actions/', views.hero_actions, name='hero-actions'),
     path('profile/nav/', views.nav_settings, name='nav-settings'),
     path('calendar/events', views.calendar_events, name='core-calendar-events'),
