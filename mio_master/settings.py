@@ -49,6 +49,12 @@ SECRET_KEY = os.getenv(
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() in {"1", "true", "yes", "on"}
+LESS_DEV_MODE = os.getenv("LESS_DEV_MODE", "true" if DEBUG else "false").lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 _allowed_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
@@ -136,6 +142,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.hero_actions_config',
+                'core.context_processors.ui_preferences',
             ],
         },
     },

@@ -7,11 +7,10 @@
     <title>{% block title %}MIO - Subscriptions{% endblock %}</title>
     {% include "core/partials/uikit_head.html" %}
     <link rel="stylesheet" href="{% static 'core/vendor/flatpickr/flatpickr.min.css' %}">
-    <link rel="stylesheet" href="{% static 'subscriptions/styles.css' %}">
     <script src="{% static 'core/vendor/htmx/htmx.min.js' %}" defer></script>
   </head>
-  <body>
-    <div class="page">
+  <body class="subscriptions-body">
+    <div class="page subscriptions-page subscriptions-shell">
       {% include "core/partials/site_header.html" with module_subtitle="Subscriptions module" %}
 
       <main class="content">

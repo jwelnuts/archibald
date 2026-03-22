@@ -1,4 +1,7 @@
 {% load static %}
+<script>
+  document.documentElement.setAttribute("data-ui-theme", "{{ ui_theme|default:'light'|escapejs }}");
+</script>
 <script src="{% static 'core/vendor/uikit/uikit.min.js' %}"></script>
 <script src="{% static 'core/vendor/uikit/uikit-icons.min.js' %}"></script>
 <script src="{% static 'core/uikit_bridge.js' %}"></script>

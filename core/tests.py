@@ -4,7 +4,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase, override_settings
+from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
 from passlib.hash import bcrypt
 
@@ -12,6 +12,7 @@ from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
 from planner.models import PlannerItem
 from routines.models import Routine, RoutineCategory, RoutineItem, RoutineCheck
 from todo.models import Task
+from .context_processors import ui_preferences
 from .models import DavAccount, MobileApiSession, UserNavConfig
 from .views import DEFAULT_DASHBOARD_WIDGET_IDS
 
@@ -104,6 +105,66 @@ class ProfileArchibaldInstructionsTests(TestCase):
         self.assertFalse(persona.bias_mind_reading)
         self.assertTrue(persona.bias_negative_filtering)
         self.assertTrue(persona.bias_confirmation_bias)
+
+
+class UiStyleLoadingTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="style_user", password="test12345")
+        self.superuser = get_user_model().objects.create_superuser(
+            username="style_admin",
+            email="style_admin@example.com",
+            password="test12345",
+        )
+
+    @override_settings(LESS_DEV_MODE=True)
+    def test_profile_loads_less_runtime_in_dev_mode(self):
+        self.client.login(username="style_user", password="test12345")
+        response = self.client.get("/profile/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("core/styles.less", html)
+        self.assertIn("stylesheet/less", html)
+        self.assertIn("core/vendor/less/less.min.js", html)
+        self.assertNotIn("core/styles.css", html)
+
+    @override_settings(LESS_DEV_MODE=False)
+    def test_profile_loads_compiled_css_in_prod_mode(self):
+        self.client.login(username="style_user", password="test12345")
+        response = self.client.get("/profile/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("core/styles.css", html)
+        self.assertNotIn("core/styles.less", html)
+        self.assertNotIn("core/vendor/less/less.min.js", html)
+
+    @override_settings(LESS_DEV_MODE=True)
+    def test_workbench_opt_out_keeps_debug_css_only(self):
+        self.client.login(username="style_admin", password="test12345")
+        response = self.client.get("/workbench/")
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("workbench/irc-debug.css", html)
+        self.assertNotIn("core/styles.css", html)
+        self.assertNotIn("core/styles.less", html)
+        self.assertNotIn("core/vendor/less/less.min.js", html)
+
+
+class UiPreferencesContextTests(TestCase):
+    @override_settings(LESS_DEV_MODE=True)
+    def test_context_enables_global_styles_for_non_workbench_path(self):
+        request = RequestFactory().get("/profile/")
+        context = ui_preferences(request)
+        self.assertTrue(context["less_dev_mode"])
+        self.assertTrue(context["ui_use_global_styles"])
+        self.assertEqual(context["ui_theme"], "light")
+
+    @override_settings(LESS_DEV_MODE=False)
+    def test_context_disables_global_styles_for_workbench_path(self):
+        request = RequestFactory().get("/workbench/")
+        context = ui_preferences(request)
+        self.assertFalse(context["less_dev_mode"])
+        self.assertFalse(context["ui_use_global_styles"])
+        self.assertEqual(context["ui_theme"], "light")
 
 
 class DavProvisioningTests(TestCase):

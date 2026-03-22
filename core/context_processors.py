@@ -1,3 +1,5 @@
+from django.conf import settings
+
 from .models import UserHeroActionsConfig, UserNavConfig
 from .navigation import build_site_nav_context
 
@@ -13,4 +15,13 @@ def hero_actions_config(request):
     return {
         "hero_actions_config": config.config if config else {},
         "site_nav": build_site_nav_context(request.path, nav_config.config if nav_config else {}),
+    }
+
+
+def ui_preferences(request):
+    path = request.path or ""
+    return {
+        "less_dev_mode": bool(getattr(settings, "LESS_DEV_MODE", False)),
+        "ui_use_global_styles": not path.startswith("/workbench/"),
+        "ui_theme": "light",
     }

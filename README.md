@@ -30,6 +30,7 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 - HTMX (static locale in `core/static/core/vendor/htmx`)
 - Stimulus (bootstrap in `core/static/core/stimulus.js`)
 - UIKit baseline bridge (`core/static/core/uikit_bridge.js`)
+- Global style system LESS/CSS (`core/static/core/styles.less` -> `core/static/core/styles.css`)
 
 Note Stimulus:
 
@@ -193,6 +194,7 @@ Obbligatorie (locale Docker e produzione):
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG=false`
+- `LESS_DEV_MODE` (`true` in dev con less.js runtime, `false` in prod con CSS compilato)
 - `DJANGO_ALLOWED_HOSTS`
 - `DATABASE_URL` (PostgreSQL)
 
@@ -414,6 +416,7 @@ Note:
 - Il container `web` esegue automaticamente:
   - `python manage.py migrate --noinput`
   - `python manage.py sync_radicale_users`
+  - `python manage.py compile_less --quiet`
   - `python manage.py collectstatic --noinput`
   - avvio `gunicorn`
 - In `docker-compose.yml` `DATABASE_URL` e costruita automaticamente verso il servizio `db`.
