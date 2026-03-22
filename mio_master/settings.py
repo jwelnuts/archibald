@@ -49,12 +49,22 @@ SECRET_KEY = os.getenv(
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DJANGO_DEBUG", "true").lower() in {"1", "true", "yes", "on"}
-LESS_DEV_MODE = os.getenv("LESS_DEV_MODE", "true" if DEBUG else "false").lower() in {
-    "1",
-    "true",
-    "yes",
-    "on",
-}
+
+_style_mode_raw = os.getenv("UI_STYLE_MODE", "").strip().upper()
+if _style_mode_raw not in {"DEV", "PROD"}:
+    if "LESS_DEV_MODE" in os.environ:
+        _legacy_less_dev_mode = os.getenv("LESS_DEV_MODE", "false").lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+        _style_mode_raw = "DEV" if _legacy_less_dev_mode else "PROD"
+    else:
+        _style_mode_raw = "DEV" if DEBUG else "PROD"
+
+UI_STYLE_MODE = _style_mode_raw
+LESS_DEV_MODE = UI_STYLE_MODE == "DEV"
 
 _allowed_hosts = os.getenv("DJANGO_ALLOWED_HOSTS", "")
 ALLOWED_HOSTS = [h.strip() for h in _allowed_hosts.split(",") if h.strip()]
@@ -121,6 +131,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
+    "core.middleware.DevLessCompileMiddleware",
     "core.mobile_api.MobileApiCorsMiddleware",
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',

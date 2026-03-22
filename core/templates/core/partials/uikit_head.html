@@ -1,14 +1,6 @@
 {% load static %}
 <link rel="stylesheet" href="{% static 'core/vendor/uikit/uikit.min.css' %}">
 {% if ui_use_global_styles %}
-  {% if less_dev_mode %}
-    <link rel="stylesheet/less" type="text/css" href="{% static 'core/styles.less' %}">
-    <script>
-      window.less = window.less || { env: "development", async: false, fileAsync: false };
-    </script>
-    <script src="{% static 'core/vendor/less/less.min.js' %}"></script>
-  {% else %}
-    <link rel="stylesheet" href="{% static 'core/styles.css' %}">
-  {% endif %}
+  <link rel="stylesheet" href="{% static 'core/styles.css' %}{% if ui_style_mode == 'DEV' and ui_style_version %}?v={{ ui_style_version }}{% endif %}">
 {% endif %}
 <link rel="stylesheet" href="{% static 'core/uikit_bridge.css' %}">

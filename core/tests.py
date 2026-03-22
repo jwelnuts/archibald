@@ -2,8 +2,10 @@ import json
 import tempfile
 from datetime import timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
+from django.http import HttpResponse
 from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
 from passlib.hash import bcrypt
@@ -13,6 +15,7 @@ from planner.models import PlannerItem
 from routines.models import Routine, RoutineCategory, RoutineItem, RoutineCheck
 from todo.models import Task
 from .context_processors import ui_preferences
+from .middleware import DevLessCompileMiddleware
 from .models import DavAccount, MobileApiSession, UserNavConfig
 from .views import DEFAULT_DASHBOARD_WIDGET_IDS
 
@@ -116,28 +119,29 @@ class UiStyleLoadingTests(TestCase):
             password="test12345",
         )
 
-    @override_settings(LESS_DEV_MODE=True)
-    def test_profile_loads_less_runtime_in_dev_mode(self):
+    @override_settings(UI_STYLE_MODE="DEV", LESS_DEV_MODE=True)
+    def test_profile_loads_styles_css_with_cache_busting_in_dev_mode(self):
         self.client.login(username="style_user", password="test12345")
         response = self.client.get("/profile/")
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
-        self.assertIn("core/styles.less", html)
-        self.assertIn("stylesheet/less", html)
-        self.assertIn("core/vendor/less/less.min.js", html)
-        self.assertNotIn("core/styles.css", html)
+        self.assertRegex(html, r"core/styles\.css\?v=\d+")
+        self.assertNotIn("core/styles.less", html)
+        self.assertNotIn("stylesheet/less", html)
+        self.assertNotIn("core/vendor/less/less.min.js", html)
 
-    @override_settings(LESS_DEV_MODE=False)
+    @override_settings(UI_STYLE_MODE="PROD", LESS_DEV_MODE=False)
     def test_profile_loads_compiled_css_in_prod_mode(self):
         self.client.login(username="style_user", password="test12345")
         response = self.client.get("/profile/")
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
         self.assertIn("core/styles.css", html)
+        self.assertNotIn("core/styles.css?v=", html)
         self.assertNotIn("core/styles.less", html)
         self.assertNotIn("core/vendor/less/less.min.js", html)
 
-    @override_settings(LESS_DEV_MODE=True)
+    @override_settings(UI_STYLE_MODE="DEV", LESS_DEV_MODE=True)
     def test_workbench_opt_out_keeps_debug_css_only(self):
         self.client.login(username="style_admin", password="test12345")
         response = self.client.get("/workbench/")
@@ -150,25 +154,49 @@ class UiStyleLoadingTests(TestCase):
 
 
 class UiPreferencesContextTests(TestCase):
-    @override_settings(LESS_DEV_MODE=True)
+    @override_settings(UI_STYLE_MODE="DEV", LESS_DEV_MODE=True)
     def test_context_enables_global_styles_for_non_workbench_path(self):
         request = RequestFactory().get("/profile/")
         context = ui_preferences(request)
         self.assertTrue(context["less_dev_mode"])
+        self.assertEqual(context["ui_style_mode"], "DEV")
+        self.assertTrue(context["ui_style_version"])
         self.assertTrue(context["ui_use_global_styles"])
         self.assertEqual(context["ui_theme"], "light")
 
-    @override_settings(LESS_DEV_MODE=False)
+    @override_settings(UI_STYLE_MODE="PROD", LESS_DEV_MODE=False)
     def test_context_disables_global_styles_for_workbench_path(self):
         request = RequestFactory().get("/workbench/")
         context = ui_preferences(request)
         self.assertFalse(context["less_dev_mode"])
+        self.assertEqual(context["ui_style_mode"], "PROD")
+        self.assertEqual(context["ui_style_version"], "")
         self.assertFalse(context["ui_use_global_styles"])
         self.assertEqual(context["ui_theme"], "light")
 
         no_slash_request = RequestFactory().get("/workbench")
         no_slash_context = ui_preferences(no_slash_request)
         self.assertFalse(no_slash_context["ui_use_global_styles"])
+
+
+class DevLessCompileMiddlewareTests(TestCase):
+    @override_settings(UI_STYLE_MODE="DEV", LESS_DEV_MODE=True)
+    def test_compiles_less_on_html_get_in_dev(self):
+        request = RequestFactory().get("/", HTTP_ACCEPT="text/html")
+        middleware = DevLessCompileMiddleware(lambda _request: HttpResponse("ok"))
+        with patch("core.middleware.call_command") as mocked_call:
+            response = middleware(request)
+        self.assertEqual(response.status_code, 200)
+        mocked_call.assert_called_once_with("compile_less", quiet=True)
+
+    @override_settings(UI_STYLE_MODE="PROD", LESS_DEV_MODE=False)
+    def test_does_not_compile_less_in_prod(self):
+        request = RequestFactory().get("/", HTTP_ACCEPT="text/html")
+        middleware = DevLessCompileMiddleware(lambda _request: HttpResponse("ok"))
+        with patch("core.middleware.call_command") as mocked_call:
+            response = middleware(request)
+        self.assertEqual(response.status_code, 200)
+        mocked_call.assert_not_called()
 
 
 class DavProvisioningTests(TestCase):

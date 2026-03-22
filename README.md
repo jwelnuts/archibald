@@ -36,10 +36,11 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 
 - Entrypoint unico: `core/static/core/styles.less`
   - importa foundation condivisa + moduli (`dashboard`, `profile`, `agenda`, `projects`, `routines`, `subscriptions`)
-- Modalita sviluppo: `LESS_DEV_MODE=true`
-  - i template caricano `styles.less` via `less.min.js` runtime
-- Modalita produzione/deploy: `LESS_DEV_MODE=false`
-  - i template caricano `core/styles.css` compilato da `python manage.py compile_less`
+- Modalita sviluppo: `UI_STYLE_MODE=DEV`
+  - middleware compila `styles.less` ad ogni richiesta HTML GET
+  - i template caricano `core/styles.css` con cache-busting
+- Modalita produzione/deploy: `UI_STYLE_MODE=PROD`
+  - i template caricano solo `core/styles.css` compilato/minificato
 - Workbench e volutamente escluso dal tema globale:
   - route `/workbench/*` senza `core/styles.less` / `core/styles.css`
   - stile dedicato: `workbench/static/workbench/irc-debug.css`
@@ -206,7 +207,7 @@ Obbligatorie (locale Docker e produzione):
 
 - `DJANGO_SECRET_KEY`
 - `DJANGO_DEBUG=false`
-- `LESS_DEV_MODE` (`true` in dev con less.js runtime, `false` in prod con CSS compilato)
+- `UI_STYLE_MODE` (`DEV` compila LESS ad ogni richiesta HTML, `PROD` usa CSS compilato/minificato)
 - `DJANGO_ALLOWED_HOSTS`
 - `DATABASE_URL` (PostgreSQL)
 
@@ -254,6 +255,7 @@ Note:
 
 - Se `OPENAI_API_KEY` manca, le feature AI mostrano errore controllato o fallback.
 - Se `VAULT_ENCRYPTION_KEY` manca, in locale viene derivata da `SECRET_KEY` (fallback deterministico).
+- `LESS_DEV_MODE` resta supportata solo come fallback legacy (consigliato usare `UI_STYLE_MODE`).
 
 ## API Mobile (ArchiDroid)
 
@@ -428,7 +430,7 @@ Note:
 - Il container `web` esegue automaticamente:
   - `python manage.py migrate --noinput`
   - `python manage.py sync_radicale_users`
-  - `python manage.py compile_less --quiet`
+  - `python manage.py compile_less --quiet` (`DEV`) oppure `--quiet --minify` (`PROD`)
   - `python manage.py collectstatic --noinput`
   - avvio `gunicorn`
 - In `docker-compose.yml` `DATABASE_URL` e costruita automaticamente verso il servizio `db`.

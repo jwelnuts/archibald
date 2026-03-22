@@ -9,7 +9,9 @@
 
     handle /dav* {
         uri strip_prefix /dav
-        reverse_proxy radicale:5232
+        reverse_proxy radicale:5232 {
+            header_up X-Script-Name /dav
+        }
     }
 
     handle_path /static/* {

@@ -3,7 +3,21 @@ set -e
 
 python manage.py migrate --noinput
 python manage.py sync_radicale_users
-python manage.py compile_less --quiet
+
+STYLE_MODE="${UI_STYLE_MODE:-}"
+if [ -z "$STYLE_MODE" ]; then
+  case "${LESS_DEV_MODE:-}" in
+    1|true|TRUE|yes|YES|on|ON) STYLE_MODE="DEV" ;;
+    *) STYLE_MODE="PROD" ;;
+  esac
+fi
+
+if [ "$STYLE_MODE" = "PROD" ]; then
+  python manage.py compile_less --quiet --minify
+else
+  python manage.py compile_less --quiet
+fi
+
 python manage.py collectstatic --noinput
 
 exec gunicorn mio_master.wsgi:application \
