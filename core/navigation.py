@@ -22,6 +22,7 @@ DEFAULT_APP_OPTIONS = [
     {"key": "accounts", "label": "Accounts", "url": "/core/accounts/", "icon": "settings"},
     {"key": "profile", "label": "Profilo", "url": "/profile/", "icon": "user"},
 ]
+SUPERUSER_ONLY_APP_KEYS = {"archibald_mail"}
 
 APP_OPTION_BY_KEY = {item["key"]: item for item in DEFAULT_APP_OPTIONS}
 DEFAULT_APP_ORDER = [item["key"] for item in DEFAULT_APP_OPTIONS]
@@ -82,17 +83,29 @@ def _sanitize_widgets(raw_widgets):
     return cleaned
 
 
-def normalize_nav_config(raw_config):
+def app_options_for_user(user):
+    is_superuser = bool(getattr(user, "is_authenticated", False) and getattr(user, "is_superuser", False))
+    if is_superuser:
+        return list(DEFAULT_APP_OPTIONS)
+    return [item for item in DEFAULT_APP_OPTIONS if item["key"] not in SUPERUSER_ONLY_APP_KEYS]
+
+
+def normalize_nav_config(raw_config, *, available_app_options=None):
     if not isinstance(raw_config, dict):
         raw_config = {}
 
-    order = [key for key in raw_config.get("app_order", []) if key in APP_OPTION_BY_KEY]
-    for key in DEFAULT_APP_ORDER:
+    if available_app_options is None:
+        available_app_options = DEFAULT_APP_OPTIONS
+    app_option_by_key = {item["key"]: item for item in available_app_options}
+    default_app_order = [item["key"] for item in available_app_options]
+
+    order = [key for key in raw_config.get("app_order", []) if key in app_option_by_key]
+    for key in default_app_order:
         if key not in order:
             order.append(key)
 
-    hidden_apps = {key for key in raw_config.get("hidden_apps", []) if key in APP_OPTION_BY_KEY}
-    app_options = [APP_OPTION_BY_KEY[key] for key in order if key not in hidden_apps]
+    hidden_apps = {key for key in raw_config.get("hidden_apps", []) if key in app_option_by_key}
+    app_options = [app_option_by_key[key] for key in order if key not in hidden_apps]
     custom_links = _sanitize_custom_links(raw_config.get("custom_links", []))
     widgets = _sanitize_widgets(raw_config.get("widgets", []))
 
@@ -117,10 +130,12 @@ def selected_app_key_for_path(path: str, app_options):
     return best_key
 
 
-def build_site_nav_context(path: str, raw_config):
-    normalized = normalize_nav_config(raw_config)
-    selected_key = selected_app_key_for_path(path or "", DEFAULT_APP_OPTIONS)
-    selected_app = APP_OPTION_BY_KEY.get(selected_key)
+def build_site_nav_context(path: str, raw_config, user=None):
+    available_options = app_options_for_user(user)
+    selected_map = {item["key"]: item for item in available_options}
+    normalized = normalize_nav_config(raw_config, available_app_options=available_options)
+    selected_key = selected_app_key_for_path(path or "", available_options)
+    selected_app = selected_map.get(selected_key)
     return {
         "app_options": normalized["app_options"],
         "selected_app_key": selected_key,

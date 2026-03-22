@@ -818,7 +818,7 @@ class ArchibaldMailPromptingTests(TestCase):
 
 class ArchibaldMailFlagCrudViewsTests(TestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user(
+        self.user = get_user_model().objects.create_superuser(
             username="mail_flag_user",
             password="pwd12345",
             email="flags@example.com",
@@ -868,7 +868,7 @@ class ArchibaldMailFlagCrudViewsTests(TestCase):
 
 class ArchibaldMailInboundQueueViewsTests(TestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user(
+        self.user = get_user_model().objects.create_superuser(
             username="mail_inbox_user",
             password="pwd12345",
             email="inbox@example.com",
@@ -937,6 +937,50 @@ class ArchibaldMailInboundQueueViewsTests(TestCase):
         self.assertEqual(reopen_resp.status_code, 302)
         self.inbound.refresh_from_db()
         self.assertEqual(self.inbound.review_status, ArchibaldEmailMessage.ReviewStatus.PENDING)
+
+
+class ArchibaldMailPermissionsTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(
+            username="mail_limited_user",
+            password="pwd12345",
+            email="limited@example.com",
+        )
+        self.config = ArchibaldMailboxConfig.objects.create(owner=self.user)
+        self.message = ArchibaldEmailMessage.objects.create(
+            owner=self.user,
+            config=self.config,
+            direction=ArchibaldEmailMessage.Direction.INBOUND,
+            status=ArchibaldEmailMessage.Status.RECEIVED,
+            sender="portal@example.com",
+            recipient="archibald@miorganizzo.ovh",
+            subject="Test",
+            body_text="Body",
+            message_id="<msg-perm-1@example.com>",
+        )
+        self.client.login(username="mail_limited_user", password="pwd12345")
+
+    def test_non_superuser_cannot_access_archibald_mail_views(self):
+        protected_paths = [
+            "/archibald-mail/",
+            "/archibald-mail/flags/",
+            "/archibald-mail/flags/add",
+            "/archibald-mail/flags/999/edit",
+            "/archibald-mail/flags/999/remove",
+            "/archibald-mail/inbox/",
+        ]
+        for path in protected_paths:
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 403, path)
+
+        post_targets = [
+            f"/archibald-mail/inbox/{self.message.id}/apply",
+            f"/archibald-mail/inbox/{self.message.id}/ignore",
+            f"/archibald-mail/inbox/{self.message.id}/reopen",
+        ]
+        for path in post_targets:
+            response = self.client.post(path, data={})
+            self.assertEqual(response.status_code, 403, path)
 
 
 class ArchibaldMailDigestTests(TestCase):

@@ -8,7 +8,9 @@
     </p>
     <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top">
       <a class="uk-button uk-button-primary uk-button-small" href="./api/add">Nuova memoria</a>
-      <a class="uk-button uk-button-default uk-button-small" href="/archibald-mail/">Apri Archibald Mail</a>
+      {% if user.is_superuser %}
+        <a class="uk-button uk-button-default uk-button-small" href="/archibald-mail/">Apri Archibald Mail</a>
+      {% endif %}
     </div>
     <form method="get" action="" class="uk-grid-small uk-margin-small-top" uk-grid>
       <div class="uk-width-expand">

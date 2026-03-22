@@ -34,10 +34,5 @@
       {% endif %}
     </form>
     <a class="uk-button uk-button-default uk-button-small" href="/todo/api/update?id={{ task.id }}">Modifica</a>
-    <form method="post" action="/todo/to-planner" class="todo-inline-form">
-      {% csrf_token %}
-      <input type="hidden" name="id" value="{{ task.id }}">
-      <button class="uk-button uk-button-default uk-button-small" type="submit">Sposta in Planner</button>
-    </form>
   </div>
 </li>

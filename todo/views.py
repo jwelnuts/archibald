@@ -1,16 +1,25 @@
-from datetime import timedelta, date
+from datetime import date
+import logging
 
+from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
 from django.db.models import Case, F, IntegerField, Value, When
 from django.http import HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from planner.models import PlannerItem
-
+from .dav_sync import (
+    delete_task_from_vtodo,
+    sync_all_tasks_to_vtodo,
+    todo_collection_path_for_user,
+    todo_collection_slug,
+    todo_collection_url_for_user,
+    push_task_to_vtodo,
+)
 from .forms import TaskForm
 from .models import Task
+
+logger = logging.getLogger(__name__)
 
 
 def _todo_counts(user, today=None):
@@ -44,17 +53,8 @@ def dashboard(request):
         .order_by("status_rank", F("due_date").asc(nulls_last=True), F("due_time").asc(nulls_last=True), "-created_at")[:80]
     )
     counts = _todo_counts(user, today=today)
-    next_week = today + timedelta(days=7)
-    planner_upcoming = (
-        PlannerItem.objects.filter(owner=user, status=PlannerItem.Status.PLANNED)
-        .order_by("due_date", "created_at")[:5]
-    )
-    planner_counts = {
-        "planned": PlannerItem.objects.filter(owner=user, status=PlannerItem.Status.PLANNED).count(),
-        "due_soon": PlannerItem.objects.filter(
-            owner=user, status=PlannerItem.Status.PLANNED, due_date__range=(today, next_week)
-        ).count(),
-    }
+    dav_collection_path = todo_collection_path_for_user(user)
+    dav_collection_url = todo_collection_url_for_user(user)
     return render(
         request,
         "todo/dashboard.html",
@@ -62,10 +62,25 @@ def dashboard(request):
             "task_rows": task_rows,
             "counts": counts,
             "today": today,
-            "planner_upcoming": planner_upcoming,
-            "planner_counts": planner_counts,
+            "dav_vtodo_collection_slug": todo_collection_slug(),
+            "dav_vtodo_collection_path": dav_collection_path,
+            "dav_vtodo_collection_url": dav_collection_url,
         },
     )
+
+
+def _sync_task_quiet(task: Task) -> None:
+    result = push_task_to_vtodo(task)
+    if result.ok:
+        return
+    logger.warning("Todo DAV sync failed for task=%s user=%s: %s", task.id, task.owner_id, result.message)
+
+
+def _delete_task_quiet(task: Task) -> None:
+    result = delete_task_from_vtodo(task)
+    if result.ok:
+        return
+    logger.warning("Todo DAV delete sync failed for task=%s user=%s: %s", task.id, task.owner_id, result.message)
 
 
 @login_required
@@ -76,6 +91,7 @@ def add_task(request):
             task = form.save(commit=False)
             task.owner = request.user
             task.save()
+            _sync_task_quiet(task)
             return redirect("/todo/")
     else:
         form = TaskForm(owner=request.user)
@@ -89,6 +105,7 @@ def remove_task(request):
     if task_id:
         task = get_object_or_404(Task, id=task_id, owner=request.user)
         if request.method == "POST":
+            _delete_task_quiet(task)
             task.delete()
             return redirect("/todo/")
     tasks = Task.objects.filter(owner=request.user).order_by("-created_at")[:20]
@@ -104,7 +121,8 @@ def update_task(request):
         if request.method == "POST":
             form = TaskForm(request.POST, instance=task, owner=request.user)
             if form.is_valid():
-                form.save()
+                task = form.save()
+                _sync_task_quiet(task)
                 return redirect("/todo/")
         else:
             form = TaskForm(instance=task, owner=request.user)
@@ -114,44 +132,22 @@ def update_task(request):
 
 
 @login_required
-def transfer_to_planner(request):
+def sync_vtodo(request):
     if request.method != "POST":
         return redirect("/todo/")
 
-    task_id = request.POST.get("id")
-    task = get_object_or_404(Task, id=task_id, owner=request.user)
-
-    status_map = {
-        Task.Status.OPEN: PlannerItem.Status.PLANNED,
-        Task.Status.IN_PROGRESS: PlannerItem.Status.PLANNED,
-        Task.Status.DONE: PlannerItem.Status.DONE,
-    }
-    planner_status = status_map.get(task.status, PlannerItem.Status.PLANNED)
-
-    note_parts = []
-    if task.note:
-        note_parts.append(task.note)
-    note_parts.append(f"[Da Todo] Tipo: {task.get_item_type_display()}")
-    note_parts.append(f"[Da Todo] Priorita: {task.get_priority_display()}")
-    if task.status == Task.Status.IN_PROGRESS:
-        note_parts.append("[Da Todo] Stato origine: In progress")
-    if task.category_id:
-        note_parts.append(f"[Da Todo] Categoria: {task.category.name}")
-    note = "\n".join(note_parts)
-
-    with transaction.atomic():
-        PlannerItem.objects.create(
-            owner=request.user,
-            title=task.title,
-            due_date=task.due_date,
-            project=task.project,
-            category=task.category,
-            status=planner_status,
-            note=note,
+    stats = sync_all_tasks_to_vtodo(request.user)
+    if stats["failed"]:
+        messages.warning(
+            request,
+            (
+                f"Sincronizzazione parziale completata: {stats['synced']}/{stats['total']} task."
+                + (f" Errore: {stats['error']}" if stats["error"] else "")
+            ),
         )
-        task.delete()
-
-    return redirect("/planner/")
+    else:
+        messages.success(request, f"Sync VTODO completata: {stats['synced']} task allineate.")
+    return redirect("/todo/")
 
 
 @login_required
@@ -177,6 +173,7 @@ def set_status(request):
     task = get_object_or_404(Task, id=task_id, owner=request.user)
     task.status = status
     task.save(update_fields=["status"])
+    _sync_task_quiet(task)
 
     counts = _todo_counts(request.user)
     if is_htmx:

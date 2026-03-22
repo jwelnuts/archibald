@@ -58,7 +58,6 @@
         </div>
         <div class="actions">
           <button class="btn primary" type="submit">Aggiorna</button>
-          <button class="btn" type="submit" formaction="/planner/to-todo">Sposta in Todo</button>
           <a class="btn" href="/planner/">Annulla</a>
         </div>
       </form>
@@ -69,11 +68,6 @@
             <li>
               <span>{{ item.title }}</span>
               <a class="btn" href="/planner/update?id={{ item.id }}">Modifica</a>
-              <form method="post" action="/planner/to-todo" style="display:inline;">
-                {% csrf_token %}
-                <input type="hidden" name="id" value="{{ item.id }}">
-                <button class="btn" type="submit">Sposta in Todo</button>
-              </form>
             </li>
           {% endfor %}
         </ul>

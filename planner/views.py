@@ -1,8 +1,5 @@
 from django.contrib.auth.decorators import login_required
-from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
-
-from todo.models import Task
 
 from .forms import PlannerItemForm
 from .models import PlannerItem
@@ -21,22 +18,12 @@ def dashboard(request):
         "done": PlannerItem.objects.filter(owner=user, status=PlannerItem.Status.DONE).count(),
         "skipped": PlannerItem.objects.filter(owner=user, status=PlannerItem.Status.SKIPPED).count(),
     }
-    todo_open = (
-        Task.objects.filter(owner=user, status=Task.Status.OPEN)
-        .order_by("due_date", "created_at")[:5]
-    )
-    todo_counts = {
-        "open": Task.objects.filter(owner=user, status=Task.Status.OPEN).count(),
-        "in_progress": Task.objects.filter(owner=user, status=Task.Status.IN_PROGRESS).count(),
-    }
     return render(
         request,
         "planner/dashboard.html",
         {
             "upcoming": upcoming,
             "counts": counts,
-            "todo_open": todo_open,
-            "todo_counts": todo_counts,
         },
     )
 
@@ -99,42 +86,3 @@ def remove_item(request):
             return redirect("/planner/")
     items = PlannerItem.objects.filter(owner=request.user).order_by("-created_at")[:20]
     return render(request, "planner/remove_item.html", {"item": item, "items": items})
-
-
-@login_required
-def transfer_to_todo(request):
-    if request.method != "POST":
-        return redirect("/planner/")
-
-    item_id = request.POST.get("id")
-    item = get_object_or_404(PlannerItem, id=item_id, owner=request.user)
-
-    status_map = {
-        PlannerItem.Status.PLANNED: Task.Status.OPEN,
-        PlannerItem.Status.DONE: Task.Status.DONE,
-        PlannerItem.Status.SKIPPED: Task.Status.OPEN,
-    }
-    task_status = status_map.get(item.status, Task.Status.OPEN)
-
-    note_parts = []
-    if item.note:
-        note_parts.append(item.note)
-    if item.amount is not None:
-        note_parts.append(f"[Da Planner] Importo: {item.amount}")
-    if item.category_id:
-        note_parts.append(f"[Da Planner] Categoria: {item.category.name}")
-    note = "\n".join(note_parts)
-
-    with transaction.atomic():
-        Task.objects.create(
-            owner=request.user,
-            title=item.title,
-            project=item.project,
-            due_date=item.due_date,
-            status=task_status,
-            priority=Task.Priority.MEDIUM,
-            note=note,
-        )
-        item.delete()
-
-    return redirect("/todo/")

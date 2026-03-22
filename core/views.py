@@ -44,7 +44,7 @@ from .models import (
     UserHeroActionsConfig,
     UserNavConfig,
 )
-from .navigation import DEFAULT_APP_OPTIONS, normalize_nav_config, parse_widgets_json
+from .navigation import DEFAULT_APP_OPTIONS, app_options_for_user, normalize_nav_config, parse_widgets_json
 from planner.models import PlannerItem
 from projects.models import Project, SubProject
 from routines.models import Routine, RoutineCategory, RoutineCheck, RoutineItem
@@ -218,9 +218,21 @@ def _dashboard_widgets_for_user(user):
     nav_config, _ = UserNavConfig.objects.get_or_create(user=user)
     raw = nav_config.config or {}
     normalized = _normalize_dashboard_widgets(raw.get("dashboard_widgets", {}))
-    hidden_set = set(normalized["hidden"])
+    allow_archibald_mail = bool(getattr(user, "is_superuser", False))
+    available_widget_ids = [
+        widget_id
+        for widget_id in DEFAULT_DASHBOARD_WIDGET_IDS
+        if allow_archibald_mail or widget_id != "archibald_mail"
+    ]
+
+    order = [widget_id for widget_id in normalized["order"] if widget_id in available_widget_ids]
+    for widget_id in available_widget_ids:
+        if widget_id not in order:
+            order.append(widget_id)
+
+    hidden_set = {widget_id for widget_id in normalized["hidden"] if widget_id in available_widget_ids}
     widgets = []
-    for widget_id in normalized["order"]:
+    for widget_id in order:
         base = DASHBOARD_WIDGETS_BY_ID[widget_id]
         widgets.append(
             {
@@ -944,13 +956,14 @@ def dav_management(request):
 def nav_settings(request):
     config_obj, _ = UserNavConfig.objects.get_or_create(user=request.user)
     raw = config_obj.config or {}
-    normalized = normalize_nav_config(raw)
-    apps_by_key = {item["key"]: item for item in DEFAULT_APP_OPTIONS}
+    available_app_options = app_options_for_user(request.user)
+    normalized = normalize_nav_config(raw, available_app_options=available_app_options)
+    apps_by_key = {item["key"]: item for item in available_app_options}
 
     if request.method == "POST":
         errors = []
         ordered_rows = []
-        for index, item in enumerate(DEFAULT_APP_OPTIONS, start=1):
+        for index, item in enumerate(available_app_options, start=1):
             key = item["key"]
             visible = request.POST.get(f"app_visible_{key}") == "on"
             order_raw = (request.POST.get(f"app_order_{key}") or "").strip()
@@ -1004,7 +1017,8 @@ def nav_settings(request):
                     "hidden_apps": hidden_apps,
                     "custom_links": custom_links,
                     "widgets": widgets,
-                }
+                },
+                available_app_options=available_app_options,
             )
         else:
             config_obj.config = {

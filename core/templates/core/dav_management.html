@@ -47,10 +47,6 @@
               <span class="label">Root utente</span>
               <code>{{ dav_account_root_url|default:"-" }}</code>
             </div>
-            <div class="profile-row">
-              <span class="label">Collection team default</span>
-              <code>{{ dav_default_team_collection_url|default:"-" }}</code>
-            </div>
           </div>
           <p class="muted">Formato supportato: <code>{domain}/dav/{username}/{collezione}/</code></p>
           {% if dav_external_onboarding_username and dav_external_onboarding_password %}

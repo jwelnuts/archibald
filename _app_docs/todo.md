@@ -1,13 +1,14 @@
 # todo
 
 ## Scopo
-L'app `todo` gestisce task operativi con stati, priorita e integrazione planner.
+L'app `todo` gestisce task operativi con stati, priorita e sync `VTODO` su DAV.
 
 ## Funzionalita principali
 - Dashboard task con ordinamento per stato/scadenza.
 - CRUD task.
 - Cambio stato rapido (supporto HTMX/AJAX).
-- Trasferimento task -> planner mantenendo contesto.
+- Sync automatica `Task -> VTODO` su create/update/status/delete.
+- Sync manuale completa delle task verso DAV.
 - KPI open/in_progress/done/overdue/today.
 
 ## Modelli chiave
@@ -19,7 +20,7 @@ L'app `todo` gestisce task operativi con stati, priorita e integrazione planner.
 - `GET/POST /todo/api/update?id=<id>`
 - `GET/POST /todo/api/remove?id=<id>`
 - `POST /todo/api/status`: cambio stato.
-- `POST /todo/to-planner`: trasferimento a planner.
+- `POST /todo/api/sync-vtodo`: sync completa verso DAV.
 
 ## Template/UI principali
 - `todo/dashboard.html`
@@ -30,16 +31,16 @@ L'app `todo` gestisce task operativi con stati, priorita e integrazione planner.
 - `todo/partials/task_row.html`
 
 ## Integrazioni con altre app
-- `planner`: transfer task -> planner item.
 - `projects`: link a progetto/categoria.
+- `core/dav`: provisioning account e collection CalDAV.
 
 ## Casi d'uso reali
 - Gestire daily execution task con update stato immediato.
-- Spostare attività strategiche da todo verso planner.
+- Allineare task interne con client DAV tramite `VTODO`.
 
 ## Note operative
 - Endpoint `set_status` supporta fallback full-page + modalità HTMX/AJAX.
-- Transfer conserva parte metadati task nel campo note planner.
+- Collection personale di default usata per sync: `CALDAV_DEFAULT_USER_COLLECTION` (default `personal_dav`).
 
 ## Copertura test esistente
 - `TodoProjectBindingTests`

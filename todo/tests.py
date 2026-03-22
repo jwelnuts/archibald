@@ -1,9 +1,12 @@
+from unittest.mock import patch
+
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 
-from planner.models import PlannerItem
+from core.models import DavAccount
 from projects.models import Category, Project
 
+from .dav_sync import DavSyncOutcome, push_task_to_vtodo, sync_all_tasks_to_vtodo
 from .models import Task
 
 
@@ -52,41 +55,13 @@ class TodoProjectBindingTests(TestCase):
         self.assertTrue(project.name.startswith("Nuovo"))
         self.assertEqual(task.project_id, project.id)
 
-    def test_dashboard_includes_planner_snapshot(self):
-        PlannerItem.objects.create(
-            owner=self.user,
-            title="Promemoria bolletta",
-            status=PlannerItem.Status.PLANNED,
-        )
+    def test_dashboard_includes_dav_vtodo_context(self):
         self.client.login(username="todo_user", password="test1234")
         response = self.client.get("/todo/")
         self.assertEqual(response.status_code, 200)
-        self.assertIn("planner_upcoming", response.context)
-        self.assertIn("planner_counts", response.context)
-
-    def test_transfer_task_to_planner(self):
-        category = Category.objects.create(owner=self.user, name="Admin")
-        task = Task.objects.create(
-            owner=self.user,
-            title="Contattare cliente",
-            item_type=Task.ItemType.REMINDER,
-            status=Task.Status.IN_PROGRESS,
-            priority=Task.Priority.HIGH,
-            category=category,
-            note="Call entro domani",
-        )
-        self.client.login(username="todo_user", password="test1234")
-        response = self.client.post("/todo/to-planner", {"id": task.id})
-        self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.url, "/planner/")
-        self.assertFalse(Task.objects.filter(id=task.id).exists())
-        planner_item = PlannerItem.objects.get(owner=self.user, title="Contattare cliente")
-        self.assertEqual(planner_item.status, PlannerItem.Status.PLANNED)
-        self.assertEqual(planner_item.category_id, category.id)
-        self.assertIn("Call entro domani", planner_item.note)
-        self.assertIn("[Da Todo] Tipo: Reminder", planner_item.note)
-        self.assertIn("[Da Todo] Priorita:", planner_item.note)
-        self.assertIn("[Da Todo] Categoria: Admin", planner_item.note)
+        self.assertIn("dav_vtodo_collection_slug", response.context)
+        self.assertIn("dav_vtodo_collection_path", response.context)
+        self.assertIn("dav_vtodo_collection_url", response.context)
 
     def test_add_task_as_reminder(self):
         self.client.login(username="todo_user", password="test1234")
@@ -208,3 +183,61 @@ class TodoProjectBindingTests(TestCase):
         self.assertEqual(response.url, "/todo/")
         task.refresh_from_db()
         self.assertEqual(task.status, Task.Status.IN_PROGRESS)
+
+    @patch("todo.views.sync_all_tasks_to_vtodo")
+    def test_sync_vtodo_endpoint_redirects(self, mock_sync):
+        mock_sync.return_value = {"total": 2, "synced": 2, "failed": 0, "error": ""}
+        self.client.login(username="todo_user", password="test1234")
+        response = self.client.post("/todo/api/sync-vtodo")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/todo/")
+        mock_sync.assert_called_once()
+
+
+class TodoDavSyncTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="todo_dav_user", password="test1234")
+        self.task = Task.objects.create(
+            owner=self.user,
+            title="Task DAV",
+            item_type=Task.ItemType.TASK,
+            status=Task.Status.OPEN,
+            priority=Task.Priority.MEDIUM,
+        )
+
+    @patch("todo.dav_sync._dav_request")
+    @patch("todo.dav_sync._ensure_collection")
+    def test_push_task_to_vtodo_success(self, mock_ensure, mock_request):
+        DavAccount.objects.create(
+            user=self.user,
+            dav_username="todo_dav_user",
+            password_hash="$2b$12$T7Y8P2hso3Ubn8hY2X43NOmJ4xWjQ0X1E4p9h8e2xK0P8IhW5M9sC",
+            is_active=True,
+        )
+        mock_ensure.return_value = DavSyncOutcome(ok=True)
+        mock_request.return_value = (201, {}, "")
+
+        with self.settings(
+            CALDAV_ENABLED=True,
+            CALDAV_BASE_URL="https://example.com/dav/",
+            CALDAV_SERVICE_USERNAME="archibald",
+            CALDAV_SERVICE_PASSWORD="secret",
+            CALDAV_DEFAULT_USER_COLLECTION="personal_dav",
+        ):
+            result = push_task_to_vtodo(self.task)
+
+        self.assertTrue(result.ok)
+        self.assertEqual(mock_request.call_count, 1)
+
+    def test_sync_all_tasks_to_vtodo_fails_without_dav_account(self):
+        with self.settings(
+            CALDAV_ENABLED=True,
+            CALDAV_BASE_URL="https://example.com/dav/",
+            CALDAV_SERVICE_USERNAME="archibald",
+            CALDAV_SERVICE_PASSWORD="secret",
+            CALDAV_DEFAULT_USER_COLLECTION="personal_dav",
+        ):
+            stats = sync_all_tasks_to_vtodo(self.user)
+        self.assertEqual(stats["total"], 1)
+        self.assertEqual(stats["synced"], 0)
+        self.assertEqual(stats["failed"], 1)

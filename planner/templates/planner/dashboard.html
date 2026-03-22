@@ -6,13 +6,13 @@
   <section class="hero" id="app-head">
     <div class="hero-copy" id="app-header">
       <h1>Planner</h1>
-      <p>Annota spese future, compleanni e obiettivi di risparmio.</p>
+      <p>Wishlist personale per spese future, idee e obiettivi.</p>
       <div class="hero-actions" id="app-actions" data-module="planner">
         <a class="btn primary" href="/planner/add" data-action="add">Nuova voce</a>
       </div>
     </div>
     <div class="hero-card" id="planner-upcoming-panel">
-      <div class="card-title" id="upcoming-title">Prossimi promemoria</div>
+      <div class="card-title" id="upcoming-title">Prossime voci wishlist</div>
       <ul class="list" id="planner-upcoming-list">
         {% if upcoming %}
           {% for item in upcoming %}
@@ -21,15 +21,10 @@
               <span>{{ item.title }}</span>
               <span class="muted">{{ item.due_date|default:"-" }}</span>
               <a class="btn" href="/planner/update?id={{ item.id }}">Aggiorna</a>
-              <form method="post" action="/planner/to-todo" style="display:inline;">
-                {% csrf_token %}
-                <input type="hidden" name="id" value="{{ item.id }}">
-                <button class="btn" type="submit">Sposta in Todo</button>
-              </form>
             </li>
           {% endfor %}
         {% else %}
-          <li class="muted">Nessun promemoria.</li>
+          <li class="muted">Nessuna voce pianificata.</li>
         {% endif %}
       </ul>
     </div>
@@ -37,7 +32,7 @@
 
   <section class="grid" id="planner-info-grid">
     <article class="panel" id="planner-info-panel">
-      <h2 id="planner-stats-title">Stato</h2>
+      <h2 id="planner-stats-title">Stato wishlist</h2>
       <div class="stat-row" id="planner-info">
         <div class="stat">
           <div class="stat-label">Pianificati</div>
@@ -55,39 +50,12 @@
     </article>
 
     <article class="panel" id="planner-notes-panel">
-      <h2 id="planner-notes-title">Snapshot Todo</h2>
-      <div class="note">Planner pianifica. Todo esegue. Qui vedi i task operativi senza uscire dal planner.</div>
-      <div class="stat-row">
-        <div class="stat">
-          <div class="stat-label">Todo aperti</div>
-          <div class="stat-value">{{ todo_counts.open }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Todo in corso</div>
-          <div class="stat-value">{{ todo_counts.in_progress }}</div>
-        </div>
-      </div>
-      <div class="actions">
-        <a class="btn" href="/todo/">Apri Todo</a>
-        <a class="btn" href="/todo/api/add">Nuovo Task</a>
-      </div>
+      <h2 id="planner-notes-title">Come usarlo</h2>
+      <div class="note">Usa Planner per organizzare desideri e spese future. Quando una voce diventa operativa, gestiscila direttamente in Todo.</div>
       <ul class="list">
-        {% if todo_open %}
-          {% for task in todo_open %}
-            <li>
-              <span>{{ task.title }}</span>
-              <span class="muted">{{ task.due_date|default:"-" }}</span>
-              <a class="btn" href="/todo/api/update?id={{ task.id }}">Apri</a>
-              <form method="post" action="/todo/to-planner" style="display:inline;">
-                {% csrf_token %}
-                <input type="hidden" name="id" value="{{ task.id }}">
-                <button class="btn" type="submit">Sposta in Planner</button>
-              </form>
-            </li>
-          {% endfor %}
-        {% else %}
-          <li class="muted">Nessun task aperto.</li>
-        {% endif %}
+        <li>Stima una data obiettivo con la colonna scadenza.</li>
+        <li>Inserisci importo per tenere traccia del budget futuro.</li>
+        <li>Usa stato <strong>Planned/Done/Skipped</strong> per monitorare priorita e decisioni.</li>
       </ul>
     </article>
   </section>

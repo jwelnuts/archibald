@@ -9,7 +9,7 @@
         <div class="uk-card uk-card-default uk-card-small uk-card-body todo-card">
           <h1 class="uk-card-title uk-margin-remove-bottom">Task, reminder e appuntamenti</h1>
           <p class="uk-text-meta uk-margin-small-top">
-            Gestisci le voci operative giornaliere e inviale al Planner quando diventano pianificazione.
+            Gestisci le voci operative giornaliere con sync VTODO su DAV.
           </p>
           <div class="uk-flex uk-flex-wrap uk-grid-small uk-margin-small-top hero-actions" id="app-actions" data-module="todo">
             <a class="uk-button uk-button-primary uk-button-small" href="/todo/api/add" data-action="add">Nuova voce</a>
@@ -74,49 +74,25 @@
 
       <article class="uk-width-1-1 uk-width-2-5@m">
         <div class="uk-card uk-card-default uk-card-small uk-card-body todo-card">
-          <h2 class="uk-h4 uk-margin-small-bottom">Snapshot Planner</h2>
-          <div class="uk-grid-small uk-child-width-1-2" uk-grid>
-            <div>
-              <div class="uk-text-meta">Pianificati</div>
-              <div class="uk-text-bold uk-text-large">{{ planner_counts.planned }}</div>
+          <h2 class="uk-h4 uk-margin-small-bottom">Sync DAV VTODO</h2>
+          <p class="uk-text-meta uk-margin-small-top">
+            Le modifiche Todo vengono inviate come <code>VTODO</code> nella tua collezione DAV.
+          </p>
+          {% if dav_vtodo_collection_path %}
+            <div class="uk-alert-primary uk-padding-small uk-margin-small-top">
+              <div><strong>Collection:</strong> {{ dav_vtodo_collection_path }}/</div>
+              {% if dav_vtodo_collection_url %}
+                <div class="uk-text-meta">{{ dav_vtodo_collection_url }}</div>
+              {% endif %}
             </div>
-            <div>
-              <div class="uk-text-meta">Scadenza 7gg</div>
-              <div class="uk-text-bold uk-text-large">{{ planner_counts.due_soon }}</div>
-            </div>
-          </div>
-
-          <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
-            <div>
-              <a class="uk-button uk-button-default uk-button-small uk-width-1-1" href="/planner/">Apri Planner</a>
-            </div>
-            <div>
-              <a class="uk-button uk-button-primary uk-button-small uk-width-1-1" href="/planner/add">Nuova voce</a>
-            </div>
-          </div>
-
-          <h3 class="uk-h5 uk-margin-small-top uk-margin-small-bottom">Prossime voci planner</h3>
-          {% if planner_upcoming %}
-            <ul class="uk-list uk-list-divider uk-margin-remove todo-list">
-              {% for item in planner_upcoming %}
-                <li class="todo-list-item">
-                  <div>
-                    <div class="uk-text-bold uk-text-small">{{ item.title }}</div>
-                    <div class="uk-text-meta">{{ item.due_date|default:"-" }}</div>
-                  </div>
-                  <div class="todo-inline-actions">
-                    <a class="uk-button uk-button-default uk-button-small" href="/planner/update?id={{ item.id }}">Apri</a>
-                    <form method="post" action="/planner/to-todo" class="todo-inline-form">
-                      {% csrf_token %}
-                      <input type="hidden" name="id" value="{{ item.id }}">
-                      <button class="uk-button uk-button-primary uk-button-small" type="submit">Sposta in Todo</button>
-                    </form>
-                  </div>
-                </li>
-              {% endfor %}
-            </ul>
+            <form method="post" action="/todo/api/sync-vtodo" class="uk-margin-small-top">
+              {% csrf_token %}
+              <button class="uk-button uk-button-primary uk-button-small uk-width-1-1" type="submit">Sincronizza tutte le task</button>
+            </form>
           {% else %}
-            <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessuna voce planner pianificata.</div>
+            <div class="uk-alert-warning uk-padding-small uk-margin-remove">
+              Account DAV non disponibile: esegui l'accesso con sync DAV attiva e riprova.
+            </div>
           {% endif %}
         </div>
       </article>

@@ -92,6 +92,13 @@ CALDAV_SERVICE_USERNAME = os.getenv("CALDAV_SERVICE_USERNAME", "").strip()
 CALDAV_SERVICE_PASSWORD = os.getenv("CALDAV_SERVICE_PASSWORD", "").strip()
 CALDAV_LOGIN_DOMAIN = os.getenv("CALDAV_LOGIN_DOMAIN", "").strip()
 CALDAV_DEFAULT_TEAM_COLLECTION = os.getenv("CALDAV_DEFAULT_TEAM_COLLECTION", "team/progetto-generale").strip()
+CALDAV_DEFAULT_USER_COLLECTION = (
+    os.getenv("CALDAV_DEFAULT_USER_COLLECTION", os.getenv("CALDAV_TODO_COLLECTION", "personal_dav")).strip()
+    or "personal_dav"
+)
+# Backward compatibility for older configs that referenced CALDAV_TODO_COLLECTION.
+CALDAV_TODO_COLLECTION = (os.getenv("CALDAV_TODO_COLLECTION", CALDAV_DEFAULT_USER_COLLECTION).strip()
+                          or CALDAV_DEFAULT_USER_COLLECTION)
 RADICALE_USERS_FILE = os.getenv("RADICALE_USERS_FILE", str(BASE_DIR / "runtime" / "radicale" / "users")).strip()
 RADICALE_USERS_LOCK_FILE = os.getenv("RADICALE_USERS_LOCK_FILE", "").strip()
 RADICALE_RIGHTS_FILE = os.getenv("RADICALE_RIGHTS_FILE", str(BASE_DIR / "runtime" / "radicale" / "rights")).strip()

@@ -1,5 +1,5 @@
 from django.contrib import messages as django_messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.db.models import Count
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -27,6 +27,8 @@ DEFAULT_INBOUND_CATEGORIES = (
     "Evento",
     "Altro",
 )
+
+superuser_required = user_passes_test(lambda user: user.is_superuser)
 
 
 def ensure_default_inbound_categories(owner) -> None:
@@ -73,6 +75,7 @@ def _resolve_inbound_category(owner, *, category_id: str, new_label: str, fallba
 
 
 @login_required
+@superuser_required
 def dashboard(request):
     config, _ = ArchibaldMailboxConfig.objects.get_or_create(owner=request.user)
     ensure_default_flag_rules(request.user)
@@ -175,6 +178,7 @@ def dashboard(request):
 
 
 @login_required
+@superuser_required
 def flag_rules(request):
     ensure_default_flag_rules(request.user)
     rules = list(
@@ -190,6 +194,7 @@ def flag_rules(request):
 
 
 @login_required
+@superuser_required
 def add_flag_rule(request):
     if request.method == "POST":
         form = ArchibaldEmailFlagRuleForm(request.POST)
@@ -213,6 +218,7 @@ def add_flag_rule(request):
 
 
 @login_required
+@superuser_required
 def edit_flag_rule(request, rule_id: int):
     row = get_object_or_404(ArchibaldEmailFlagRule, id=rule_id, owner=request.user)
     if request.method == "POST":
@@ -236,6 +242,7 @@ def edit_flag_rule(request, rule_id: int):
 
 
 @login_required
+@superuser_required
 def remove_flag_rule(request, rule_id: int):
     row = get_object_or_404(ArchibaldEmailFlagRule, id=rule_id, owner=request.user)
     if request.method == "POST":
@@ -253,6 +260,7 @@ def remove_flag_rule(request, rule_id: int):
 
 
 @login_required
+@superuser_required
 def inbound_queue(request):
     ensure_default_inbound_categories(request.user)
     status_filter = (request.GET.get("status") or ArchibaldEmailMessage.ReviewStatus.PENDING).strip().upper()
@@ -308,6 +316,7 @@ def inbound_queue(request):
 
 
 @login_required
+@superuser_required
 def apply_inbound_message(request, message_id: int):
     if request.method != "POST":
         return redirect("/archibald-mail/inbox/")
@@ -369,6 +378,7 @@ def apply_inbound_message(request, message_id: int):
 
 
 @login_required
+@superuser_required
 def ignore_inbound_message(request, message_id: int):
     if request.method != "POST":
         return redirect("/archibald-mail/inbox/")
@@ -408,6 +418,7 @@ def ignore_inbound_message(request, message_id: int):
 
 
 @login_required
+@superuser_required
 def reopen_inbound_message(request, message_id: int):
     if request.method != "POST":
         return redirect("/archibald-mail/inbox/")

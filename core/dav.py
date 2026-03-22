@@ -70,6 +70,15 @@ def _normalize_dav_collection_slug(value: str) -> str:
     return slug
 
 
+def default_user_collection_slug() -> str:
+    raw = (
+        getattr(settings, "CALDAV_DEFAULT_USER_COLLECTION", "")
+        or getattr(settings, "CALDAV_TODO_COLLECTION", "")
+        or "personal_dav"
+    )
+    return _normalize_dav_collection_slug(raw)
+
+
 def _build_base_username(user) -> str:
     raw_user = _normalize_user_part(str(getattr(user, "username", "")), f"user-{user.id}")
     return _append_login_domain(raw_user)
@@ -189,6 +198,50 @@ def ensure_calendar_collection(*, principal: str, calendar_slug: str, display_na
     props_path.write_text(json.dumps(props_payload, ensure_ascii=True, separators=(",", ":")), encoding="utf-8")
     _sync_owner_from_reference(props_path, users_path)
     return calendar_dir, props_path
+
+
+def ensure_user_default_collection(
+    *,
+    principal: str,
+    calendar_slug: str | None = None,
+    display_name: str = "Personal DAV",
+    legacy_slug: str = "calendario",
+) -> tuple[Path, Path, bool]:
+    users_path = _users_file_path()
+    principal_value = _normalize_dav_principal(principal)
+    target_slug = _normalize_dav_collection_slug(calendar_slug or default_user_collection_slug())
+    legacy_slug_value = _normalize_dav_collection_slug(legacy_slug) if legacy_slug else ""
+
+    collections_root = _radicale_collections_root(users_path)
+    principal_dir = collections_root / principal_value
+    target_dir = principal_dir / target_slug
+    legacy_dir = principal_dir / legacy_slug_value if legacy_slug_value else None
+    moved_legacy = False
+
+    principal_dir.mkdir(parents=True, exist_ok=True)
+    _sync_owner_from_reference(principal_dir, users_path)
+
+    if (
+        legacy_dir
+        and legacy_slug_value != target_slug
+        and legacy_dir.exists()
+        and legacy_dir.is_dir()
+        and not target_dir.exists()
+    ):
+        legacy_dir.rename(target_dir)
+        moved_legacy = True
+
+    target_dir.mkdir(parents=True, exist_ok=True)
+    _sync_owner_from_reference(target_dir, users_path)
+
+    props_payload = {"tag": "VCALENDAR"}
+    display_name_value = (display_name or "").strip()
+    if display_name_value:
+        props_payload["D:displayname"] = display_name_value[:120]
+    props_path = target_dir / ".Radicale.props"
+    props_path.write_text(json.dumps(props_payload, ensure_ascii=True, separators=(",", ":")), encoding="utf-8")
+    _sync_owner_from_reference(props_path, users_path)
+    return target_dir, props_path, moved_legacy
 
 
 def _build_users_payload() -> dict[str, str]:
@@ -478,6 +531,13 @@ def ensure_user_dav_access(
         account.is_active = True
         account.save()
         sync_radicale_users_file()
+        _calendar_dir, _props_path, moved_legacy = ensure_user_default_collection(principal=account.dav_username)
+        if moved_legacy:
+            logger.info(
+                "DAV collection migrated for '%s': 'calendario' -> '%s'",
+                account.dav_username,
+                default_user_collection_slug(),
+            )
     return account, issued_password
 
 
