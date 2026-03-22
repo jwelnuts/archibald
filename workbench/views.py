@@ -2,6 +2,7 @@ import base64
 import json
 import os
 from pathlib import Path
+import re
 import urllib.error
 import urllib.request
 from urllib.parse import quote, urljoin
@@ -10,6 +11,7 @@ from importlib.util import find_spec
 from django.apps import apps
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core.management.base import CommandError
 from django.db import connection
@@ -23,6 +25,9 @@ from .app_builder import AppBuilderError, generate_app_from_prompt, run_post_gen
 from .forms import AppGeneratorForm, WorkbenchItemForm
 from .models import DebugChangeLog, WorkbenchItem
 from .orphan_cleanup import cleanup_generated_app
+
+_DAV_PRINCIPAL_SANITIZER = re.compile(r"[^a-z0-9._@+-]+")
+_DAV_COLLECTION_SANITIZER = re.compile(r"[^a-z0-9._-]+")
 
 
 def _normalize_caldav_url(raw_url):
@@ -94,6 +99,106 @@ def _mask_secret(value):
     if len(value) <= 6:
         return "***"
     return f"{value[:2]}***{value[-2:]}"
+
+
+def _normalize_dav_principal(value):
+    candidate = _DAV_PRINCIPAL_SANITIZER.sub("-", (value or "").strip().lower()).strip("-")
+    if not candidate:
+        raise ValueError("Principal DAV non valido.")
+    return candidate
+
+
+def _normalize_collection_slug(value):
+    candidate = _DAV_COLLECTION_SANITIZER.sub("-", (value or "").strip().lower()).strip("-.")
+    if not candidate:
+        raise ValueError("Nome calendario non valido.")
+    return candidate
+
+
+def _radicale_collections_root(users_path):
+    if users_path:
+        return users_path.parent / "collections" / "collection-root"
+    return Path("/radicale-data/collections/collection-root")
+
+
+def _sync_owner_from_reference(path, reference):
+    if not reference or not reference.exists():
+        return
+    try:
+        stat = reference.stat()
+        os.chown(path, stat.st_uid, stat.st_gid)
+    except OSError:
+        return
+
+
+def _ensure_calendar_collection(*, users_path, principal, calendar_slug, display_name=""):
+    collections_root = _radicale_collections_root(users_path)
+    principal_value = _normalize_dav_principal(principal)
+    calendar_value = _normalize_collection_slug(calendar_slug)
+
+    principal_dir = collections_root / principal_value
+    calendar_dir = principal_dir / calendar_value
+    principal_dir.mkdir(parents=True, exist_ok=True)
+    calendar_dir.mkdir(parents=True, exist_ok=True)
+    _sync_owner_from_reference(principal_dir, users_path)
+    _sync_owner_from_reference(calendar_dir, users_path)
+
+    props_payload = {"tag": "VCALENDAR"}
+    display_name_value = (display_name or "").strip()
+    if display_name_value:
+        props_payload["D:displayname"] = display_name_value[:120]
+
+    props_path = calendar_dir / ".Radicale.props"
+    props_path.write_text(json.dumps(props_payload, ensure_ascii=True, separators=(",", ":")), encoding="utf-8")
+    _sync_owner_from_reference(props_path, users_path)
+    return calendar_dir, props_path
+
+
+def _load_collections_snapshot(users_path):
+    root = _radicale_collections_root(users_path)
+    result = {
+        "root": str(root),
+        "exists": root.exists(),
+        "principals": [],
+        "error": "",
+    }
+    if not root.exists():
+        return result
+
+    try:
+        principal_rows = []
+        for principal_dir in sorted(root.iterdir(), key=lambda item: item.name):
+            if not principal_dir.is_dir():
+                continue
+            collections = []
+            for child in sorted(principal_dir.iterdir(), key=lambda item: item.name):
+                if not child.is_dir():
+                    continue
+                props_path = child / ".Radicale.props"
+                tag = "-"
+                if props_path.exists():
+                    try:
+                        data = json.loads(props_path.read_text(encoding="utf-8"))
+                        tag = str(data.get("tag") or "-")
+                    except Exception:
+                        tag = "ERR"
+                collections.append(
+                    {
+                        "name": child.name,
+                        "tag": tag,
+                    }
+                )
+            principal_rows.append(
+                {
+                    "name": principal_dir.name,
+                    "collections": collections,
+                }
+            )
+        result["principals"] = principal_rows
+        return result
+    except Exception as exc:
+        result["error"] = str(exc)
+        return result
 
 
 def _group_migrations_by_app():
@@ -753,6 +858,7 @@ def db_schema(request):
 @login_required
 def radicale_debug(request):
     from core.models import DavAccount
+    from core.dav import DavProvisioningError, sync_radicale_users_file
 
     base_url = _normalize_caldav_url(getattr(settings, "CALDAV_BASE_URL", ""))
     service_username = (getattr(settings, "CALDAV_SERVICE_USERNAME", "") or "").strip()
@@ -761,6 +867,45 @@ def radicale_debug(request):
     lock_file_value = (getattr(settings, "RADICALE_USERS_LOCK_FILE", "") or "").strip()
     users_path = Path(users_file_value) if users_file_value else None
     lock_path = Path(lock_file_value) if lock_file_value else (Path(f"{users_path}.lock") if users_path else None)
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        try:
+            if action == "sync_users_file":
+                sync_radicale_users_file()
+                messages.success(request, "File utenti Radicale sincronizzato.")
+            elif action == "create_user_calendar":
+                principal = _normalize_dav_principal(request.POST.get("principal") or "")
+                calendar_slug = _normalize_collection_slug(request.POST.get("calendar_slug") or "")
+                display_name = (request.POST.get("display_name") or "").strip()
+                account = DavAccount.objects.filter(dav_username=principal).first()
+                if not account:
+                    messages.error(request, f"Principal DAV non trovato: {principal}")
+                    return redirect("/workbench/debug/radicale")
+                _ensure_calendar_collection(
+                    users_path=users_path,
+                    principal=principal,
+                    calendar_slug=calendar_slug,
+                    display_name=display_name,
+                )
+                messages.success(request, f"Calendario '{calendar_slug}' creato per {principal}.")
+            elif action == "create_team_calendar":
+                calendar_slug = _normalize_collection_slug(request.POST.get("calendar_slug") or "")
+                display_name = (request.POST.get("display_name") or "").strip()
+                _ensure_calendar_collection(
+                    users_path=users_path,
+                    principal="team",
+                    calendar_slug=calendar_slug,
+                    display_name=display_name,
+                )
+                messages.success(request, f"Calendario team '{calendar_slug}' creato.")
+            else:
+                messages.error(request, "Azione DAV non supportata.")
+        except (DavProvisioningError, ValueError) as exc:
+            messages.error(request, f"Operazione DAV fallita: {exc}")
+        except Exception as exc:
+            messages.error(request, f"Errore inatteso operazione DAV: {exc}")
+        return redirect("/workbench/debug/radicale")
 
     users_file_info = {
         "path": str(users_path) if users_path else "",
@@ -827,8 +972,10 @@ def radicale_debug(request):
         DavAccount.objects.select_related("user")
         .order_by("dav_username")
     )
+    app_user_count = get_user_model().objects.count()
     active_accounts_count = dav_accounts.filter(is_active=True).count()
     inactive_accounts_count = dav_accounts.filter(is_active=False).count()
+    collections_snapshot = _load_collections_snapshot(users_path)
 
     context = {
         "caldav_enabled": bool(getattr(settings, "CALDAV_ENABLED", False)),
@@ -844,8 +991,10 @@ def radicale_debug(request):
         "users_file_info": users_file_info,
         "probes": probes,
         "probes_ok_count": probes_ok_count,
+        "app_user_count": app_user_count,
         "active_accounts_count": active_accounts_count,
         "inactive_accounts_count": inactive_accounts_count,
+        "collections_snapshot": collections_snapshot,
         "dav_accounts": dav_accounts[:120],
     }
     return render(request, "workbench/radicale_debug.html", context)

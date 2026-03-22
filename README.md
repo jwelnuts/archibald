@@ -353,6 +353,7 @@ File principali:
 
 - `Dockerfile`
 - `docker-compose.yml`
+- `push_full.fish` (push locale completo, con esclusione `.env`)
 - `docker/entrypoint.sh`
 - `docker/caddy/Caddyfile`
 - `docker/radicale/config`
@@ -369,6 +370,7 @@ Setup rapido su VPS:
     - `CADDY_SITE_HOST=tuo-dominio.it`
     - `DJANGO_ALLOWED_HOSTS=tuo-dominio.it,www.tuo-dominio.it`
     - `DJANGO_CSRF_TRUSTED_ORIGINS=https://tuo-dominio.it,https://www.tuo-dominio.it`
+  - `.env` resta privato: non viene tracciato da git e non entra nel build context Docker.
 3. Avvia stack:
 
 ```bash
@@ -385,17 +387,26 @@ docker compose logs -f radicale
 docker compose logs -f caddy
 ```
 
-Update deploy:
+Update deploy (locale -> VPS):
 
 ```bash
-git pull
-docker compose up -d --build
+./push_full.fish -m "chore: update progetto"
 ```
 
-Oppure con script rapido (no backup):
+Push + deploy remoto in un unico comando (opzionale):
 
 ```bash
-./deploy_vps.sh
+./push_full.fish \
+  -m "chore: update progetto" \
+  --deploy-vps \
+  --vps-host ubuntu@vps-b054ede5 \
+  --vps-path ~/archibald
+```
+
+Deploy diretto sulla VPS:
+
+```bash
+./deploy_vps.sh --branch main --force-sync
 ```
 
 Note:
@@ -408,6 +419,8 @@ Note:
 - In `docker-compose.yml` `DATABASE_URL` e costruita automaticamente verso il servizio `db`.
 - Caddy emette e rinnova certificati TLS automaticamente quando `CADDY_SITE_HOST` e un dominio pubblico risolvibile.
 - Radicale viene esposto direttamente sulla porta host `5232` (configurabile con `RADICALE_PUBLISHED_PORT`).
+- `deploy_vps.sh` preserva sempre `.env` locale (backup/ripristino) e in `--force-sync` pulisce gli untracked mantenendo `.env`.
+- Opzioni utili `deploy_vps.sh`: `--autostash`, `--force-sync`, `--branch <nome>`, `--skip-checks`.
 - `mail_worker` usa:
   - `ARCHIBALD_MAIL_POLL_SECONDS` (default `300`)
   - `ARCHIBALD_MAIL_POLL_LIMIT` (default `10`)

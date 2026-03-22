@@ -3,6 +3,14 @@
 {% block title %}MIO - Radicale Debug{% endblock %}
 
 {% block content %}
+  {% if messages %}
+    <section class="panel workbench-flash-panel">
+      {% for message in messages %}
+        <div class="workbench-flash {{ message.tags|default:'info' }}">{{ message }}</div>
+      {% endfor %}
+    </section>
+  {% endif %}
+
   <section class="hero workbench-hero">
     <div class="hero-copy">
       <div class="hero-tag">CalDAV runtime</div>
@@ -24,7 +32,7 @@
         </div>
         <div class="stat">
           <div class="stat-label">Account attivi</div>
-          <div class="stat-value">{{ active_accounts_count }}</div>
+          <div class="stat-value">{{ active_accounts_count }}/{{ app_user_count }}</div>
         </div>
         <div class="stat">
           <div class="stat-label">Users file</div>
@@ -92,6 +100,69 @@
   </section>
 
   <section class="panel">
+    <div class="card-title">Controlli DAV</div>
+    <div class="workbench-grid-2">
+      <div>
+        <form method="post" class="app-cleanup-form">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="sync_users_file">
+          <button type="submit" class="btn">Sincronizza file utenti</button>
+        </form>
+        <p class="muted">Rigenera subito il file htpasswd in base ai DAV account applicativi.</p>
+      </div>
+      <div>
+        <p class="muted">Root collections: <code>{{ collections_snapshot.root }}</code></p>
+      </div>
+    </div>
+
+    <hr>
+
+    <form method="post" class="workbench-grid-2">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_user_calendar">
+      <div>
+        <label class="muted" for="principal">Principal utente</label>
+        <select id="principal" name="principal" class="uk-select">
+          {% for account in dav_accounts %}
+            <option value="{{ account.dav_username }}">{{ account.dav_username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label class="muted" for="calendar_slug_user">Slug calendario</label>
+        <input id="calendar_slug_user" class="uk-input" name="calendar_slug" placeholder="es. lavoro" required>
+      </div>
+      <div>
+        <label class="muted" for="display_name_user">Display name (opzionale)</label>
+        <input id="display_name_user" class="uk-input" name="display_name" placeholder="Calendario Lavoro">
+      </div>
+      <div>
+        <button type="submit" class="btn primary" {% if not dav_accounts %}disabled{% endif %}>
+          Crea calendario utente
+        </button>
+      </div>
+    </form>
+
+    <hr>
+
+    <form method="post" class="workbench-grid-2">
+      {% csrf_token %}
+      <input type="hidden" name="action" value="create_team_calendar">
+      <div>
+        <label class="muted" for="calendar_slug_team">Slug calendario team</label>
+        <input id="calendar_slug_team" class="uk-input" name="calendar_slug" placeholder="es. commerciale" required>
+      </div>
+      <div>
+        <label class="muted" for="display_name_team">Display name (opzionale)</label>
+        <input id="display_name_team" class="uk-input" name="display_name" placeholder="Team Commerciale">
+      </div>
+      <div>
+        <button type="submit" class="btn primary">Crea calendario team</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
     <div class="card-title">File utenti Radicale</div>
     {% if users_file_info.error %}
       <div class="note">Errore lettura file: {{ users_file_info.error }}</div>
@@ -153,6 +224,44 @@
       </div>
     {% else %}
       <div class="note">Nessun account DAV provisionato.</div>
+    {% endif %}
+  </section>
+
+  <section class="panel">
+    <div class="card-title">Collections DAV</div>
+    {% if collections_snapshot.error %}
+      <div class="note">Errore lettura collections: {{ collections_snapshot.error }}</div>
+    {% elif not collections_snapshot.exists %}
+      <div class="note">Root collections non trovata: <code>{{ collections_snapshot.root }}</code></div>
+    {% elif not collections_snapshot.principals %}
+      <div class="note">Nessuna collection presente.</div>
+    {% else %}
+      <div class="uk-overflow-auto">
+        <table class="uk-table uk-table-divider uk-table-small">
+          <thead>
+            <tr>
+              <th>Principal</th>
+              <th>Collections</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for principal in collections_snapshot.principals %}
+              <tr>
+                <td><code>{{ principal.name }}</code></td>
+                <td>
+                  {% if principal.collections %}
+                    {% for collection in principal.collections %}
+                      <code>{{ collection.name }}</code> ({{ collection.tag }}){% if not forloop.last %}, {% endif %}
+                    {% endfor %}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
     {% endif %}
   </section>
 {% endblock %}

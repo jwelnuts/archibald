@@ -3,18 +3,20 @@
 <html lang="it">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.7">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>MIO - Profilo</title>
     {% include "core/partials/uikit_head.html" %}
+    <link rel="stylesheet" href="{% static 'core/styles.css' %}">
+    <link rel="stylesheet" href="{% static 'core/profile.css' %}">
   </head>
-  <body>
-    <div class="shell">
-      <header class="shell-header">
+  <body class="profile-body">
+    <div class="shell profile-shell">
+      <header class="shell-header profile-header">
         <div class="brand">
           <div class="brand-mark">MIO</div>
           <div class="brand-text">
-            <div class="brand-title">Money Organizer</div>
-            <div class="brand-sub">Impostazioni utente</div>
+            <div class="brand-title">Profilo utente</div>
+            <div class="brand-sub">Impostazioni personali, DAV e Archibald</div>
           </div>
         </div>
         <nav class="shell-nav">
@@ -23,25 +25,50 @@
         </nav>
       </header>
 
-      {% block content %}
-        <section class="panel profile-panel">
+      <section class="panel profile-hero">
+        <div class="profile-hero-head">
           <h1>Profilo</h1>
-          <p class="muted">Gestisci le informazioni personali e le preferenze.</p>
+          <p class="muted">Pannello unico per account, integrazione DAV e configurazione operativa Archibald.</p>
+        </div>
+        <div class="profile-kpi-row">
+          <div class="profile-kpi-chip">
+            <div class="profile-kpi-label">Utente</div>
+            <div class="profile-kpi-value">{{ request.user.username }}</div>
+          </div>
+          <div class="profile-kpi-chip">
+            <div class="profile-kpi-label">Email</div>
+            <div class="profile-kpi-value">{{ request.user.email|default:"-" }}</div>
+          </div>
+          <div class="profile-kpi-chip">
+            <div class="profile-kpi-label">CalDAV</div>
+            <div class="profile-kpi-value">{% if caldav_enabled %}Attivo{% else %}Disattivo{% endif %}</div>
+          </div>
+        </div>
+        <nav class="profile-anchor-nav">
+          <a href="#dati-principali">Dati</a>
+          <a href="#dav-access">DAV</a>
+          <a href="#archibald-instructions">Archibald</a>
+          <a href="#bias-cognitivi">Bias</a>
+          <a href="#sicurezza">Sicurezza</a>
+        </nav>
+      </section>
 
-          {% if messages %}
-            <div class="profile-flash-stack">
-              {% for message in messages %}
-                <div class="profile-flash">{{ message }}</div>
-              {% endfor %}
-            </div>
-          {% endif %}
+      {% if messages %}
+        <section class="profile-flash-stack">
+          {% for message in messages %}
+            <div class="profile-flash {{ message.tags|default:'info' }}">{{ message }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
 
-          <div class="profile-grid">
-            <div class="profile-card">
-              <h2>Dati principali</h2>
+      <div class="profile-layout">
+        <main class="profile-main">
+          <section class="panel profile-card" id="dati-principali">
+            <h2>Dati principali</h2>
+            <div class="profile-list">
               <div class="profile-row">
                 <span class="label">Username</span>
-                <span>{{ request.user.username }}</span>
+                <strong>{{ request.user.username }}</strong>
               </div>
               <div class="profile-row">
                 <span class="label">Email</span>
@@ -51,204 +78,183 @@
                 <span class="label">Ultimo login</span>
                 <span>{{ request.user.last_login|default:"-" }}</span>
               </div>
-              <div class="profile-row">
-                <span class="label">Accounts</span>
-                <a class="link" href="/core/accounts/">Gestisci</a>
-              </div>
             </div>
-
-            <div class="profile-card">
-              <h2>Preferenze</h2>
-              <div class="profile-row">
-                <span class="label">Hero actions</span>
-                <a class="link" href="/profile/hero-actions/">Configura</a>
-              </div>
-              <div class="profile-row">
-                <span class="label">Navigazione app</span>
-                <a class="link" href="/profile/nav/">Personalizza</a>
-              </div>
-              <div class="profile-row">
-                <span class="label">Personal Lab Archibald</span>
-                <a class="link" href="/ai-lab/personal-lab/">Apri</a>
-              </div>
-              <form class="form" method="post" action="">
-                {% csrf_token %}
-                <div class="field">
-                  <label for="timezone">Timezone</label>
-                  <select id="timezone" name="timezone">
-                    <option>UTC</option>
-                    <option>Europe/Rome</option>
-                    <option>Europe/Milan</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label for="currency">Valuta default</label>
-                  <select id="currency" name="currency">
-                    <option>EUR</option>
-                    <option>USD</option>
-                    <option>GBP</option>
-                  </select>
-                </div>
-                <div class="actions">
-                  <button class="btn primary" type="submit">Salva</button>
-                </div>
-              </form>
+            <div class="actions">
+              <a class="btn" href="/core/accounts/">Gestisci accounts</a>
             </div>
+          </section>
 
-            <div class="profile-card profile-card-wide" id="archibald-instructions">
-              <h2>Istruzioni Attive Archibald</h2>
-              <p class="muted">
-                Personalizza lo stile operativo del maggiordomo e salva stati richiamabili per diversi contesti.
-              </p>
+          <section class="panel profile-card" id="preferenze">
+            <h2>Preferenze e collegamenti</h2>
+            <p class="muted">Accessi rapidi alle configurazioni utente disponibili.</p>
+            <div class="profile-link-grid">
+              <a class="profile-link-card" href="/profile/hero-actions/">
+                <span class="profile-link-title">Hero actions</span>
+                <span class="profile-link-meta">Configura azioni rapide</span>
+              </a>
+              <a class="profile-link-card" href="/profile/nav/">
+                <span class="profile-link-title">Navigazione app</span>
+                <span class="profile-link-meta">Ordine moduli e scorciatoie</span>
+              </a>
+              <a class="profile-link-card" href="/ai-lab/personal-lab/">
+                <span class="profile-link-title">Personal Lab Archibald</span>
+                <span class="profile-link-meta">Prompt e test personali</span>
+              </a>
+            </div>
+          </section>
+
+          <section class="panel profile-card" id="archibald-instructions">
+            <h2>Istruzioni attive Archibald</h2>
+            <p class="muted">Definisci tono operativo e salva stati richiamabili per contesti diversi.</p>
+
+            <form class="form archibald-instructions-form" method="post" action="">
+              {% csrf_token %}
+              <div class="field">
+                <label for="archibald_custom_instructions">Istruzioni personalizzate</label>
+                <textarea
+                  id="archibald_custom_instructions"
+                  name="archibald_custom_instructions"
+                  rows="8"
+                  placeholder="Es: evita toni troppo accondiscendenti, vai diretto su analisi + piano, evidenzia tradeoff."
+                >{{ archibald_custom_instructions }}</textarea>
+              </div>
+              <div class="archibald-tools-row">
+                <button class="btn primary" type="submit" name="action" value="save_archibald_instructions">
+                  Salva istruzioni attive
+                </button>
+                <input
+                  type="text"
+                  class="archibald-state-name"
+                  name="state_name"
+                  maxlength="120"
+                  placeholder="Nome stato (es. Operativo Secco)"
+                >
+                <button class="btn" type="submit" name="action" value="save_archibald_state">
+                  Salva come stato
+                </button>
+              </div>
+            </form>
+
+            <details class="archibald-system-preview">
+              <summary>Istruzioni complete attive (preview)</summary>
+              <pre>{{ archibald_system_preview }}</pre>
+            </details>
+
+            <div class="archibald-states-section">
+              <h3>Stati salvati</h3>
+              {% if archibald_instruction_states %}
+                <div class="archibald-states-grid">
+                  {% for state in archibald_instruction_states %}
+                    <article class="archibald-state-card">
+                      <div class="archibald-state-name-label">{{ state.name }}</div>
+                      <div class="archibald-state-meta">Aggiornato: {{ state.updated_at|date:"d/m/Y H:i" }}</div>
+                      <pre class="archibald-state-snippet">{{ state.instructions_text|default:"(vuoto)" }}</pre>
+                      <div class="actions">
+                        <form method="post" action="">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="apply_archibald_state">
+                          <input type="hidden" name="state_id" value="{{ state.id }}">
+                          <button class="btn" type="submit">Applica</button>
+                        </form>
+                        <form method="post" action="">
+                          {% csrf_token %}
+                          <input type="hidden" name="action" value="delete_archibald_state">
+                          <input type="hidden" name="state_id" value="{{ state.id }}">
+                          <button class="btn danger" type="submit">Elimina</button>
+                        </form>
+                      </div>
+                    </article>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="note">Nessuno stato salvato al momento.</div>
+              {% endif %}
+            </div>
+          </section>
+
+          <section class="panel profile-card" id="bias-cognitivi">
+            <h2>Bias cognitivi</h2>
+            <p class="muted">Scegli i bias da monitorare quando il controllo bias di Archibald e attivo.</p>
+            <form class="form bias-settings-form" method="post" action="">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="save_bias_settings">
+              <div class="bias-grid">
+                <label class="bias-item">
+                  <input type="checkbox" name="bias_catastrophizing" {% if archibald_persona.bias_catastrophizing %}checked{% endif %}>
+                  <span>Catastrofismo</span>
+                </label>
+                <label class="bias-item">
+                  <input type="checkbox" name="bias_all_or_nothing" {% if archibald_persona.bias_all_or_nothing %}checked{% endif %}>
+                  <span>Pensiero tutto-o-nulla</span>
+                </label>
+                <label class="bias-item">
+                  <input type="checkbox" name="bias_overgeneralization" {% if archibald_persona.bias_overgeneralization %}checked{% endif %}>
+                  <span>Sovrageneralizzazione</span>
+                </label>
+                <label class="bias-item">
+                  <input type="checkbox" name="bias_mind_reading" {% if archibald_persona.bias_mind_reading %}checked{% endif %}>
+                  <span>Lettura del pensiero</span>
+                </label>
+                <label class="bias-item">
+                  <input type="checkbox" name="bias_negative_filtering" {% if archibald_persona.bias_negative_filtering %}checked{% endif %}>
+                  <span>Filtro negativo</span>
+                </label>
+                <label class="bias-item">
+                  <input type="checkbox" name="bias_confirmation_bias" {% if archibald_persona.bias_confirmation_bias %}checked{% endif %}>
+                  <span>Bias di conferma</span>
+                </label>
+              </div>
               <div class="actions">
-                <a class="btn" href="/ai-lab/personal-lab/">Vai a Personal Lab</a>
+                <button class="btn primary" type="submit">Salva bias cognitivi</button>
               </div>
-              <form class="form archibald-instructions-form" method="post" action="">
-                {% csrf_token %}
-                <div class="field">
-                  <label for="archibald_custom_instructions">Istruzioni personalizzate</label>
-                  <textarea
-                    id="archibald_custom_instructions"
-                    name="archibald_custom_instructions"
-                    rows="8"
-                    placeholder="Es: evita toni troppo accondiscendenti, vai diretto su analisi + piano, evidenzia tradeoff."
-                  >{{ archibald_custom_instructions }}</textarea>
-                </div>
-                <div class="archibald-tools-row">
-                  <button class="btn primary" type="submit" name="action" value="save_archibald_instructions">
-                    Salva istruzioni attive
-                  </button>
-                  <input
-                    type="text"
-                    class="archibald-state-name"
-                    name="state_name"
-                    maxlength="120"
-                    placeholder="Nome stato (es. Operativo Secco)"
-                  >
-                  <button class="btn" type="submit" name="action" value="save_archibald_state">
-                    Salva come stato
-                  </button>
-                </div>
-              </form>
+            </form>
+          </section>
+        </main>
 
-              <details class="archibald-system-preview">
-                <summary>Istruzioni complete attive (preview)</summary>
-                <pre>{{ archibald_system_preview }}</pre>
-              </details>
-
-              <div class="archibald-states-section">
-                <h3>Stati salvati</h3>
-                {% if archibald_instruction_states %}
-                  <div class="archibald-states-grid">
-                    {% for state in archibald_instruction_states %}
-                      <article class="archibald-state-card">
-                        <div class="archibald-state-name-label">{{ state.name }}</div>
-                        <div class="archibald-state-meta">Aggiornato: {{ state.updated_at|date:"d/m/Y H:i" }}</div>
-                        <pre class="archibald-state-snippet">{{ state.instructions_text|default:"(vuoto)" }}</pre>
-                        <div class="actions">
-                          <form method="post" action="">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="apply_archibald_state">
-                            <input type="hidden" name="state_id" value="{{ state.id }}">
-                            <button class="btn" type="submit">Applica</button>
-                          </form>
-                          <form method="post" action="">
-                            {% csrf_token %}
-                            <input type="hidden" name="action" value="delete_archibald_state">
-                            <input type="hidden" name="state_id" value="{{ state.id }}">
-                            <button class="btn danger" type="submit">Elimina</button>
-                          </form>
-                        </div>
-                      </article>
-                    {% endfor %}
-                  </div>
-                {% else %}
-                  <div class="note">Nessuno stato salvato al momento.</div>
-                {% endif %}
-              </div>
-            </div>
-
-            <div class="profile-card profile-card-wide" id="bias-cognitivi">
-              <h2>Bias Cognitivi</h2>
-              <p class="muted">
-                Sezione dedicata: scegli i bias che Archibald deve monitorare quando il controllo bias è attivo.
-              </p>
-              <form class="form bias-settings-form" method="post" action="">
-                {% csrf_token %}
-                <input type="hidden" name="action" value="save_bias_settings">
-                <div class="bias-grid">
-                  <label class="bias-item">
-                    <input type="checkbox" name="bias_catastrophizing" {% if archibald_persona.bias_catastrophizing %}checked{% endif %}>
-                    <span>Catastrofismo</span>
-                  </label>
-                  <label class="bias-item">
-                    <input type="checkbox" name="bias_all_or_nothing" {% if archibald_persona.bias_all_or_nothing %}checked{% endif %}>
-                    <span>Pensiero tutto-o-nulla</span>
-                  </label>
-                  <label class="bias-item">
-                    <input type="checkbox" name="bias_overgeneralization" {% if archibald_persona.bias_overgeneralization %}checked{% endif %}>
-                    <span>Sovrageneralizzazione</span>
-                  </label>
-                  <label class="bias-item">
-                    <input type="checkbox" name="bias_mind_reading" {% if archibald_persona.bias_mind_reading %}checked{% endif %}>
-                    <span>Lettura del pensiero</span>
-                  </label>
-                  <label class="bias-item">
-                    <input type="checkbox" name="bias_negative_filtering" {% if archibald_persona.bias_negative_filtering %}checked{% endif %}>
-                    <span>Filtro negativo</span>
-                  </label>
-                  <label class="bias-item">
-                    <input type="checkbox" name="bias_confirmation_bias" {% if archibald_persona.bias_confirmation_bias %}checked{% endif %}>
-                    <span>Bias di conferma</span>
-                  </label>
-                </div>
-                <div class="actions">
-                  <button class="btn primary" type="submit">Salva bias cognitivi</button>
-                </div>
-              </form>
-            </div>
-
-            <div class="profile-card">
-              <h2 id="dav-access">Accesso DAV</h2>
-              {% if caldav_enabled %}
+        <aside class="profile-side">
+          <section class="panel profile-card" id="dav-access">
+            <h2>Accesso DAV</h2>
+            {% if caldav_enabled %}
+              <div class="profile-list">
                 <div class="profile-row">
                   <span class="label">Endpoint CalDAV/CardDAV</span>
-                  <span>{{ caldav_base_url|default:"-" }}</span>
+                  <code>{{ caldav_base_url|default:"-" }}</code>
                 </div>
                 <div class="profile-row">
                   <span class="label">Username DAV</span>
-                  <span>{{ dav_account.dav_username|default:"-" }}</span>
+                  <strong>{{ dav_account.dav_username|default:"-" }}</strong>
                 </div>
                 <div class="profile-row">
                   <span class="label">Collection team default</span>
-                  <span>{{ dav_default_team_collection|default:"team/progetto-generale" }}</span>
+                  <code>{{ dav_default_team_collection|default:"team/progetto-generale" }}</code>
                 </div>
-                <p class="muted">
-                  DAV usa le stesse credenziali del tuo account MIO. Se cambi password account, anche DAV viene aggiornato.
-                </p>
-                <div class="actions">
-                  <a class="btn primary" href="/accounts/password_change/">Cambia password account</a>
-                </div>
-              {% else %}
-                <p class="muted">Integrazione CalDAV non attiva su questa istanza.</p>
-              {% endif %}
-            </div>
+              </div>
+              <p class="muted">DAV usa le stesse credenziali dell'account MIO.</p>
+              <div class="actions">
+                <a class="btn primary" href="/accounts/password_change/">Aggiorna password account</a>
+              </div>
+            {% else %}
+              <p class="muted">Integrazione CalDAV non attiva su questa istanza.</p>
+            {% endif %}
+          </section>
 
-            <div class="profile-card">
-              <h2>Sicurezza</h2>
+          <section class="panel profile-card" id="sicurezza">
+            <h2>Sicurezza</h2>
+            <div class="profile-list">
               <div class="profile-row">
                 <span class="label">Cambio password</span>
                 <a class="link" href="/accounts/password_change/">Vai</a>
               </div>
               <div class="profile-row">
-                <span class="label">Logout</span>
+                <span class="label">Logout sessione</span>
                 <a class="link" href="/accounts/logout/">Esci</a>
               </div>
             </div>
-          </div>
-        </section>
-      {% endblock %}
+          </section>
+        </aside>
+      </div>
     </div>
-      {% include "core/partials/uikit_body.html" %}
+    {% include "core/partials/uikit_body.html" %}
+    <script type="module" src="{% static 'core/app.js' %}"></script>
   </body>
 </html>
