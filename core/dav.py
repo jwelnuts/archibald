@@ -17,7 +17,7 @@ from passlib.context import CryptContext
 from .models import DavAccount, DavCalendarGrant, DavExternalAccount, DavManagedCalendar
 
 _DAV_USERNAME_SANITIZER = re.compile(r"[^a-z0-9._@+-]+")
-_DAV_PRINCIPAL_SANITIZER = re.compile(r"[^a-z0-9._@+-]+")
+_DAV_PRINCIPAL_SEGMENT_SANITIZER = re.compile(r"[^a-z0-9._@+-]+")
 _DAV_COLLECTION_SANITIZER = re.compile(r"[^a-z0-9._-]+")
 _HASH_CONTEXT = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _LEGACY_HASH_PREFIXES = ("{SSHA}", "{SHA}")
@@ -57,10 +57,17 @@ def _normalize_user_part(value: str, fallback: str) -> str:
 
 
 def _normalize_dav_principal(value: str) -> str:
-    principal = _DAV_PRINCIPAL_SANITIZER.sub("-", (value or "").strip().lower()).strip("-")
-    if not principal:
+    raw_value = (value or "").strip().strip("/")
+    if not raw_value:
         raise DavProvisioningError("Principal DAV non valido.")
-    return principal
+
+    normalized_segments: list[str] = []
+    for segment in raw_value.split("/"):
+        cleaned = _DAV_PRINCIPAL_SEGMENT_SANITIZER.sub("-", segment.strip().lower()).strip("-.")
+        if not cleaned or cleaned in {".", ".."}:
+            raise DavProvisioningError("Principal DAV non valido.")
+        normalized_segments.append(cleaned)
+    return "/".join(normalized_segments)
 
 
 def _normalize_dav_collection_slug(value: str) -> str:

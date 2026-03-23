@@ -44,6 +44,10 @@
               <code>{{ dav_access_pattern_url|default:"-" }}</code>
             </div>
             <div class="profile-row">
+              <span class="label">Formato URL collezione team</span>
+              <code>{{ dav_team_access_pattern_url|default:"-" }}</code>
+            </div>
+            <div class="profile-row">
               <span class="label">Root utente</span>
               <code>{{ dav_account_root_url|default:"-" }}</code>
             </div>
@@ -64,32 +68,101 @@
       {% if caldav_enabled %}
         <section class="panel profile-card" id="dav-external-access">
           <h2>DAV Team e Sub-Utenti</h2>
-          <p class="muted">Crea calendari condivisi e utenti DAV esterni senza account MIO.</p>
+          <p class="muted">Crea collezioni DAV condivise e utenti DAV esterni senza account MIO.</p>
 
-          <h3>Nuovo calendario condiviso</h3>
+          <h3 id="dav-team">Team DAV</h3>
+          <form method="post" class="uk-form-stacked uk-margin-small-top">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="dav_create_team">
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Nome team</label>
+              <div class="uk-form-controls">
+                <input class="uk-input" type="text" name="dav_team_name" placeholder="Marketing" required>
+              </div>
+            </div>
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Slug team (opzionale)</label>
+              <div class="uk-form-controls">
+                <input class="uk-input" type="text" name="dav_team_slug" placeholder="marketing">
+              </div>
+            </div>
+            <div class="actions">
+              <button class="btn primary" type="submit">Crea/aggiorna team</button>
+            </div>
+          </form>
+
+          <div class="profile-list uk-margin-small-top">
+            {% for team in dav_teams %}
+              <div class="profile-row">
+                <div>
+                  <strong>{{ team.name }}</strong> <code>{{ team.slug }}</code>
+                  {% if not team.is_active %}<span class="muted"> - disattivato</span>{% endif %}
+                </div>
+                <div class="actions">
+                  <form method="post" style="display:inline-block">
+                    {% csrf_token %}
+                    <input type="hidden" name="team_id" value="{{ team.id }}">
+                    {% if team.is_active %}
+                      <input type="hidden" name="action" value="dav_deactivate_team">
+                      <button class="btn" type="submit">Disattiva</button>
+                    {% else %}
+                      <input type="hidden" name="action" value="dav_activate_team">
+                      <button class="btn" type="submit">Riattiva</button>
+                    {% endif %}
+                  </form>
+                </div>
+              </div>
+            {% empty %}
+              <p class="muted">Nessun team DAV creato.</p>
+            {% endfor %}
+          </div>
+
+          <h3>Nuova collezione</h3>
           <form method="post" class="uk-form-stacked uk-margin-small-top">
             {% csrf_token %}
             <input type="hidden" name="action" value="dav_create_calendar">
             <div class="uk-margin-small">
-              <label class="uk-form-label">Principal</label>
+              <label class="uk-form-label">Tipo collezione</label>
               <div class="uk-form-controls">
-                <input class="uk-input" type="text" name="dav_calendar_principal" value="team" required>
+                <select class="uk-select" name="dav_collection_scope" required>
+                  {% if dav_personal_principal %}
+                    <option value="personal">Personale ({{ dav_personal_principal }})</option>
+                  {% endif %}
+                  <option value="team">Team (team)</option>
+                </select>
               </div>
             </div>
             <div class="uk-margin-small">
-              <label class="uk-form-label">Slug calendario</label>
+              <label class="uk-form-label">Team (se tipo = Team)</label>
               <div class="uk-form-controls">
-                <input class="uk-input" type="text" name="dav_calendar_slug" placeholder="progetto-marketing" required>
+                <select class="uk-select" name="dav_team_id">
+                  <option value="">Seleziona...</option>
+                  {% for team in dav_active_teams %}
+                    <option value="{{ team.id }}">{{ team.name }} ({{ team.slug }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+            <div class="uk-margin-small">
+              <label class="uk-form-label">Slug collezione</label>
+              <div class="uk-form-controls">
+                <input class="uk-input" type="text" name="dav_collection_slug" placeholder="progetto-marketing" required>
               </div>
             </div>
             <div class="uk-margin-small">
               <label class="uk-form-label">Nome visibile (opzionale)</label>
               <div class="uk-form-controls">
-                <input class="uk-input" type="text" name="dav_calendar_display_name" placeholder="Project Marketing Team">
+                <input class="uk-input" type="text" name="dav_collection_display_name" placeholder="Project Marketing Team">
               </div>
             </div>
+            <p class="muted uk-margin-small-top">
+              Una collezione <code>VCALENDAR</code> puo contenere <code>VEVENT</code>, <code>VTODO</code> e <code>VJOURNAL</code>.
+            </p>
+            <p class="muted uk-margin-small-top">
+              Per collezioni team il path e <code>/dav/{username}/{team}/{collezione}/</code>.
+            </p>
             <div class="actions">
-              <button class="btn primary" type="submit">Crea calendario</button>
+              <button class="btn primary" type="submit">Crea collezione</button>
             </div>
           </form>
 
@@ -120,7 +193,7 @@
             </div>
           </form>
 
-          <h3 class="uk-margin-top">Assegna accesso calendario</h3>
+          <h3 class="uk-margin-top">Assegna accesso collezione</h3>
           <form method="post" class="uk-form-stacked uk-margin-small-top">
             {% csrf_token %}
             <input type="hidden" name="action" value="dav_grant_calendar_access">
@@ -136,7 +209,7 @@
               </div>
             </div>
             <div class="uk-margin-small">
-              <label class="uk-form-label">Calendario</label>
+              <label class="uk-form-label">Collezione</label>
               <div class="uk-form-controls">
                 <select class="uk-select" name="calendar_id" required>
                   <option value="">Seleziona...</option>
@@ -194,7 +267,7 @@
             {% endfor %}
           </div>
 
-          <h3 class="uk-margin-top">Calendari gestiti</h3>
+          <h3 class="uk-margin-top">Collezioni gestite</h3>
           <div class="profile-list">
             {% for row in dav_managed_calendar_rows %}
               <div class="profile-row">
@@ -219,7 +292,7 @@
                 </div>
               </div>
             {% empty %}
-              <p class="muted">Nessun calendario condiviso gestito.</p>
+              <p class="muted">Nessuna collezione condivisa gestita.</p>
             {% endfor %}
           </div>
 

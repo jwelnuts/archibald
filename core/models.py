@@ -111,6 +111,21 @@ class DavExternalAccount(TimeStampedModel):
         return f"DavExternalAccount(owner={self.owner_id}, username={self.dav_username})"
 
 
+class DavTeam(OwnedModel, TimeStampedModel):
+    name = models.CharField(max_length=120)
+    slug = models.CharField(max_length=120)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = [("owner", "slug")]
+        indexes = [
+            models.Index(fields=["owner", "is_active", "slug"]),
+        ]
+
+    def __str__(self):
+        return f"DavTeam(owner={self.owner_id}, slug={self.slug})"
+
+
 class DavManagedCalendar(TimeStampedModel):
     owner = models.ForeignKey(
         "auth.User",

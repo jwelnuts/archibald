@@ -3,6 +3,7 @@ from decimal import Decimal
 import hashlib
 import json
 import logging
+import re
 import secrets
 from types import SimpleNamespace
 from urllib.parse import quote, urljoin
@@ -40,6 +41,7 @@ from .models import (
     DavCalendarGrant,
     DavExternalAccount,
     DavManagedCalendar,
+    DavTeam,
     MobileApiSession,
     UserHeroActionsConfig,
     UserNavConfig,
@@ -63,6 +65,7 @@ from todo.models import Task
 from transactions.models import Transaction
 
 logger = logging.getLogger(__name__)
+_DAV_TEAM_SLUG_SANITIZER = re.compile(r"[^a-z0-9._-]+")
 
 
 DEFAULT_DASHBOARD_WIDGETS = [
@@ -609,7 +612,10 @@ def _dav_collection_url(base_url: str, principal: str, collection_slug: str = ""
     principal_value = (principal or "").strip()
     if not principal_value:
         return base
-    principal_token = quote(principal_value, safe="@._+-")
+    principal_segments = [quote(segment, safe="@._+-") for segment in principal_value.strip("/").split("/") if segment]
+    principal_token = "/".join(principal_segments)
+    if not principal_token:
+        return base
     if not collection_slug:
         return urljoin(base, f"{principal_token}/")
     collection_token = quote((collection_slug or "").strip(), safe="@._+-")
@@ -624,9 +630,17 @@ def _split_collection_path(raw_path: str) -> tuple[str, str]:
     return principal.strip(), slug.strip()
 
 
+def _normalize_dav_team_slug(value: str) -> str:
+    slug = _DAV_TEAM_SLUG_SANITIZER.sub("-", (value or "").strip().lower()).strip("-.")
+    if not slug:
+        raise DavProvisioningError("Nome team non valido.")
+    return slug
+
+
 def _build_dav_context(request, *, consume_onboarding: bool) -> dict:
     base_url = caldav_base_url()
     dav_account = DavAccount.objects.filter(user=request.user).first()
+    dav_teams_qs = DavTeam.objects.filter(owner=request.user).order_by("-is_active", "name", "slug")
     managed_calendars_qs = DavManagedCalendar.objects.filter(owner=request.user).order_by(
         "-is_active", "principal", "calendar_slug"
     )
@@ -664,12 +678,16 @@ def _build_dav_context(request, *, consume_onboarding: bool) -> dict:
         "caldav_enabled": settings.CALDAV_ENABLED,
         "caldav_base_url": base_url,
         "dav_account": dav_account,
+        "dav_personal_principal": getattr(dav_account, "dav_username", ""),
         "dav_default_team_collection": settings.CALDAV_DEFAULT_TEAM_COLLECTION,
         "dav_access_pattern_url": f"{base_url}{{username}}/{{collezione}}/" if base_url else "",
+        "dav_team_access_pattern_url": f"{base_url}{{username}}/{{team}}/{{collezione}}/" if base_url else "",
         "dav_account_root_url": _dav_collection_url(base_url, getattr(dav_account, "dav_username", "")),
         "dav_default_team_collection_url": _dav_collection_url(base_url, default_team_principal, default_team_slug),
         "dav_external_onboarding_username": (onboarding_payload or {}).get("username", ""),
         "dav_external_onboarding_password": (onboarding_payload or {}).get("password", ""),
+        "dav_teams": dav_teams_qs[:200],
+        "dav_active_teams": dav_teams_qs.filter(is_active=True)[:200],
         "dav_external_accounts": external_accounts_qs[:200],
         "dav_managed_calendars": managed_calendars_qs[:200],
         "dav_managed_calendar_rows": managed_rows,
@@ -757,20 +775,98 @@ def _handle_dav_actions(request, action: str, *, redirect_base: str):
             django_messages.success(request, f"Utente DAV esterno {label}: {external.dav_username}.")
         return redirect(f"{redirect_base}#dav-external-access")
 
+    if action == "dav_create_team":
+        raw_name = (request.POST.get("dav_team_name") or "").strip()
+        raw_slug = (request.POST.get("dav_team_slug") or "").strip()
+        try:
+            team_slug = _normalize_dav_team_slug(raw_slug or raw_name)
+        except DavProvisioningError as exc:
+            django_messages.error(request, f"Creazione team DAV fallita: {exc}")
+            return redirect(f"{redirect_base}#dav-team")
+
+        team_name = raw_name[:120] if raw_name else team_slug
+        team, created = DavTeam.objects.get_or_create(
+            owner=request.user,
+            slug=team_slug,
+            defaults={
+                "name": team_name,
+                "is_active": True,
+            },
+        )
+        if not created:
+            team.name = team_name
+            team.is_active = True
+            team.save(update_fields=["name", "is_active", "updated_at"])
+            django_messages.success(request, f"Team DAV aggiornato: {team.name} ({team.slug}).")
+        else:
+            django_messages.success(request, f"Team DAV creato: {team.name} ({team.slug}).")
+        return redirect(f"{redirect_base}#dav-team")
+
+    if action in {"dav_activate_team", "dav_deactivate_team"}:
+        team_id = request.POST.get("team_id")
+        team = DavTeam.objects.filter(owner=request.user, id=team_id).first()
+        if not team:
+            django_messages.error(request, "Team DAV non trovato.")
+            return redirect(f"{redirect_base}#dav-team")
+        team.is_active = action == "dav_activate_team"
+        team.save(update_fields=["is_active", "updated_at"])
+        label = "riattivato" if team.is_active else "disattivato"
+        django_messages.success(request, f"Team DAV {label}: {team.name} ({team.slug}).")
+        return redirect(f"{redirect_base}#dav-team")
+
     if action == "dav_create_calendar":
+        scope = (request.POST.get("dav_collection_scope") or "").strip().lower()
+        if not scope:
+            # Backward compatibility with previous form payloads.
+            scope = "team" if (request.POST.get("dav_calendar_principal") or "").strip().lower() == "team" else "personal"
+        dav_account = DavAccount.objects.filter(user=request.user, is_active=True).first()
+        if not dav_account:
+            django_messages.error(
+                request,
+                "Account DAV personale non trovato o disattivo. Effettua di nuovo login prima di creare una collezione.",
+            )
+            return redirect(f"{redirect_base}#dav-external-access")
+
+        principal_value = ""
+        if scope == "personal":
+            principal_value = dav_account.dav_username
+        elif scope == "team":
+            team_id = (request.POST.get("dav_team_id") or "").strip()
+            if team_id:
+                team = DavTeam.objects.filter(owner=request.user, id=team_id, is_active=True).first()
+                if not team:
+                    django_messages.error(request, "Seleziona un team DAV valido.")
+                    return redirect(f"{redirect_base}#dav-external-access")
+                principal_value = f"{dav_account.dav_username}/{team.slug}"
+            else:
+                legacy_is_global_team = (request.POST.get("dav_calendar_principal") or "").strip().lower() == "team"
+                if legacy_is_global_team:
+                    # Backward compatibility with legacy flow (/dav/team/{collezione}).
+                    principal_value = "team"
+                else:
+                    django_messages.error(request, "Seleziona il team su cui creare la collezione.")
+                    return redirect(f"{redirect_base}#dav-external-access")
+        else:
+            django_messages.error(request, "Tipo collezione non valido.")
+            return redirect(f"{redirect_base}#dav-external-access")
+
         try:
             calendar = create_managed_calendar(
                 owner=request.user,
-                principal=request.POST.get("dav_calendar_principal") or "team",
-                calendar_slug=request.POST.get("dav_calendar_slug") or "",
-                display_name=request.POST.get("dav_calendar_display_name") or "",
+                principal=principal_value,
+                calendar_slug=request.POST.get("dav_collection_slug")
+                or request.POST.get("dav_calendar_slug")
+                or "",
+                display_name=request.POST.get("dav_collection_display_name")
+                or request.POST.get("dav_calendar_display_name")
+                or "",
             )
         except DavProvisioningError as exc:
-            django_messages.error(request, f"Creazione calendario DAV fallita: {exc}")
+            django_messages.error(request, f"Creazione collezione DAV fallita: {exc}")
         else:
             django_messages.success(
                 request,
-                f"Calendario DAV pronto: {calendar.collection_path}",
+                f"Collezione DAV pronta: {calendar.collection_path}",
             )
         return redirect(f"{redirect_base}#dav-external-access")
 

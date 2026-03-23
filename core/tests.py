@@ -17,7 +17,7 @@ from routines.models import Routine, RoutineCategory, RoutineItem, RoutineCheck
 from todo.models import Task
 from .context_processors import ui_preferences
 from .middleware import DevLessCompileMiddleware
-from .models import DavAccount, DavCalendarGrant, DavExternalAccount, DavManagedCalendar, MobileApiSession, UserNavConfig
+from .models import DavAccount, DavCalendarGrant, DavExternalAccount, DavManagedCalendar, DavTeam, MobileApiSession, UserNavConfig
 from .views import DEFAULT_DASHBOARD_WIDGET_IDS
 
 
@@ -132,6 +132,7 @@ class DavManagementPageTests(TestCase):
         response = self.client.get("/profile/dav/")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "https://example.com/dav/{username}/{collezione}/")
+        self.assertContains(response, "https://example.com/dav/{username}/{team}/{collezione}/")
         self.assertContains(response, "https://example.com/dav/dav_page_user/")
 
 
@@ -402,6 +403,23 @@ class DavExternalAccessTests(TestCase):
         self.client.login(username="owner", password="OwnerPassword12345!")
 
     def test_owner_can_create_external_user_calendar_and_grant_permissions(self):
+        DavAccount.objects.create(
+            user=self.owner,
+            dav_username="owner",
+            password_hash=bcrypt.hash("OwnerPassword12345!"),
+            is_active=True,
+        )
+        team_response = self.client.post(
+            "/profile/",
+            {
+                "action": "dav_create_team",
+                "dav_team_name": "Ops",
+                "dav_team_slug": "ops",
+            },
+        )
+        self.assertEqual(team_response.status_code, 302)
+        team = DavTeam.objects.get(owner=self.owner, slug="ops")
+
         response = self.client.post(
             "/profile/",
             {
@@ -418,13 +436,14 @@ class DavExternalAccessTests(TestCase):
             "/profile/",
             {
                 "action": "dav_create_calendar",
-                "dav_calendar_principal": "team",
-                "dav_calendar_slug": "progetto-test",
-                "dav_calendar_display_name": "Progetto Test",
+                "dav_collection_scope": "team",
+                "dav_team_id": str(team.id),
+                "dav_collection_slug": "progetto-test",
+                "dav_collection_display_name": "Progetto Test",
             },
         )
         self.assertEqual(response.status_code, 302)
-        calendar = DavManagedCalendar.objects.get(owner=self.owner, principal="team", calendar_slug="progetto-test")
+        calendar = DavManagedCalendar.objects.get(owner=self.owner, principal="owner/ops", calendar_slug="progetto-test")
 
         response = self.client.post(
             "/profile/",
@@ -444,7 +463,34 @@ class DavExternalAccessTests(TestCase):
         self.assertIn(f"{external.dav_username}:", users_content)
         rights_content = self.rights_file.read_text(encoding="utf-8")
         self.assertIn(f"user: ^{re.escape(external.dav_username)}$", rights_content)
-        self.assertIn("collection: ^team/progetto\\-test(?:/.*)?$", rights_content)
+        self.assertIn("collection: ^owner/ops/progetto\\-test(?:/.*)?$", rights_content)
+
+    def test_owner_can_create_personal_collection_from_scope(self):
+        DavAccount.objects.create(
+            user=self.owner,
+            dav_username="owner",
+            password_hash=bcrypt.hash("OwnerPassword12345!"),
+            is_active=True,
+        )
+
+        response = self.client.post(
+            "/profile/",
+            {
+                "action": "dav_create_calendar",
+                "dav_collection_scope": "personal",
+                "dav_collection_slug": "lavoro",
+                "dav_collection_display_name": "Lavoro",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            DavManagedCalendar.objects.filter(
+                owner=self.owner,
+                principal="owner",
+                calendar_slug="lavoro",
+                is_active=True,
+            ).exists()
+        )
 
 
 class NavSettingsTests(TestCase):
