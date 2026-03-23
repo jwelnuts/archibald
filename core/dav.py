@@ -336,6 +336,16 @@ def _build_rights_payload() -> str:
                 "collection: {user}/[^/]+(?:/.*)?",
                 "permissions: RWrw",
                 "",
+                f"[allow-app-team-principal-{idx}]",
+                f"user: ^{re.escape(username)}$",
+                f"collection: ^{re.escape(username)}/[^/]+/?$",
+                "permissions: R",
+                "",
+                f"[allow-app-team-calendars-{idx}]",
+                f"user: ^{re.escape(username)}$",
+                f"collection: ^{re.escape(username)}/[^/]+/[^/]+(?:/.*)?$",
+                "permissions: RWrw",
+                "",
             ]
         )
 

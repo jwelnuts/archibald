@@ -462,6 +462,7 @@ class DavExternalAccessTests(TestCase):
         users_content = self.users_file.read_text(encoding="utf-8")
         self.assertIn(f"{external.dav_username}:", users_content)
         rights_content = self.rights_file.read_text(encoding="utf-8")
+        self.assertIn("collection: ^owner/[^/]+/[^/]+(?:/.*)?$", rights_content)
         self.assertIn(f"user: ^{re.escape(external.dav_username)}$", rights_content)
         self.assertIn("collection: ^owner/ops/progetto\\-test(?:/.*)?$", rights_content)
 
