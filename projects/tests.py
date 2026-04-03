@@ -67,6 +67,35 @@ class ProjectStoryboardFormsTests(TestCase):
         planner_item = PlannerItem.objects.get(owner=self.user, title="Planner da storyboard")
         self.assertEqual(planner_item.project_id, self.project.id)
 
+    def test_storyboard_can_delete_own_note(self):
+        note = ProjectNote.objects.create(owner=self.user, project=self.project, content="<p>Da cancellare</p>")
+        response = self.client.post(
+            "/projects/storyboard/note/delete",
+            {
+                "id": self.project.id,
+                "note_id": note.id,
+                "kind": "note",
+                "q": "Da cancellare",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(ProjectNote.objects.filter(id=note.id).exists())
+        self.assertEqual(response["Location"], f"/projects/storyboard?id={self.project.id}&kind=note&q=Da+cancellare")
+
+    def test_storyboard_cannot_delete_note_of_other_user(self):
+        other_user = get_user_model().objects.create_user(username="proj_other", password="test1234")
+        other_project = Project.objects.create(owner=other_user, name="Other Project")
+        other_note = ProjectNote.objects.create(owner=other_user, project=other_project, content="<p>Privata</p>")
+        response = self.client.post(
+            "/projects/storyboard/note/delete",
+            {
+                "id": other_project.id,
+                "note_id": other_note.id,
+            },
+        )
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(ProjectNote.objects.filter(id=other_note.id).exists())
+
 
 class ProjectStoryboardLogTests(TestCase):
     def setUp(self):
@@ -110,6 +139,14 @@ class ProjectStoryboardLogTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Spesa storyboard")
         self.assertNotContains(response, "Nessuna voce trovata")
+
+    def test_storyboard_log_shows_delete_action_for_notes_only(self):
+        response = self.client.get(f"/projects/storyboard/log?id={self.project.id}&kind=note")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Cancella appunto")
+        task_response = self.client.get(f"/projects/storyboard/log?id={self.project.id}&kind=task")
+        self.assertEqual(task_response.status_code, 200)
+        self.assertNotContains(task_response, "Cancella appunto")
 
 
 class ProtectedMediaAccessTests(TestCase):

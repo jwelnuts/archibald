@@ -1,8 +1,6 @@
-import htmx from "htmx.org";
 import { startStimulus } from "./stimulus.js";
 import { initPayeePicker } from "./payee_picker.js";
 
-window.htmx = htmx;
 startStimulus().catch(() => {});
 initPayeePicker();
 

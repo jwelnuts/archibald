@@ -116,10 +116,27 @@
             <div class="storyboard-log-body">{{ item.description_text }}</div>
           {% endif %}
 
-          {% if item.attachment_url %}
-            <a class="uk-button uk-button-text uk-button-small" href="{{ item.attachment_url }}" target="_blank" rel="noopener">
-              {{ item.attachment_label }}
-            </a>
+          {% if item.attachment_url or item.can_delete %}
+            <div class="uk-margin-small-top uk-flex uk-flex-wrap uk-gap-small">
+              {% if item.attachment_url %}
+                <a class="uk-button uk-button-text uk-button-small" href="{{ item.attachment_url }}" target="_blank" rel="noopener">
+                  {{ item.attachment_label }}
+                </a>
+              {% endif %}
+
+              {% if item.can_delete %}
+                <form method="post" action="/projects/storyboard/note/delete" onsubmit="return confirm('Cancellare questo appunto?');">
+                  {% csrf_token %}
+                  <input type="hidden" name="id" value="{{ project.id }}">
+                  <input type="hidden" name="note_id" value="{{ item.id }}">
+                  <input type="hidden" name="kind" value="{{ activity_filters.kind }}">
+                  <input type="hidden" name="q" value="{{ activity_filters.q }}">
+                  <input type="hidden" name="date_from" value="{{ activity_filters.date_from_raw }}">
+                  <input type="hidden" name="date_to" value="{{ activity_filters.date_to_raw }}">
+                  <button class="uk-button uk-button-danger uk-button-small" type="submit">Cancella Appunto</button>
+                </form>
+              {% endif %}
+            </div>
           {% endif %}
         </li>
       {% endfor %}

@@ -1,5 +1,6 @@
 from datetime import date, datetime, time
 from decimal import Decimal
+from urllib.parse import urlencode
 
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
@@ -76,12 +77,13 @@ def _as_sort_datetime(value):
 
 
 def _storyboard_filters_from_request(request):
-    kind = (request.GET.get("kind") or "all").strip().lower()
+    params = request.GET if request.method == "GET" else request.POST
+    kind = (params.get("kind") or "all").strip().lower()
     if kind not in STORYBOARD_ACTIVITY_KINDS:
         kind = "all"
-    query = (request.GET.get("q") or "").strip()
-    date_from_raw = (request.GET.get("date_from") or "").strip()
-    date_to_raw = (request.GET.get("date_to") or "").strip()
+    query = (params.get("q") or "").strip()
+    date_from_raw = (params.get("date_from") or "").strip()
+    date_to_raw = (params.get("date_to") or "").strip()
     date_from = parse_date(date_from_raw) if date_from_raw else None
     date_to = parse_date(date_to_raw) if date_to_raw else None
     if date_from and date_to and date_from > date_to:
@@ -95,6 +97,19 @@ def _storyboard_filters_from_request(request):
         "date_from_raw": date_from_raw if date_from else "",
         "date_to_raw": date_to_raw if date_to else "",
     }
+
+
+def _storyboard_querystring(project_id, filters):
+    params = {"id": project_id}
+    if filters.get("kind") and filters["kind"] != "all":
+        params["kind"] = filters["kind"]
+    if filters.get("q"):
+        params["q"] = filters["q"]
+    if filters.get("date_from_raw"):
+        params["date_from"] = filters["date_from_raw"]
+    if filters.get("date_to_raw"):
+        params["date_to"] = filters["date_to_raw"]
+    return urlencode(params)
 
 
 def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80, result_limit=120):
@@ -164,6 +179,7 @@ def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80
     for note in notes_qs.order_by("-created_at", "-id")[:per_kind_limit]:
         items_by_kind["note"].append(
             {
+                "id": note.id,
                 "kind": "note",
                 "kind_label": "Appunto",
                 "sort_at": _as_sort_datetime(note.created_at),
@@ -175,6 +191,7 @@ def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80
                 "description_text": strip_tags(note.content).strip(),
                 "attachment_url": note.attachment.url if note.attachment else "",
                 "attachment_label": "Apri allegato",
+                "can_delete": True,
             }
         )
 
@@ -193,6 +210,7 @@ def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80
                 "description_html": "",
                 "attachment_url": "",
                 "attachment_label": "",
+                "can_delete": False,
             }
         )
 
@@ -211,6 +229,7 @@ def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80
                 "description_html": "",
                 "attachment_url": "",
                 "attachment_label": "",
+                "can_delete": False,
             }
         )
 
@@ -232,6 +251,7 @@ def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80
                 "description_html": "",
                 "attachment_url": tx.attachment.url if tx.attachment else "",
                 "attachment_label": "Apri ricevuta",
+                "can_delete": False,
             }
         )
 
@@ -980,6 +1000,25 @@ def project_storyboard_log(request):
     context = {"project": project}
     context.update(_build_storyboard_activity_context(request.user, project, activity_filters))
     return render(request, "projects/partials/storyboard_log.html", context)
+
+
+@login_required
+def project_storyboard_delete_note(request):
+    if request.method != "POST":
+        return redirect("/projects/")
+
+    project_id = request.POST.get("id")
+    note_id = request.POST.get("note_id")
+    if not project_id or not note_id:
+        return redirect("/projects/")
+
+    project = get_object_or_404(Project, id=project_id, owner=request.user)
+    note = get_object_or_404(ProjectNote, id=note_id, project=project, owner=request.user)
+    note.delete()
+
+    filters = _storyboard_filters_from_request(request)
+    querystring = _storyboard_querystring(project.id, filters)
+    return redirect(f"/projects/storyboard?{querystring}")
 
 
 @login_required
