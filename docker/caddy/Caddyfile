@@ -46,7 +46,7 @@
         file_server
     }
 
-    handle_path /media/* {
+    handle /media/* {
         reverse_proxy web:8000
     }
 
