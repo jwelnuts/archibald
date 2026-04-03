@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+import os
 import shutil
 import tempfile
 
@@ -95,6 +96,35 @@ class ProjectStoryboardFormsTests(TestCase):
         )
         self.assertEqual(response.status_code, 404)
         self.assertTrue(ProjectNote.objects.filter(id=other_note.id).exists())
+
+    def test_storyboard_delete_note_removes_attachment_file(self):
+        temp_media = tempfile.mkdtemp()
+        settings_override = override_settings(MEDIA_ROOT=temp_media)
+        settings_override.enable()
+        try:
+            note = ProjectNote.objects.create(
+                owner=self.user,
+                project=self.project,
+                content="<p>Con allegato</p>",
+                attachment=SimpleUploadedFile("nota.txt", b"allegato", content_type="text/plain"),
+            )
+            attachment_path = note.attachment.path
+            self.assertTrue(os.path.exists(attachment_path))
+
+            response = self.client.post(
+                "/projects/storyboard/note/delete",
+                {
+                    "id": self.project.id,
+                    "note_id": note.id,
+                },
+            )
+
+            self.assertEqual(response.status_code, 302)
+            self.assertFalse(ProjectNote.objects.filter(id=note.id).exists())
+            self.assertFalse(os.path.exists(attachment_path))
+        finally:
+            settings_override.disable()
+            shutil.rmtree(temp_media, ignore_errors=True)
 
 
 class ProjectStoryboardLogTests(TestCase):

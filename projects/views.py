@@ -1014,7 +1014,10 @@ def project_storyboard_delete_note(request):
 
     project = get_object_or_404(Project, id=project_id, owner=request.user)
     note = get_object_or_404(ProjectNote, id=note_id, project=project, owner=request.user)
+    attachment_name = note.attachment.name
     note.delete()
+    if attachment_name:
+        note.attachment.storage.delete(attachment_name)
 
     filters = _storyboard_filters_from_request(request)
     querystring = _storyboard_querystring(project.id, filters)
