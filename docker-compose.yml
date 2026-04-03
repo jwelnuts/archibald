@@ -1,3 +1,6 @@
+x-app-image: &app-image
+  image: archibald-app:latest
+
 services:
   db:
     image: postgres:16-alpine
@@ -15,6 +18,7 @@ services:
       retries: 10
 
   web:
+    <<: *app-image
     build: .
     restart: unless-stopped
     env_file:
@@ -40,7 +44,7 @@ services:
       - radicale_data:/radicale-data
 
   mail_worker:
-    build: .
+    <<: *app-image
     restart: unless-stopped
     env_file:
       - .env
