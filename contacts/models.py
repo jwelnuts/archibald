@@ -3,6 +3,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.db import models
 
 from common.models import OwnedModel, TimeStampedModel
+from common.upload_paths import contact_profile_image_upload_to
 
 
 class Contact(OwnedModel, TimeStampedModel):
@@ -16,7 +17,7 @@ class Contact(OwnedModel, TimeStampedModel):
     entity_type = models.CharField(max_length=10, choices=EntityType.choices, default=EntityType.PERSON)
     person_name = models.CharField(max_length=160, blank=True)
     business_name = models.CharField(max_length=160, blank=True)
-    profile_image = models.FileField(upload_to="contacts/profile_images/%Y/%m/", blank=True, null=True)
+    profile_image = models.FileField(upload_to=contact_profile_image_upload_to, blank=True, null=True)
 
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=40, blank=True)

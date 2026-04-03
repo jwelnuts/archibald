@@ -1,7 +1,6 @@
 <div
   id="storyboard-log-region"
   class="storyboard-log-region"
-  data-controller="projects-storyboard"
 >
   <form
     class="uk-form-stacked storyboard-filter-form"
@@ -125,7 +124,14 @@
               {% endif %}
 
               {% if item.can_delete %}
-                <form method="post" action="/projects/storyboard/note/delete" onsubmit="return confirm('Cancellare questo appunto?');">
+                <form
+                  method="post"
+                  action="/projects/storyboard/note/delete"
+                  onsubmit="return confirm('Cancellare questo appunto?');"
+                  hx-post="/projects/storyboard/note/delete"
+                  hx-target="#storyboard-content"
+                  hx-swap="outerHTML"
+                >
                   {% csrf_token %}
                   <input type="hidden" name="id" value="{{ project.id }}">
                   <input type="hidden" name="note_id" value="{{ item.id }}">

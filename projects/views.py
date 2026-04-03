@@ -112,6 +112,37 @@ def _storyboard_querystring(project_id, filters):
     return urlencode(params)
 
 
+def _is_htmx_request(request):
+    return request.headers.get("HX-Request") == "true"
+
+
+def _storyboard_page_context(request, project, note_form=None, task_form=None, planner_form=None, active_form="note"):
+    activity_filters = _storyboard_filters_from_request(request)
+    activity_context = _build_storyboard_activity_context(request.user, project, activity_filters)
+    override = ProjectHeroActionsConfig.objects.filter(user=request.user, project=project).first()
+    override_config = override.config if override else {}
+    module_key = "projects_storyboard"
+    allowed_actions = _resolve_hero_actions(request.user, module_key, override_config)
+    actions_meta = HERO_ACTIONS.get(module_key, [])
+    hidden_actions = [
+        {"key": action["key"], "label": action["label"]}
+        for action in actions_meta
+        if action["key"] not in allowed_actions
+    ]
+    context = {
+        "project": project,
+        "note_form": note_form if note_form is not None else ProjectNoteForm(),
+        "task_form": task_form if task_form is not None else StoryboardTaskForm(prefix="task"),
+        "planner_form": planner_form if planner_form is not None else StoryboardPlannerForm(prefix="planner"),
+        "active_form": active_form,
+        "hero_actions_override": override_config,
+        "allowed_actions": allowed_actions,
+        "hidden_actions": hidden_actions,
+    }
+    context.update(activity_context)
+    return context
+
+
 def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80, result_limit=120):
     from planner.models import PlannerItem
     from todo.models import Task
@@ -958,34 +989,29 @@ def project_storyboard(request):
                 note.owner = request.user
                 note.project = project
                 note.save()
+                if _is_htmx_request(request):
+                    context = _storyboard_page_context(
+                        request,
+                        project,
+                        note_form=ProjectNoteForm(),
+                        task_form=task_form,
+                        planner_form=planner_form,
+                        active_form="note",
+                    )
+                    return render(request, "projects/partials/storyboard_content.html", context)
                 return redirect(f"/projects/storyboard?id={project.id}")
     else:
         note_form = ProjectNoteForm()
         task_form = StoryboardTaskForm(prefix="task")
         planner_form = StoryboardPlannerForm(prefix="planner")
-    activity_filters = _storyboard_filters_from_request(request)
-    activity_context = _build_storyboard_activity_context(request.user, project, activity_filters)
-    override = ProjectHeroActionsConfig.objects.filter(user=request.user, project=project).first()
-    override_config = override.config if override else {}
-    module_key = "projects_storyboard"
-    allowed_actions = _resolve_hero_actions(request.user, module_key, override_config)
-    actions_meta = HERO_ACTIONS.get(module_key, [])
-    hidden_actions = [
-        {"key": action["key"], "label": action["label"]}
-        for action in actions_meta
-        if action["key"] not in allowed_actions
-    ]
-    context = {
-        "project": project,
-        "note_form": note_form,
-        "task_form": task_form,
-        "planner_form": planner_form,
-        "active_form": active_form,
-        "hero_actions_override": override_config,
-        "allowed_actions": allowed_actions,
-        "hidden_actions": hidden_actions,
-    }
-    context.update(activity_context)
+    context = _storyboard_page_context(
+        request,
+        project,
+        note_form=note_form,
+        task_form=task_form,
+        planner_form=planner_form,
+        active_form=active_form,
+    )
     return render(request, "projects/storyboard.html", context)
 
 
@@ -1018,6 +1044,10 @@ def project_storyboard_delete_note(request):
     note.delete()
     if attachment_name:
         note.attachment.storage.delete(attachment_name)
+
+    if _is_htmx_request(request):
+        context = _storyboard_page_context(request, project, active_form="note")
+        return render(request, "projects/partials/storyboard_content.html", context)
 
     filters = _storyboard_filters_from_request(request)
     querystring = _storyboard_querystring(project.id, filters)

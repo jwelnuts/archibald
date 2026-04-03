@@ -1,6 +1,7 @@
 from django.db import models
 
 from common.models import OwnedModel, TimeStampedModel
+from common.upload_paths import project_note_attachment_upload_to
 
 
 class Customer(OwnedModel, TimeStampedModel):
@@ -116,7 +117,7 @@ class ProjectNote(OwnedModel, TimeStampedModel):
     )
     content = models.TextField()
     attachment = models.FileField(
-        upload_to="projects/notes/%Y/%m/",
+        upload_to=project_note_attachment_upload_to,
         blank=True,
         null=True,
     )

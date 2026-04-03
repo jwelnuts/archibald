@@ -16,6 +16,7 @@ from routines.models import Routine, RoutineItem
 from subscriptions.models import Account, Currency, Subscription
 from todo.models import Task
 from transactions.models import Transaction
+from contacts.models import Contact
 
 from .models import Category, Customer, Project, ProjectNote, SubProject, SubProjectActivity
 
@@ -97,6 +98,34 @@ class ProjectStoryboardFormsTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertTrue(ProjectNote.objects.filter(id=other_note.id).exists())
 
+    def test_storyboard_add_note_via_htmx_returns_partial_without_redirect(self):
+        response = self.client.post(
+            f"/projects/storyboard?id={self.project.id}",
+            {
+                "form_kind": "note",
+                "content": "<p>Nota htmx</p>",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="storyboard-content"')
+        self.assertEqual(ProjectNote.objects.filter(owner=self.user, project=self.project).count(), 1)
+
+    def test_storyboard_delete_note_via_htmx_returns_partial_without_redirect(self):
+        note = ProjectNote.objects.create(owner=self.user, project=self.project, content="<p>Da cancellare htmx</p>")
+        response = self.client.post(
+            "/projects/storyboard/note/delete",
+            {
+                "id": self.project.id,
+                "note_id": note.id,
+                "kind": "note",
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'id="storyboard-content"')
+        self.assertFalse(ProjectNote.objects.filter(id=note.id).exists())
+
     def test_storyboard_delete_note_removes_attachment_file(self):
         temp_media = tempfile.mkdtemp()
         settings_override = override_settings(MEDIA_ROOT=temp_media)
@@ -173,10 +202,10 @@ class ProjectStoryboardLogTests(TestCase):
     def test_storyboard_log_shows_delete_action_for_notes_only(self):
         response = self.client.get(f"/projects/storyboard/log?id={self.project.id}&kind=note")
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Cancella appunto")
+        self.assertContains(response, "Cancella Appunto")
         task_response = self.client.get(f"/projects/storyboard/log?id={self.project.id}&kind=task")
         self.assertEqual(task_response.status_code, 200)
-        self.assertNotContains(task_response, "Cancella appunto")
+        self.assertNotContains(task_response, "Cancella Appunto")
 
 
 class ProtectedMediaAccessTests(TestCase):
@@ -214,6 +243,58 @@ class ProtectedMediaAccessTests(TestCase):
         self.client.login(username="media_other", password="test1234")
         response = self.client.get(self.note.attachment.url)
         self.assertEqual(response.status_code, 404)
+
+
+class PerUserUploadPathTests(TestCase):
+    def setUp(self):
+        self.temp_media = tempfile.mkdtemp()
+        self.settings_override = override_settings(MEDIA_ROOT=self.temp_media)
+        self.settings_override.enable()
+        self.user = get_user_model().objects.create_user(username="upload_owner", password="test1234")
+        self.project = Project.objects.create(owner=self.user, name="Project Upload")
+        self.currency, _ = Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
+        self.account = Account.objects.create(
+            owner=self.user,
+            name="Conto Upload",
+            kind=Account.Kind.BANK,
+            currency=self.currency,
+            opening_balance=Decimal("0.00"),
+            is_active=True,
+        )
+
+    def tearDown(self):
+        self.settings_override.disable()
+        shutil.rmtree(self.temp_media, ignore_errors=True)
+
+    def test_project_note_attachment_is_stored_in_user_namespace(self):
+        note = ProjectNote.objects.create(
+            owner=self.user,
+            project=self.project,
+            content="<p>Nota</p>",
+            attachment=SimpleUploadedFile("nota.txt", b"nota", content_type="text/plain"),
+        )
+        self.assertIn(f"projects/notes/user/{self.user.id}/", note.attachment.name)
+
+    def test_transaction_attachment_is_stored_in_user_namespace(self):
+        tx = Transaction.objects.create(
+            owner=self.user,
+            tx_type=Transaction.Type.EXPENSE,
+            date=date(2026, 2, 10),
+            amount=Decimal("12.50"),
+            currency=self.currency,
+            account=self.account,
+            project=self.project,
+            attachment=SimpleUploadedFile("ricevuta.pdf", b"pdf", content_type="application/pdf"),
+        )
+        self.assertIn(f"transactions/attachments/user/{self.user.id}/", tx.attachment.name)
+
+    def test_contact_profile_image_is_stored_in_user_namespace(self):
+        contact = Contact.objects.create(
+            owner=self.user,
+            display_name="Cliente Upload",
+            profile_image=SimpleUploadedFile("avatar.png", b"png", content_type="image/png"),
+        )
+        self.assertIn(f"contacts/profile_images/user/{self.user.id}/", contact.profile_image.name)
 
 
 class ProjectDashboardContextTests(TestCase):

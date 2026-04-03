@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 
 from common.models import OwnedModel, TimeStampedModel
+from common.upload_paths import transaction_attachment_upload_to
 
 
 class Transaction(OwnedModel, TimeStampedModel):
@@ -28,7 +29,7 @@ class Transaction(OwnedModel, TimeStampedModel):
     )
 
     note = models.TextField(blank=True)
-    attachment = models.FileField(upload_to="transactions/attachments/%Y/%m/", blank=True, null=True)
+    attachment = models.FileField(upload_to=transaction_attachment_upload_to, blank=True, null=True)
     tags = models.ManyToManyField("subscriptions.Tag", blank=True, related_name="transactions")
 
     source_subscription = models.ForeignKey(
