@@ -1,0 +1,132 @@
+.contacts-form-panel {
+  width: 100%;
+}
+
+.contacts-form-layout {
+  margin-top: 18px;
+  gap: 18px;
+}
+
+.contacts-form-section {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+}
+
+.contacts-form-section h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.contacts-form-section .muted {
+  margin: 0;
+}
+
+.contacts-form-section-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.contacts-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.contacts-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.contacts-grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.contacts-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.contacts-grid-span-2 {
+  grid-column: span 2;
+}
+
+.contacts-grid-span-full {
+  grid-column: 1 / -1;
+}
+
+.contacts-delivery-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.contacts-delivery-card {
+  margin-bottom: 0;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  padding: 12px;
+  background: #f8fbff;
+}
+
+.contacts-boolean-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.contacts-checkbox-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.contacts-checkbox-field label {
+  margin: 0;
+  font-weight: 600;
+}
+
+.contacts-checkbox-field input[type="checkbox"] {
+  margin: 0;
+}
+
+.contacts-image-preview {
+  margin: 0 0 8px;
+}
+
+.contacts-image-preview img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 1px solid #d0d7e2;
+}
+
+.contacts-form-actions {
+  margin-top: 4px;
+}
+
+@media (max-width: 1100px) {
+  .contacts-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .contacts-grid-3,
+  .contacts-grid-2,
+  .contacts-grid-4 {
+    grid-template-columns: 1fr;
+  }
+
+  .contacts-grid-span-2 {
+    grid-column: auto;
+  }
+
+  .contacts-form-section-head {
+    align-items: stretch;
+  }
+}

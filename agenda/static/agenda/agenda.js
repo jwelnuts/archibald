@@ -1,4 +1,4 @@
-import { registerStimulusController, withStimulusModule } from "../core/stimulus.js";
+import { registerStimulusController, withStimulusModule } from "@core/stimulus.js";
 
 const DEFAULT_PREFERENCES = {
   density: "comfortable",

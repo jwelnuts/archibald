@@ -3,7 +3,7 @@
 {% block title %}MIO - Add Contact{% endblock %}
 
 {% block content %}
-  <section class="panel narrow">
+  <section class="panel contacts-form-panel">
     <h1>Nuovo contatto</h1>
     <p class="muted">Unica anagrafica per persona/attivita con ruoli multipli.</p>
     {% if form and form.errors %}
@@ -23,81 +23,134 @@
         <div class="form-errors">{{ address_formset.non_form_errors }}</div>
       </div>
     {% endif %}
-    <form class="form" method="post" action="" enctype="multipart/form-data">
+    <form class="form contacts-form-layout" method="post" action="" enctype="multipart/form-data">
       {% csrf_token %}
       {% if next_url %}
         <input type="hidden" name="next" value="{{ next_url }}">
       {% endif %}
-      <div class="field"><label for="id_display_name">Nome visualizzato</label>{{ form.display_name }}</div>
-      <div class="field"><label for="id_entity_type">Tipo</label>{{ form.entity_type }}</div>
-      <div class="field"><label for="id_person_name">Nome persona</label>{{ form.person_name }}</div>
-      <div class="field"><label for="id_business_name">Nome attivita/azienda</label>{{ form.business_name }}</div>
-      <div class="field"><label for="id_profile_image">Logo / Immagine profilo</label>{{ form.profile_image }}</div>
-      <div class="field"><label for="id_email">Email</label>{{ form.email }}</div>
-      <div class="field"><label for="id_phone">Telefono</label>{{ form.phone }}</div>
-      <div class="field"><label for="id_website">Sito</label>{{ form.website }}</div>
-      <div class="field"><label for="id_city">Citta</label>{{ form.city }}</div>
-
-      <div class="field">
-        <label>Indirizzi destinazione merce</label>
-        <p class="muted" style="margin-top: 4px;">Puoi aggiungere uno o piu indirizzi di consegna per questo contatto.</p>
+      <div class="contacts-form-section">
+        <h2>Anagrafica</h2>
+        <p class="muted">Dati principali del contatto e riferimenti operativi.</p>
+        <div class="contacts-grid contacts-grid-3">
+          <div class="field"><label for="id_display_name">Nome visualizzato</label>{{ form.display_name }}</div>
+          <div class="field"><label for="id_entity_type">Tipo</label>{{ form.entity_type }}</div>
+          <div class="field"><label for="id_city">Citta</label>{{ form.city }}</div>
+        </div>
+        <div class="contacts-grid contacts-grid-2">
+          <div class="field"><label for="id_person_name">Nome persona</label>{{ form.person_name }}</div>
+          <div class="field"><label for="id_business_name">Nome attivita/azienda</label>{{ form.business_name }}</div>
+        </div>
+        <div class="contacts-grid contacts-grid-3">
+          <div class="field"><label for="id_email">Email</label>{{ form.email }}</div>
+          <div class="field"><label for="id_phone">Telefono</label>{{ form.phone }}</div>
+          <div class="field"><label for="id_website">Sito</label>{{ form.website }}</div>
+        </div>
+        <div class="field"><label for="id_profile_image">Logo / Immagine profilo</label>{{ form.profile_image }}</div>
       </div>
-      {{ address_formset.management_form }}
-      <div id="delivery-addresses">
-        {% for address_form in address_formset %}
-          <div class="note delivery-address-card" data-delivery-form style="margin-bottom: 12px;">
-            {{ address_form.id }}
-            {{ address_form.row_order }}
-            <div class="field"><label>Etichetta</label>{{ address_form.label }}</div>
-            <div class="field"><label>Destinatario</label>{{ address_form.recipient_name }}</div>
-            <div class="field"><label>Indirizzo</label>{{ address_form.line1 }}</div>
-            <div class="field"><label>Indirizzo (seconda riga)</label>{{ address_form.line2 }}</div>
-            <div class="field"><label>CAP</label>{{ address_form.postal_code }}</div>
-            <div class="field"><label>Citta</label>{{ address_form.city }}</div>
-            <div class="field"><label>Provincia</label>{{ address_form.province }}</div>
-            <div class="field"><label>Nazione</label>{{ address_form.country }}</div>
-            <div class="field"><label>Note consegna</label>{{ address_form.notes }}</div>
-            <div class="field"><label>Predefinito</label>{{ address_form.is_default }}</div>
-            <div class="field"><label>Attivo</label>{{ address_form.is_active }}</div>
-            <div class="field" style="display:none;">{{ address_form.DELETE }}</div>
-            <div class="actions" style="margin-top: 4px;">
-              <button class="btn" type="button" data-delivery-remove>Rimuovi indirizzo</button>
-            </div>
+
+      <div class="contacts-form-section">
+        <div class="contacts-form-section-head">
+          <div>
+            <h2>Indirizzi destinazione merce</h2>
+            <p class="muted">Puoi aggiungere uno o piu indirizzi di consegna per questo contatto.</p>
           </div>
-        {% endfor %}
-      </div>
-      <div class="actions" style="margin-top: 0;">
-        <button class="btn" type="button" id="add-delivery-address">Aggiungi indirizzo destinazione</button>
+          <button class="btn" type="button" id="add-delivery-address">Aggiungi indirizzo destinazione</button>
+        </div>
+        {{ address_formset.management_form }}
+        <div id="delivery-addresses" class="contacts-delivery-stack">
+          {% for address_form in address_formset %}
+            <div class="note delivery-address-card contacts-delivery-card" data-delivery-form>
+              {{ address_form.id }}
+              {{ address_form.row_order }}
+              <div class="contacts-grid contacts-grid-3">
+                <div class="field"><label>Etichetta</label>{{ address_form.label }}</div>
+                <div class="field"><label>Destinatario</label>{{ address_form.recipient_name }}</div>
+                <div class="field"><label>CAP</label>{{ address_form.postal_code }}</div>
+                <div class="field contacts-grid-span-2"><label>Indirizzo</label>{{ address_form.line1 }}</div>
+                <div class="field"><label>Citta</label>{{ address_form.city }}</div>
+                <div class="field contacts-grid-span-2"><label>Indirizzo (seconda riga)</label>{{ address_form.line2 }}</div>
+                <div class="field"><label>Provincia</label>{{ address_form.province }}</div>
+                <div class="field"><label>Nazione</label>{{ address_form.country }}</div>
+                <div class="field contacts-grid-span-2"><label>Note consegna</label>{{ address_form.notes }}</div>
+              </div>
+              <div class="contacts-boolean-grid">
+                <div class="field contacts-checkbox-field">
+                  {{ address_form.is_default }}
+                  <label for="{{ address_form.is_default.id_for_label }}">Predefinito</label>
+                </div>
+                <div class="field contacts-checkbox-field">
+                  {{ address_form.is_active }}
+                  <label for="{{ address_form.is_active.id_for_label }}">Attivo</label>
+                </div>
+                <div class="field" style="display:none;">{{ address_form.DELETE }}</div>
+              </div>
+              <div class="actions">
+                <button class="btn" type="button" data-delivery-remove>Rimuovi indirizzo</button>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
       </div>
 
-      <div class="field"><label for="id_role_customer">Ruolo Cliente</label>{{ form.role_customer }}</div>
-      <div class="field"><label for="id_role_supplier">Ruolo Fornitore</label>{{ form.role_supplier }}</div>
-      <div class="field"><label for="id_role_payee">Ruolo Beneficiario</label>{{ form.role_payee }}</div>
-      <div class="field"><label for="id_role_income_source">Ruolo Fonte entrata</label>{{ form.role_income_source }}</div>
-      <div class="field"><label for="id_notes">Note</label>{{ form.notes }}</div>
-      <div class="field"><label for="id_is_active">Attivo</label>{{ form.is_active }}</div>
-      <div class="actions">
+      <div class="contacts-form-section">
+        <h2>Ruoli e stato</h2>
+        <div class="contacts-grid contacts-grid-4">
+          <div class="field contacts-checkbox-field">
+            {{ form.role_customer }}
+            <label for="id_role_customer">Ruolo Cliente</label>
+          </div>
+          <div class="field contacts-checkbox-field">
+            {{ form.role_supplier }}
+            <label for="id_role_supplier">Ruolo Fornitore</label>
+          </div>
+          <div class="field contacts-checkbox-field">
+            {{ form.role_payee }}
+            <label for="id_role_payee">Ruolo Beneficiario</label>
+          </div>
+          <div class="field contacts-checkbox-field">
+            {{ form.role_income_source }}
+            <label for="id_role_income_source">Ruolo Fonte entrata</label>
+          </div>
+          <div class="field contacts-checkbox-field">
+            {{ form.is_active }}
+            <label for="id_is_active">Contatto attivo</label>
+          </div>
+        </div>
+        <div class="field"><label for="id_notes">Note</label>{{ form.notes }}</div>
+      </div>
+
+      <div class="actions contacts-form-actions">
         <button class="btn primary" type="submit">Salva</button>
         <a class="btn" href="{{ next_url|default:'/contacts/' }}">Annulla</a>
       </div>
     </form>
     <template id="empty-delivery-address-template">
-      <div class="note delivery-address-card" data-delivery-form style="margin-bottom: 12px;">
+      <div class="note delivery-address-card contacts-delivery-card" data-delivery-form>
         {{ address_formset.empty_form.id }}
         {{ address_formset.empty_form.row_order }}
-        <div class="field"><label>Etichetta</label>{{ address_formset.empty_form.label }}</div>
-        <div class="field"><label>Destinatario</label>{{ address_formset.empty_form.recipient_name }}</div>
-        <div class="field"><label>Indirizzo</label>{{ address_formset.empty_form.line1 }}</div>
-        <div class="field"><label>Indirizzo (seconda riga)</label>{{ address_formset.empty_form.line2 }}</div>
-        <div class="field"><label>CAP</label>{{ address_formset.empty_form.postal_code }}</div>
-        <div class="field"><label>Citta</label>{{ address_formset.empty_form.city }}</div>
-        <div class="field"><label>Provincia</label>{{ address_formset.empty_form.province }}</div>
-        <div class="field"><label>Nazione</label>{{ address_formset.empty_form.country }}</div>
-        <div class="field"><label>Note consegna</label>{{ address_formset.empty_form.notes }}</div>
-        <div class="field"><label>Predefinito</label>{{ address_formset.empty_form.is_default }}</div>
-        <div class="field"><label>Attivo</label>{{ address_formset.empty_form.is_active }}</div>
-        <div class="field" style="display:none;">{{ address_formset.empty_form.DELETE }}</div>
-        <div class="actions" style="margin-top: 4px;">
+        <div class="contacts-grid contacts-grid-3">
+          <div class="field"><label>Etichetta</label>{{ address_formset.empty_form.label }}</div>
+          <div class="field"><label>Destinatario</label>{{ address_formset.empty_form.recipient_name }}</div>
+          <div class="field"><label>CAP</label>{{ address_formset.empty_form.postal_code }}</div>
+          <div class="field contacts-grid-span-2"><label>Indirizzo</label>{{ address_formset.empty_form.line1 }}</div>
+          <div class="field"><label>Citta</label>{{ address_formset.empty_form.city }}</div>
+          <div class="field contacts-grid-span-2"><label>Indirizzo (seconda riga)</label>{{ address_formset.empty_form.line2 }}</div>
+          <div class="field"><label>Provincia</label>{{ address_formset.empty_form.province }}</div>
+          <div class="field"><label>Nazione</label>{{ address_formset.empty_form.country }}</div>
+          <div class="field contacts-grid-span-2"><label>Note consegna</label>{{ address_formset.empty_form.notes }}</div>
+        </div>
+        <div class="contacts-boolean-grid">
+          <div class="field contacts-checkbox-field">
+            {{ address_formset.empty_form.is_default }}
+            <label for="{{ address_formset.empty_form.is_default.id_for_label }}">Predefinito</label>
+          </div>
+          <div class="field contacts-checkbox-field">
+            {{ address_formset.empty_form.is_active }}
+            <label for="{{ address_formset.empty_form.is_active.id_for_label }}">Attivo</label>
+          </div>
+          <div class="field" style="display:none;">{{ address_formset.empty_form.DELETE }}</div>
+        </div>
+        <div class="actions">
           <button class="btn" type="button" data-delivery-remove>Rimuovi indirizzo</button>
         </div>
       </div>

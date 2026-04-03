@@ -1,7 +1,11 @@
 from datetime import date
 from decimal import Decimal
+import shutil
+import tempfile
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.test.utils import override_settings
 from django.contrib.auth import get_user_model
 
 from contacts.models import Contact, ContactDeliveryAddress, ContactPriceList, ContactPriceListItem, ContactToolbox
@@ -106,6 +110,43 @@ class ProjectStoryboardLogTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Spesa storyboard")
         self.assertNotContains(response, "Nessuna voce trovata")
+
+
+class ProtectedMediaAccessTests(TestCase):
+    def setUp(self):
+        self.temp_media = tempfile.mkdtemp()
+        self.settings_override = override_settings(MEDIA_ROOT=self.temp_media)
+        self.settings_override.enable()
+
+        self.user = get_user_model().objects.create_user(username="media_owner", password="test1234")
+        self.other_user = get_user_model().objects.create_user(username="media_other", password="test1234")
+        self.project = Project.objects.create(owner=self.user, name="Project Media")
+        self.note = ProjectNote.objects.create(
+            owner=self.user,
+            project=self.project,
+            content="<p>Nota riservata</p>",
+            attachment=SimpleUploadedFile("riservato.txt", b"contenuto privato", content_type="text/plain"),
+        )
+
+    def tearDown(self):
+        self.settings_override.disable()
+        shutil.rmtree(self.temp_media, ignore_errors=True)
+
+    def test_media_requires_authentication(self):
+        response = self.client.get(self.note.attachment.url)
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("/accounts/login/", response["Location"])
+
+    def test_media_allows_owner_access(self):
+        self.client.login(username="media_owner", password="test1234")
+        response = self.client.get(self.note.attachment.url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(b"".join(response.streaming_content), b"contenuto privato")
+
+    def test_media_denies_other_authenticated_user(self):
+        self.client.login(username="media_other", password="test1234")
+        response = self.client.get(self.note.attachment.url)
+        self.assertEqual(response.status_code, 404)
 
 
 class ProjectDashboardContextTests(TestCase):

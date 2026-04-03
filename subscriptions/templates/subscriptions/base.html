@@ -7,7 +7,6 @@
     <title>{% block title %}MIO - Subscriptions{% endblock %}</title>
     {% include "core/partials/uikit_head.html" %}
     <link rel="stylesheet" href="{% static 'core/vendor/flatpickr/flatpickr.min.css' %}">
-    <script src="{% static 'core/vendor/htmx/htmx.min.js' %}" defer></script>
   </head>
   <body class="subscriptions-body">
     <div class="page subscriptions-page subscriptions-shell">
@@ -30,7 +29,7 @@
     </script>
     {{ hero_actions_config|json_script:"hero-actions-config" }}
     {% include "core/partials/uikit_body.html" %}
-    <script type="module" src="{% static 'core/app.js' %}"></script>
-    <script type="module" src="{% static 'subscriptions/dashboard.js' %}"></script>
+    <script type="module" src="{% static 'core/dist/app.js' %}"></script>
+    <script type="module" src="{% static 'core/dist/subscriptions_dashboard.js' %}"></script>
   </body>
 </html>

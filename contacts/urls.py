@@ -11,4 +11,6 @@ urlpatterns = [
     path("price-lists/add", views.add_price_list, name="contacts-price-list-add"),
     path("price-lists/update", views.update_price_list, name="contacts-price-list-update"),
     path("price-lists/remove", views.remove_price_list, name="contacts-price-list-remove"),
+    path("api/payees/search", views.api_payee_search, name="contacts-api-payee-search"),
+    path("api/payees/quick-create", views.api_payee_quick_create, name="contacts-api-payee-quick-create"),
 ]

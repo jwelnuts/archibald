@@ -3,6 +3,8 @@ from decimal import Decimal
 import hashlib
 import json
 import logging
+import mimetypes
+import posixpath
 import re
 import secrets
 from types import SimpleNamespace
@@ -15,7 +17,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LoginView, PasswordChangeView
 from django.db.models import Count, Sum
 from django.db.models.functions import Coalesce
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -195,6 +197,23 @@ ALLOWED_DASHBOARD_ACCENTS = {"blue", "green", "amber", "rose"}
 ALLOWED_DASHBOARD_SECTIONS = {"snapshot", "widgets", "calendar", "archibald", "quick_actions"}
 
 
+def _resolve_owned_media_file(owner, relative_path):
+    from contacts.models import Contact
+    from projects.models import ProjectNote
+
+    owned_file_fields = (
+        (Contact, "profile_image"),
+        (ProjectNote, "attachment"),
+        (Transaction, "attachment"),
+    )
+    for model, field_name in owned_file_fields:
+        filters = {"owner": owner, field_name: relative_path}
+        instance = model.objects.filter(**filters).only(field_name).first()
+        if instance is not None:
+            return getattr(instance, field_name)
+    return None
+
+
 def _normalize_dashboard_widgets(raw_config):
     if not isinstance(raw_config, dict):
         raw_config = {}
@@ -248,6 +267,29 @@ def _dashboard_widgets_for_user(user):
             }
         )
     return widgets
+
+
+@login_required
+def protected_media(request, path):
+    normalized_path = posixpath.normpath(path).lstrip("/")
+    if not normalized_path or normalized_path in {".", ".."} or normalized_path.startswith("../"):
+        raise Http404("File non trovato.")
+
+    owned_file = _resolve_owned_media_file(request.user, normalized_path)
+    if owned_file is None or not owned_file.name:
+        raise Http404("File non trovato.")
+
+    try:
+        file_handle = owned_file.open("rb")
+    except FileNotFoundError as exc:
+        raise Http404("File non trovato.") from exc
+
+    content_type, encoding = mimetypes.guess_type(owned_file.name)
+    response = FileResponse(file_handle, content_type=content_type or "application/octet-stream")
+    if encoding:
+        response["Content-Encoding"] = encoding
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 def _normalize_dashboard_preferences(raw_config):

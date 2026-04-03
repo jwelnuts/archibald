@@ -31,7 +31,26 @@
       <div class="field">
         <label for="id_payee">Beneficiario</label>
         {{ form.payee_choice }}
-        <input id="id_payee_name" name="payee_name" type="text" placeholder="Nome nuovo beneficiario" style="display:none;">
+        <div
+          class="payee-picker-field"
+          data-payee-picker
+          data-payee-select-id="id_payee_choice"
+          data-search-url="{% url 'contacts-api-payee-search' %}"
+          data-create-url="{% url 'contacts-api-payee-quick-create' %}"
+        >
+          <input
+            id="id_payee_name"
+            name="payee_name"
+            type="text"
+            placeholder="Nome nuovo beneficiario"
+            value="{{ form.payee_name.value|default:'' }}"
+            style="display:none;"
+          >
+          <div class="payee-picker-actions">
+            <button class="btn" type="button" data-payee-action="search">Cerca contatto</button>
+            <button class="btn" type="button" data-payee-action="create">Nuovo contatto</button>
+          </div>
+        </div>
       </div>
       <div class="field">
         <label for="id_category_choice">Categoria</label>

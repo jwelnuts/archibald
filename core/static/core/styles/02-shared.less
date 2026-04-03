@@ -193,7 +193,7 @@
   font-weight: 600;
 }
 
-.field input,
+.field input:not([type="checkbox"]):not([type="radio"]),
 .field select,
 .field textarea {
   padding: 8px 10px;
@@ -259,6 +259,44 @@
 .modal-close:hover {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.payee-picker-field {
+  display: grid;
+  gap: 8px;
+}
+
+.payee-picker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.payee-picker-results {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.payee-picker-result {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+}
+
+.payee-picker-result-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.payee-picker-result-meta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
 }
 
 .modal-open {

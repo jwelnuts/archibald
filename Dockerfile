@@ -1,3 +1,18 @@
+FROM node:22-slim AS frontend-build
+
+WORKDIR /app
+
+RUN corepack enable \
+    && corepack prepare pnpm@10.6.0 --activate
+
+COPY package.json pnpm-lock.yaml vite.config.mjs /app/
+COPY core/static/core /app/core/static/core
+COPY agenda/static/agenda /app/agenda/static/agenda
+COPY subscriptions/static/subscriptions /app/subscriptions/static/subscriptions
+
+RUN pnpm install --frozen-lockfile \
+    && pnpm build
+
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -13,6 +28,7 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY . /app
+COPY --from=frontend-build /app/core/static/core/dist /app/core/static/core/dist
 
 RUN chmod +x /app/docker/entrypoint.sh
 

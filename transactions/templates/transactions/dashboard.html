@@ -114,7 +114,24 @@
                 </div>
                 <div class="uk-width-1-1 uk-width-1-4@m">
                   <label class="uk-form-label" for="id_payee_name">{{ quick_form.payee_name.label }}</label>
-                  <div class="uk-form-controls">{{ quick_form.payee_name }}</div>
+                  <div class="uk-form-controls">
+                    <div
+                      class="payee-picker-field"
+                      data-payee-picker
+                      data-search-url="{% url 'contacts-api-payee-search' %}"
+                      data-create-url="{% url 'contacts-api-payee-quick-create' %}"
+                    >
+                      {{ quick_form.payee_name }}
+                      <div class="payee-picker-actions">
+                        <button class="uk-button uk-button-default uk-button-small" type="button" data-payee-action="search">
+                          Cerca contatto
+                        </button>
+                        <button class="uk-button uk-button-default uk-button-small" type="button" data-payee-action="create">
+                          Nuovo contatto
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 <div class="uk-width-1-1 uk-width-1-4@m">
                   <label class="uk-form-label" for="id_source_choice">{{ quick_form.source_choice.label }}</label>

@@ -1,17 +1,11 @@
-const STIMULUS_MODULE_URL = "https://unpkg.com/@hotwired/stimulus@3.2.2/dist/stimulus.js";
+import * as StimulusModule from "@hotwired/stimulus";
 
-let stimulusModulePromise = null;
 let stimulusApp = null;
 
 const pendingRegistrations = [];
 const registeredIdentifiers = new Set();
 
-const loadStimulusModule = () => {
-  if (!stimulusModulePromise) {
-    stimulusModulePromise = import(STIMULUS_MODULE_URL);
-  }
-  return stimulusModulePromise;
-};
+const loadStimulusModule = () => Promise.resolve(StimulusModule);
 
 const flushRegistrations = () => {
   if (!stimulusApp) {
@@ -39,15 +33,9 @@ export const startStimulus = async () => {
   if (stimulusApp) {
     return stimulusApp;
   }
-
-  try {
-    const { Application } = await loadStimulusModule();
-    stimulusApp = Application.start();
-    window.MIOStimulus = stimulusApp;
-    flushRegistrations();
-    return stimulusApp;
-  } catch (error) {
-    console.error("Stimulus non disponibile:", error);
-    throw error;
-  }
+  const { Application } = await loadStimulusModule();
+  stimulusApp = Application.start();
+  window.MIOStimulus = stimulusApp;
+  flushRegistrations();
+  return stimulusApp;
 };

@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="{% static 'core/vendor/toastui-date-picker/dist/tui-date-picker.css' %}">
     <link rel="stylesheet" href="{% static 'core/vendor/toastui-time-picker/dist/tui-time-picker.css' %}">
     <link rel="stylesheet" href="{% static 'core/vendor/toastui/dist/toastui-calendar.min.css' %}">
-    <script src="{% static 'core/vendor/htmx/htmx.min.js' %}" defer></script>
   </head>
   <body>
     <div
@@ -294,7 +293,7 @@
     <script src="{% static 'core/vendor/toastui/dist/toastui-calendar.min.js' %}"></script>
     <script src="{% static 'core/calendar.js' %}"></script>
     {% include "core/partials/uikit_body.html" %}
-    <script type="module" src="{% static 'core/app.js' %}"></script>
-    <script type="module" src="{% static 'core/dashboard.js' %}"></script>
+    <script type="module" src="{% static 'core/dist/app.js' %}"></script>
+    <script type="module" src="{% static 'core/dist/dashboard.js' %}"></script>
   </body>
 </html>

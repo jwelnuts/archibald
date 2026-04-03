@@ -1,4 +1,4 @@
-import { registerStimulusController, withStimulusModule } from "../core/stimulus.js";
+import { registerStimulusController, withStimulusModule } from "@core/stimulus.js";
 
 const notify = (message, status = "primary") => {
   if (window.UIkit && typeof window.UIkit.notification === "function") {
@@ -122,4 +122,3 @@ withStimulusModule(({ Controller }) => {
 
   registerStimulusController("subs-dashboard", SubscriptionsDashboardController);
 });
-

@@ -274,6 +274,51 @@ class ContactsViewsTests(TestCase):
 
         self.assertEqual(contact.entity_type, Contact.EntityType.COMPANY)
 
+    def test_api_payee_search_returns_contacts_for_owner(self):
+        Contact.objects.create(
+            owner=self.user,
+            display_name="Fornitore Ricerca",
+            role_supplier=True,
+            is_active=True,
+        )
+        other_user = get_user_model().objects.create_user(username="other_contacts_user", password="pwd12345")
+        Contact.objects.create(
+            owner=other_user,
+            display_name="Fornitore Altro Utente",
+            role_supplier=True,
+            is_active=True,
+        )
+
+        self.client.login(username="contacts_user", password="pwd12345")
+        response = self.client.get("/contacts/api/payees/search?q=ricerca")
+        self.assertEqual(response.status_code, 200)
+
+        payload = response.json()
+        names = [row["display_name"] for row in payload.get("results", [])]
+        self.assertIn("Fornitore Ricerca", names)
+        self.assertNotIn("Fornitore Altro Utente", names)
+
+    def test_api_payee_quick_create_creates_contact_and_legacy_payee(self):
+        self.client.login(username="contacts_user", password="pwd12345")
+        response = self.client.post(
+            "/contacts/api/payees/quick-create",
+            {
+                "display_name": "Nuovo Beneficiario API",
+                "email": "beneficiario@example.com",
+                "phone": "12345",
+                "city": "Roma",
+            },
+        )
+        self.assertEqual(response.status_code, 201)
+        payload = response.json()
+        self.assertTrue(payload.get("ok"))
+        self.assertTrue(payload.get("created"))
+
+        contact = Contact.objects.get(owner=self.user, display_name="Nuovo Beneficiario API")
+        self.assertTrue(contact.role_payee)
+        self.assertTrue(contact.role_supplier)
+        self.assertTrue(Payee.objects.filter(owner=self.user, name="Nuovo Beneficiario API").exists())
+
 
 class ContactToolboxPriceListTests(TestCase):
     def setUp(self):

@@ -3,8 +3,10 @@ from urllib.parse import quote_plus
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Q
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_http_methods
 
 from .forms import (
     ContactDeliveryAddressFormSet,
@@ -14,7 +16,7 @@ from .forms import (
     ContactToolboxForm,
 )
 from .models import Contact, ContactPriceList, ContactToolbox
-from .services import ensure_legacy_records_for_contact, sync_contacts_from_legacy
+from .services import ensure_legacy_records_for_contact, sync_contacts_from_legacy, upsert_contact
 
 
 def _ensure_toolbox(contact):
@@ -374,3 +376,63 @@ def remove_price_list(request):
         :40
     ]
     return render(request, "contacts/price_list_remove.html", {"rows": rows})
+
+
+def _contact_picker_payload(contact):
+    return {
+        "id": contact.id,
+        "display_name": contact.display_name,
+        "email": contact.email or "",
+        "phone": contact.phone or "",
+        "city": contact.city or "",
+    }
+
+
+@login_required
+@require_http_methods(["GET"])
+def api_payee_search(request):
+    sync_contacts_from_legacy(request.user)
+    query = (request.GET.get("q") or "").strip()
+
+    qs = Contact.objects.filter(owner=request.user, is_active=True).filter(Q(role_payee=True) | Q(role_supplier=True))
+    if query:
+        qs = qs.filter(
+            Q(display_name__icontains=query)
+            | Q(person_name__icontains=query)
+            | Q(business_name__icontains=query)
+            | Q(email__icontains=query)
+            | Q(phone__icontains=query)
+            | Q(city__icontains=query)
+        )
+
+    rows = list(qs.order_by("display_name", "id")[:30])
+    return JsonResponse({"results": [_contact_picker_payload(row) for row in rows]})
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_payee_quick_create(request):
+    label = (request.POST.get("display_name") or "").strip()
+    email = (request.POST.get("email") or "").strip()
+    phone = (request.POST.get("phone") or "").strip()
+    city = (request.POST.get("city") or "").strip()
+
+    if not label:
+        return JsonResponse({"ok": False, "error": "Nome beneficiario obbligatorio."}, status=400)
+
+    existed = Contact.objects.filter(owner=request.user, display_name=label).exists()
+    contact = upsert_contact(
+        request.user,
+        label,
+        entity_type=Contact.EntityType.HYBRID,
+        email=email,
+        phone=phone,
+        city=city,
+        roles={"role_payee", "role_supplier"},
+    )
+    ensure_legacy_records_for_contact(contact)
+
+    return JsonResponse(
+        {"ok": True, "created": not existed, "contact": _contact_picker_payload(contact)},
+        status=200 if existed else 201,
+    )

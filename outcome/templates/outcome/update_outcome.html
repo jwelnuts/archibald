@@ -48,7 +48,18 @@
         </div>
         <div class="field">
           <label for="id_payee_name">Beneficiario</label>
-          {{ form.payee_name }}
+          <div
+            class="payee-picker-field"
+            data-payee-picker
+            data-search-url="{% url 'contacts-api-payee-search' %}"
+            data-create-url="{% url 'contacts-api-payee-quick-create' %}"
+          >
+            {{ form.payee_name }}
+            <div class="payee-picker-actions">
+              <button class="btn" type="button" data-payee-action="search">Cerca contatto</button>
+              <button class="btn" type="button" data-payee-action="create">Nuovo contatto</button>
+            </div>
+          </div>
         </div>
         <div class="field">
           <label for="id_tags">Tag</label>

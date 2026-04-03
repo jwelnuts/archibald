@@ -27,8 +27,9 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 ### Frontend (runtime UI)
 
 - UIKit (static locale in `core/static/core/vendor/uikit`)
-- HTMX (static locale in `core/static/core/vendor/htmx`)
-- Stimulus (bootstrap in `core/static/core/stimulus.js`)
+- Bundle JS locale con `pnpm + Vite` (output in `core/static/core/dist`)
+- HTMX da package npm (`htmx.org`) bootstrap globale in `core/static/core/app.js`
+- Stimulus da package npm (`@hotwired/stimulus`) bootstrap in `core/static/core/stimulus.js`
 - UIKit baseline bridge (`core/static/core/uikit_bridge.js`)
 - Global style system LESS/CSS (`core/static/core/styles.less` -> `core/static/core/styles.css`)
 
@@ -50,7 +51,30 @@ Note Stimulus:
 - l'app Stimulus viene avviata globalmente da `core/static/core/app.js`
 - i controller vengono registrati tramite helper in `core/static/core/stimulus.js`
 - il modulo `routines` e gia migrato a controller Stimulus (`data-controller="routines"`)
-- al momento il modulo Stimulus viene importato via ESM URL (`unpkg`) in `core/static/core/stimulus.js`
+- nessuna dipendenza runtime a CDN (`unpkg` rimosso)
+
+### Toolchain JS (pnpm + Vite)
+
+- installazione dipendenze:
+  - `pnpm install --frozen-lockfile`
+- build una tantum:
+  - `pnpm build`
+- watch build in sviluppo:
+  - `pnpm dev`
+- check JS nel flusso qualita:
+  - `pnpm check:js`
+
+Entrypoint bundle principali:
+
+- `core/dist/app.js`
+- `core/dist/dashboard.js`
+- `core/dist/transactions.js`
+- `core/dist/todo.js`
+- `core/dist/routines.js`
+- `core/dist/projects_storyboard.js`
+- `core/dist/archibald.js`
+- `core/dist/agenda.js`
+- `core/dist/subscriptions_dashboard.js`
 
 ## Moduli applicativi
 
@@ -188,6 +212,14 @@ docker compose exec web python manage.py createsuperuser
 ```
 
 Apri: `http://127.0.0.1/`
+
+Se avvii Django fuori Docker, ricordati di compilare i bundle JS locali:
+
+```bash
+cd mio_master
+pnpm install --frozen-lockfile
+pnpm build
+```
 
 ## Variabili ambiente
 

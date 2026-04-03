@@ -250,9 +250,9 @@
     </div>
   </section>
 
-  <script src="{% static 'core/vendor/htmx/htmx.min.js' %}" defer></script>
   <script src="{% static 'core/vendor/quill/quill.min.js' %}"></script>
-  <script type="module" src="{% static 'core/projects_storyboard.js' %}"></script>
+  <script type="module" src="{% static 'core/dist/app.js' %}"></script>
+  <script type="module" src="{% static 'core/dist/projects_storyboard.js' %}"></script>
   <script>
     (function () {
       var editorEl = document.getElementById("note-editor");
