@@ -21,16 +21,9 @@ def superuser_only(view_func):
 
 urlpatterns = [
     path('', superuser_only(views.dashboard), name='workbench-dashboard'),
-    path(
-        'api/cleanup-generated-app',
-        superuser_only(views.cleanup_generated_app_action),
-        name='workbench-cleanup-generated-app',
-    ),
     path('api/add', superuser_only(views.add_item), name='workbench-add'),
     path('api/remove', superuser_only(views.remove_item), name='workbench-remove'),
     path('api/update', superuser_only(views.update_item), name='workbench-update'),
-    path('ai/ui-generator', superuser_only(views.ai_ui_generator), name='workbench-ai-ui-generator'),
-    path('ai/app-generator', superuser_only(views.ai_app_generator), name='workbench-ai-app-generator'),
     path('debug/logs', superuser_only(views.debug_logs), name='workbench-debug-logs'),
     path('debug/radicale', superuser_only(views.radicale_debug), name='workbench-debug-radicale'),
     path('debug/api-endpoints', superuser_only(views.api_endpoints), name='workbench-api-endpoints'),

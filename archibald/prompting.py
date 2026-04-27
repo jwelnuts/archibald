@@ -153,7 +153,7 @@ def _get_persona_config(user):
     if user is None or not getattr(user, "is_authenticated", False):
         return None
     try:
-        from ai_lab.models import ArchibaldPersonaConfig
+        from archibald.models import ArchibaldPersonaConfig
     except Exception:
         return None
     return ArchibaldPersonaConfig.objects.filter(owner=user).first()
@@ -253,7 +253,7 @@ def build_archibald_system_for_user(user, custom_instructions_override=None) -> 
         if custom_instructions_override is None:
             return "\n".join(instructions)
         try:
-            from ai_lab.models import ArchibaldPersonaConfig
+            from archibald.models import ArchibaldPersonaConfig
         except Exception:
             return "\n".join(instructions)
         config = ArchibaldPersonaConfig(owner=user)

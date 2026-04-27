@@ -182,10 +182,7 @@ Entrypoint bundle principali:
 - `workbench` (`/workbench/`):
   - CRUD ticket tecnici (`WorkbenchItem`)
   - debug log cambiamenti (`DebugChangeLog` + middleware)
-  - AI UI Generator (`/workbench/ai/ui-generator`)
-  - AI App Generator (`/workbench/ai/app-generator`, solo superuser):
-    - genera app Django base da prompt
-    - fallback locale se OpenAI non configurata
+  - App generator rimosso
   - DB schema explorer + Mermaid ERD (`/workbench/debug/schema`)
 
 ## Modello dati (alto livello)

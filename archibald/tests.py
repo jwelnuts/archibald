@@ -3,7 +3,7 @@ from unittest.mock import patch
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from ai_lab.models import ArchibaldPersonaConfig
+from archibald.models import ArchibaldPersonaConfig
 
 from .models import ArchibaldMessage, ArchibaldThread
 

@@ -5,8 +5,7 @@ L'app `workbench` e il toolbox tecnico per debug, generazione AI e manutenzione 
 
 ## Funzionalita principali
 - CRUD ticket tecnici (`WorkbenchItem`).
-- AI UI Generator.
-- AI App Generator (con setup post-generation).
+- AI App Generator rimosso.
 - Cleanup app generate/orfane.
 - Debug logs con change tracking (`DebugChangeLog`).
 - API endpoints explorer.
@@ -21,8 +20,6 @@ L'app `workbench` e il toolbox tecnico per debug, generazione AI e manutenzione 
 - `GET /workbench/`: dashboard.
 - `POST /workbench/api/add|update|remove`
 - `POST /workbench/api/cleanup-generated-app`
-- `GET/POST /workbench/ai/ui-generator`
-- `GET/POST /workbench/ai/app-generator`
 - `GET /workbench/debug/logs`
 - `GET /workbench/debug/api-endpoints`
 - `GET /workbench/debug/schema`
@@ -30,8 +27,6 @@ L'app `workbench` e il toolbox tecnico per debug, generazione AI e manutenzione 
 
 ## Template/UI principali
 - `workbench/dashboard.html`
-- `workbench/ai_ui_generator.html`
-- `workbench/ai_app_generator.html`
 - `workbench/debug_logs.html`
 - `workbench/api_endpoints.html`
 - `workbench/db_schema.html`

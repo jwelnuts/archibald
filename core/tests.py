@@ -11,7 +11,7 @@ from django.test import RequestFactory, TestCase, override_settings
 from django.utils import timezone
 from passlib.hash import bcrypt
 
-from ai_lab.models import ArchibaldInstructionState, ArchibaldPersonaConfig
+from archibald.models import ArchibaldInstructionState, ArchibaldPersonaConfig
 from planner.models import PlannerItem
 from routines.models import Routine, RoutineCategory, RoutineItem, RoutineCheck
 from todo.models import Task

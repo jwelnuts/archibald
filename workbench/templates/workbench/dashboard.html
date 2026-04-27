@@ -13,326 +13,69 @@
 
   <section class="hero workbench-hero" id="app-head">
     <div class="hero-copy" id="app-header">
-      <div class="hero-tag">AI Build Pipeline</div>
-      <h1>Workbench orchestratore</h1>
+      <div class="hero-tag">Toolbox tecnico</div>
+      <h1>Workbench</h1>
       <p>
-        Hub operativo per progettare UI, generare nuove app Django e verificare la salute del sistema.
-        Il setup post-generazione puo partire in automatico con migrazioni incluse.
+        Diagnostica, debug e manutenzione del sistema.
       </p>
-      <div class="workbench-kpi-inline">
-        <span class="workbench-kpi-chip">
-          <strong>{{ counts.generated_ok }}</strong> ok
-        </span>
-        <span class="workbench-kpi-chip">
-          <strong>{{ counts.generated_warn }}</strong> warning
-        </span>
-        <span class="workbench-kpi-chip">
-          <strong>{{ counts.generated_error }}</strong> error
-        </span>
-        <span class="workbench-kpi-chip">
-          <strong>{% if counts.gpt_enabled %}GPT ON{% else %}GPT OFF{% endif %}</strong>
-        </span>
-      </div>
       <div class="hero-actions" id="app-actions" data-module="workbench">
-        <a class="btn primary" href="/workbench/ai/ui-generator" data-action="ui-generator">UI Generator</a>
-        <a class="btn" href="/workbench/ai/app-generator" data-action="ai-generator">AI App Generator</a>
+        <a class="btn primary" href="/workbench/debug/schema" data-action="schema">DB Schema</a>
         <a class="btn" href="/archibald/" data-action="archibald">Archibald</a>
         <a class="btn" href="/workbench/debug/radicale" data-action="radicale">Radicale</a>
         <a class="btn" href="/workbench/debug/api-endpoints" data-action="api-endpoints">API Endpoints</a>
-        <a class="btn" href="/workbench/debug/schema" data-action="schema">Schema DB</a>
         <a class="btn" href="/workbench/debug/logs" data-action="logs">Debug Logs</a>
       </div>
     </div>
 
     <div class="hero-card workbench-hero-card" id="workbench-upcoming-panel">
-      <div class="card-title">Stato pipeline</div>
+      <div class="card-title">Stato sistema</div>
       <div class="stat-row" id="workbench-info">
         <div class="stat">
           <div class="stat-label">Log totali</div>
           <div class="stat-value">{{ counts.total_logs }}</div>
         </div>
-        <div class="stat">
-          <div class="stat-label">App generate</div>
-          <div class="stat-value">{{ counts.app_builds }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">GPT</div>
-          <div class="stat-value">{% if counts.gpt_enabled %}ON{% else %}OFF{% endif %}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Allarmi</div>
-          <div class="stat-value">{{ counts.generated_error|add:counts.generated_warn }}</div>
-        </div>
-      </div>
-      <div class="workbench-pulse-grid">
-        <div class="workbench-pulse-card">
-          <div class="pulse-label">Build health</div>
-          <div class="pulse-value">
-            {% if counts.generated_error %}Critical{% elif counts.generated_warn %}Watch{% else %}Stable{% endif %}
-          </div>
-        </div>
-        <div class="workbench-pulse-card">
-          <div class="pulse-label">Session clock</div>
-          <div class="pulse-value" id="workbench-live-clock">--:--:--</div>
-        </div>
-      </div>
-      <div class="note">
-        Sequenza consigliata: brief con Archibald, test UI JSON, generazione app, verifica schema/log.
       </div>
     </div>
   </section>
 
-  <section class="dashboard-layout">
-    <div class="dashboard-main">
-      <article class="panel pipeline-runway">
-        <div class="card-title">Runway operativo</div>
-        <div class="runway-grid">
-          <div class="runway-step">
-            <div class="runway-index">01</div>
-            <div class="runway-title">Brief</div>
-            <div class="runway-text">Definisci obiettivo, modello e campi con Archibald.</div>
-          </div>
-          <div class="runway-step">
-            <div class="runway-index">02</div>
-            <div class="runway-title">UI JSON</div>
-            <div class="runway-text">Genera layout e widget nel UI Generator.</div>
-          </div>
-          <div class="runway-step">
-            <div class="runway-index">03</div>
-            <div class="runway-title">App Scaffold</div>
-            <div class="runway-text">Crea app, route, template e setup migrazioni.</div>
-          </div>
-          <div class="runway-step">
-            <div class="runway-index">04</div>
-            <div class="runway-title">Health Check</div>
-            <div class="runway-text">Controlla schema, log e allarmi di pipeline.</div>
-          </div>
-        </div>
-      </article>
-
-      <article class="panel" id="dashboard-archibald">
-        <div class="card-title">1. Brief assistant</div>
-        <p class="muted">
-          Invia un prompt tecnico e ottieni una specifica pronta per UI/App Generator.
-        </p>
-
-        <div class="filter-row">
-          {% for suggestion in archibald_prompt_suggestions %}
-            <button
-              class="filter-chip"
-              type="button"
-              data-archibald-prompt="{{ suggestion }}"
-            >Suggerimento {{ forloop.counter }}</button>
-          {% endfor %}
-        </div>
-
-        <div class="chat" id="dashboard-archibald-chat"></div>
-
-        <form class="form dashboard-archibald-form" id="dashboard-archibald-form" method="post" action="">
-          {% csrf_token %}
-          <input type="hidden" name="thread_id" id="dashboard-archibald-thread" value="">
-          <div class="field">
-            <label for="dashboard-archibald-prompt">Messaggio</label>
-            <textarea
-              id="dashboard-archibald-prompt"
-              name="prompt"
-              rows="4"
-              placeholder="Es: app per ticket interni con priorita, SLA e owner."
-              required
-            ></textarea>
-          </div>
-          <div class="actions">
-            <button class="btn primary" type="submit">Invia ad Archibald</button>
-            <button class="btn" type="button" id="dashboard-archibald-reset">Nuova chat</button>
-          </div>
-        </form>
-      </article>
-
-      <article class="panel quick-actions">
-        <div class="card-title">2. Esecuzione guidata</div>
-        <div class="quick-grid">
-          <a class="quick-card" href="/workbench/ai/ui-generator">
-            Step A: genera JSON UI
-          </a>
-          <a class="quick-card" href="/workbench/ai/app-generator">
-            Step B: genera app Django
-          </a>
-          <a class="quick-card" href="/workbench/debug/schema">
-            Step C: verifica schema DB
-          </a>
-          <a class="quick-card" href="/workbench/debug/radicale">
-            Step C2: debug Radicale
-          </a>
-          <a class="quick-card" href="/workbench/debug/logs">
-            Step D: controlla debug logs
-          </a>
-        </div>
-        <div class="workbench-command-deck">
-          <div class="command-deck-title">Comandi utili</div>
-          <div class="command-deck-list">
-            <div class="command-deck-item">
-              <code>.venv/bin/python manage.py check</code>
-              <button class="btn command-copy" type="button" data-copy-cmd=".venv/bin/python manage.py check">Copia</button>
-            </div>
-            <div class="command-deck-item">
-              <code>.venv/bin/python manage.py test workbench.tests</code>
-              <button class="btn command-copy" type="button" data-copy-cmd=".venv/bin/python manage.py test workbench.tests">Copia</button>
-            </div>
-            <div class="command-deck-item">
-              <code>.venv/bin/python manage.py migrate --noinput</code>
-              <button class="btn command-copy" type="button" data-copy-cmd=".venv/bin/python manage.py migrate --noinput">Copia</button>
-            </div>
-          </div>
-        </div>
-      </article>
-
-      <article class="panel">
-        <div class="card-title">Campanelli d'allarme</div>
-        <ul class="list">
-          {% if pipeline_alerts %}
-            {% for alert in pipeline_alerts %}
-              <li>
-                <span>
-                  <span class="dot {{ alert.dot_class }}"></span>
-                  {{ alert.message }}
-                </span>
-              </li>
-            {% endfor %}
-          {% else %}
-            <li>
-              <span>
-                <span class="dot dot-green"></span>
-                Nessun allarme operativo attivo.
-              </span>
-            </li>
-          {% endif %}
-        </ul>
-      </article>
-
-      <article class="panel">
-        <div class="card-title">App generate dal Workbench</div>
-        <div class="app-health-list">
-          {% if generated_apps %}
-            {% for app in generated_apps %}
-              <article class="app-health-item">
-                <div class="app-health-head">
-                  <span>
-                    <span class="dot {{ app.dot_class }}"></span>
-                    <a href="{{ app.url }}">{{ app.app_label }}</a>
-                    <span class="muted">({{ app.model_name }})</span>
-                  </span>
-                  <span class="{{ app.pill_class }}">{{ app.health_label }}</span>
-                </div>
-                <div class="app-health-meta">
-                  {% for check in app.checks %}
-                    <span class="health-chip">{{ check.label }}: {{ check.value }}</span>
-                  {% endfor %}
-                </div>
-                <div class="app-health-actions">
-                  <code>{{ app.url }}</code>
-                  <span class="muted">{{ app.action_hint }}</span>
-                </div>
-                {% if request.user.is_superuser and app.severity != "ok" %}
-                  <form class="app-cleanup-form" method="post" action="/workbench/api/cleanup-generated-app">
-                    {% csrf_token %}
-                    <input type="hidden" name="app_label" value="{{ app.app_label }}">
-                    <button class="btn" type="submit" name="mode" value="logs">Pulisci Orfana (log)</button>
-                    <button class="btn danger" type="submit" name="mode" value="full" onclick="return confirm('Confermi cleanup completo per {{ app.app_label }}?');">Cleanup Completo</button>
-                  </form>
-                {% endif %}
-                {% if app.alarms %}
-                  <ul class="app-health-issues">
-                    {% for alarm in app.alarms %}
-                      <li>{{ alarm.message }}</li>
-                    {% endfor %}
-                  </ul>
-                {% endif %}
-              </article>
-            {% endfor %}
-          {% else %}
-            <div class="muted">Nessuna app generata rilevata.</div>
-          {% endif %}
-        </div>
-      </article>
-    </div>
+  <div class="dashboard-grid">
+    <article class="panel quick-actions">
+      <div class="card-title">Debug tools</div>
+      <div class="quick-grid">
+        <a class="quick-card" href="/workbench/debug/schema">
+          DB Schema
+        </a>
+        <a class="quick-card" href="/workbench/debug/radicale">
+          Debug Radicale
+        </a>
+        <a class="quick-card" href="/workbench/debug/logs">
+          Debug Logs
+        </a>
+        <a class="quick-card" href="/workbench/debug/api-endpoints">
+          API Endpoints
+        </a>
+      </div>
+    </article>
 
     <aside class="dashboard-rail">
-      <section class="panel quick-actions" id="workbench-toolbox-panel">
-        <div class="card-title">Toolbox Workbench</div>
-        <div class="quick-grid">
-          <a class="quick-card" href="/workbench/api/add">Nuova voce</a>
-          <a class="quick-card" href="/workbench/api/update">Aggiorna voce</a>
-          <a class="quick-card" href="/workbench/api/remove">Rimuovi voce</a>
-          <a class="quick-card" href="/archibald/insights?kind=overview">Insight rapidi</a>
-        </div>
-      </section>
-
       <section class="panel">
-        <div class="card-title">Eventi recenti generazione app</div>
-        <ul class="list">
-          {% if app_build_logs %}
-            {% for log in app_build_logs %}
-              <li>
-                <span>
-                  <span class="dot dot-teal"></span>
-                  {{ log.model_name }} ({{ log.app_label }})
-                </span>
-                <span class="muted">{{ log.created_at }}</span>
-              </li>
-            {% endfor %}
-          {% else %}
-            <li class="muted">Nessuna generazione app registrata.</li>
-          {% endif %}
-        </ul>
-      </section>
-
-      <section class="panel">
-        <div class="card-title">Log recenti globali</div>
+        <div class="card-title">Log recenti</div>
         <ul class="list" id="workbench-upcoming-list">
           {% if logs %}
             {% for log in logs %}
               <li>
                 <span>
-                  <span class="dot dot-blue"></span>
-                  {{ log.action }} {{ log.app_label }}.{{ log.model_name }}
+                  <span class="dot dot-{% if log.action == 'CREATE' %}green{% elif log.action == 'DELETE' %}red{% else %}teal{% endif %}"></span>
+                  {{ log.source }}
                 </span>
-                <span class="muted">{{ log.created_at }}</span>
+                <span class="muted">{{ log.created_at|date:"d M H:i" }}</span>
               </li>
             {% endfor %}
           {% else %}
-            <li class="muted">Nessun log disponibile.</li>
+            <li class="muted">Nessun log recente.</li>
           {% endif %}
         </ul>
       </section>
     </aside>
-  </section>
-
-  <script>
-    (function () {
-      var clock = document.getElementById("workbench-live-clock");
-      if (clock) {
-        var renderClock = function () {
-          clock.textContent = new Date().toLocaleTimeString("it-IT", { hour12: false });
-        };
-        renderClock();
-        setInterval(renderClock, 1000);
-      }
-
-      document.querySelectorAll("[data-copy-cmd]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          var cmd = btn.getAttribute("data-copy-cmd") || "";
-          if (!cmd) return;
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(cmd).then(function () {
-              var original = btn.textContent;
-              btn.textContent = "Copiato";
-              setTimeout(function () {
-                btn.textContent = original;
-              }, 1100);
-            });
-          }
-        });
-      });
-    })();
-  </script>
+  </div>
 {% endblock %}

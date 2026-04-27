@@ -37,13 +37,12 @@ urlpatterns = [
     path('archibald/', include('archibald.urls')),
     path('archibald-mail/', include('archibald_mail.urls')),
     path('memory-stock/', include('memory_stock.urls')),
-    path('ai-lab/', include('ai_lab.urls')),
     path('vault/', include('vault.urls')),
     path('finance/', include('finance_hub.urls')),
     path(
         'ui-generator/',
         RedirectView.as_view(
-            url='/workbench/ai/ui-generator',
+            url='/workbench/',
             permanent=False,
         ),
     ),

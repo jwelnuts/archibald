@@ -1,3 +1,4 @@
+# core/helpers.py
 from datetime import date, timedelta
 from decimal import Decimal
 import hashlib
@@ -12,18 +13,21 @@ from urllib.parse import quote, urljoin
 
 from django.conf import settings
 from django.contrib import messages as django_messages
-from django.contrib.auth import authenticate, get_user_model, login, logout as auth_logout
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.views import LoginView, PasswordChangeView
 from django.db.models import Count, Sum
 from django.db.models.functions import Coalesce
 from django.http import FileResponse, Http404, JsonResponse
-from django.shortcuts import get_object_or_404, redirect, render
+from django.shortcuts import redirect
 from django.utils import timezone
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
 
 from agenda.models import AgendaItem, WorkLog
+from contacts.models import Contact
+from planner.models import PlannerItem
+from projects.models import Project, SubProject, ProjectNote
+from routines.models import Routine, RoutineCategory, RoutineCheck, RoutineItem
+from subscriptions.models import SubscriptionOccurrence, Account
+from todo.models import Task
+from transactions.models import Transaction
+
 from .dav import (
     DavProvisioningError,
     caldav_base_url,
@@ -36,8 +40,6 @@ from .dav import (
     set_external_dav_account_active,
     set_managed_calendar_active,
 )
-from .forms import AccountForm, SignUpForm
-from .hero_actions import HERO_ACTIONS
 from .models import (
     DavAccount,
     DavCalendarGrant,
@@ -45,13 +47,8 @@ from .models import (
     DavManagedCalendar,
     DavTeam,
     MobileApiSession,
-    UserHeroActionsConfig,
     UserNavConfig,
 )
-from .navigation import DEFAULT_APP_OPTIONS, app_options_for_user, normalize_nav_config, parse_widgets_json
-from planner.models import PlannerItem
-from projects.models import Project, SubProject
-from routines.models import Routine, RoutineCategory, RoutineCheck, RoutineItem
 from routines.services import (
     RoutineCrudError,
     create_routine_item,
@@ -61,14 +58,10 @@ from routines.services import (
     parse_weekday,
     update_routine_item,
 )
-from subscriptions.models import Account
-from subscriptions.models import SubscriptionOccurrence
-from todo.models import Task
-from transactions.models import Transaction
 
 logger = logging.getLogger(__name__)
-_DAV_TEAM_SLUG_SANITIZER = re.compile(r"[^a-z0-9._-]+")
 
+_DAV_TEAM_SLUG_SANITIZER = re.compile(r"[^a-z0-9._-]+")
 
 DEFAULT_DASHBOARD_WIDGETS = [
     {
@@ -191,9 +184,6 @@ ALLOWED_DASHBOARD_SECTIONS = {"snapshot", "widgets", "calendar", "archibald", "q
 
 
 def _resolve_owned_media_file(owner, relative_path):
-    from contacts.models import Contact
-    from projects.models import ProjectNote
-
     owned_file_fields = (
         (Contact, "profile_image"),
         (ProjectNote, "attachment"),
@@ -229,62 +219,6 @@ def _normalize_dashboard_widgets(raw_config):
     return {"order": order, "hidden": hidden}
 
 
-def _dashboard_widgets_for_user(user):
-    nav_config, _ = UserNavConfig.objects.get_or_create(user=user)
-    raw = nav_config.config or {}
-    normalized = _normalize_dashboard_widgets(raw.get("dashboard_widgets", {}))
-    allow_archibald_mail = bool(getattr(user, "is_superuser", False))
-    available_widget_ids = [
-        widget_id
-        for widget_id in DEFAULT_DASHBOARD_WIDGET_IDS
-        if allow_archibald_mail or widget_id != "archibald_mail"
-    ]
-
-    order = [widget_id for widget_id in normalized["order"] if widget_id in available_widget_ids]
-    for widget_id in available_widget_ids:
-        if widget_id not in order:
-            order.append(widget_id)
-
-    hidden_set = {widget_id for widget_id in normalized["hidden"] if widget_id in available_widget_ids}
-    widgets = []
-    for widget_id in order:
-        base = DASHBOARD_WIDGETS_BY_ID[widget_id]
-        widgets.append(
-            {
-                "id": base["id"],
-                "title": base["title"],
-                "description": base["description"],
-                "url": base["url"],
-                "group": base["group"],
-                "hidden": widget_id in hidden_set,
-            }
-        )
-    return widgets
-
-
-@login_required
-def protected_media(request, path):
-    normalized_path = posixpath.normpath(path).lstrip("/")
-    if not normalized_path or normalized_path in {".", ".."} or normalized_path.startswith("../"):
-        raise Http404("File non trovato.")
-
-    owned_file = _resolve_owned_media_file(request.user, normalized_path)
-    if owned_file is None or not owned_file.name:
-        raise Http404("File non trovato.")
-
-    try:
-        file_handle = owned_file.open("rb")
-    except FileNotFoundError as exc:
-        raise Http404("File non trovato.") from exc
-
-    content_type, encoding = mimetypes.guess_type(owned_file.name)
-    response = FileResponse(file_handle, content_type=content_type or "application/octet-stream")
-    if encoding:
-        response["Content-Encoding"] = encoding
-    response["X-Content-Type-Options"] = "nosniff"
-    return response
-
-
 def _normalize_dashboard_preferences(raw_config):
     if not isinstance(raw_config, dict):
         raw_config = {}
@@ -313,12 +247,6 @@ def _normalize_dashboard_preferences(raw_config):
         "accent": accent,
         "sections": sections,
     }
-
-
-def _dashboard_preferences_for_user(user):
-    nav_config, _ = UserNavConfig.objects.get_or_create(user=user)
-    raw = nav_config.config or {}
-    return _normalize_dashboard_preferences(raw.get("dashboard_preferences", {}))
 
 
 def _dashboard_snapshot_context(user):
@@ -491,151 +419,138 @@ def _calendar_events_for_range(user, start: date, end: date):
     return events
 
 
-@login_required
-def dashboard(request):
-    context = {
-        "dashboard_widgets": _dashboard_widgets_for_user(request.user),
-        "dashboard_preferences": _dashboard_preferences_for_user(request.user),
+def _mobile_json_error(error: str, status: int = 400):
+    return JsonResponse({"ok": False, "error": error}, status=status)
+
+
+def _mobile_parse_json(request):
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def _mobile_hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def _mobile_access_ttl_seconds() -> int:
+    raw = int(getattr(settings, "MOBILE_API_ACCESS_TTL_SECONDS", 900) or 900)
+    return max(raw, 60)
+
+
+def _mobile_refresh_ttl_days() -> int:
+    raw = int(getattr(settings, "MOBILE_API_REFRESH_TTL_DAYS", 14) or 14)
+    return max(raw, 1)
+
+
+def _mobile_client_ip(request) -> str:
+    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
+    if forwarded:
+        return forwarded
+    return (request.META.get("REMOTE_ADDR") or "").strip()
+
+
+def _mobile_issue_tokens():
+    return secrets.token_urlsafe(32), secrets.token_urlsafe(48)
+
+
+def _mobile_create_session(user, request, device_label: str = ""):
+    access_token, refresh_token = _mobile_issue_tokens()
+    now = timezone.now()
+    session = MobileApiSession.objects.create(
+        user=user,
+        access_token_hash=_mobile_hash_token(access_token),
+        refresh_token_hash=_mobile_hash_token(refresh_token),
+        access_expires_at=now + timedelta(seconds=_mobile_access_ttl_seconds()),
+        refresh_expires_at=now + timedelta(days=_mobile_refresh_ttl_days()),
+        device_label=(device_label or "")[:120],
+        user_agent=(request.headers.get("User-Agent") or "")[:255],
+        ip_address=_mobile_client_ip(request) or None,
+    )
+    return session, access_token, refresh_token
+
+
+def _mobile_payload(user, access_token: str, refresh_token: str, session: MobileApiSession):
+    return {
+        "ok": True,
+        "access_token": access_token,
+        "access_expires_at": session.access_expires_at.isoformat(),
+        "refresh_token": refresh_token,
+        "refresh_expires_at": session.refresh_expires_at.isoformat(),
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+        },
     }
-    return render(request, "core/dashboard.html", context)
 
 
-@login_required
-@require_http_methods(["POST"])
-def dashboard_widgets(request):
-    try:
-        payload = json.loads((request.body or b"{}").decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
-
-    order_raw = payload.get("order", [])
-    hidden_raw = payload.get("hidden", [])
-    if not isinstance(order_raw, list) or not isinstance(hidden_raw, list):
-        return JsonResponse({"ok": False, "error": "invalid_payload"}, status=400)
-
-    normalized = _normalize_dashboard_widgets({"order": order_raw, "hidden": hidden_raw})
-    nav_config, _ = UserNavConfig.objects.get_or_create(user=request.user)
-    config = nav_config.config if isinstance(nav_config.config, dict) else {}
-    config["dashboard_widgets"] = normalized
-    nav_config.config = config
-    nav_config.save(update_fields=["config"])
-    return JsonResponse({"ok": True, "dashboard_widgets": normalized})
+def _mobile_bearer_token(request) -> str:
+    header = (request.headers.get("Authorization") or "").strip()
+    if not header.lower().startswith("bearer "):
+        return ""
+    return header[7:].strip()
 
 
-@login_required
-@require_http_methods(["POST"])
-def dashboard_preferences(request):
-    try:
-        payload = json.loads((request.body or b"{}").decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
+def _mobile_authenticate_request(request):
+    token = _mobile_bearer_token(request)
+    if not token:
+        return None, _mobile_json_error("missing_bearer_token", status=401)
 
-    normalized = _normalize_dashboard_preferences(payload)
+    now = timezone.now()
+    session = (
+        MobileApiSession.objects.select_related("user")
+        .filter(
+            access_token_hash=_mobile_hash_token(token),
+            revoked_at__isnull=True,
+            access_expires_at__gt=now,
+        )
+        .first()
+    )
+    if not session:
+        return None, _mobile_json_error("invalid_or_expired_access_token", status=401)
 
-    nav_config, _ = UserNavConfig.objects.get_or_create(user=request.user)
-    config = nav_config.config if isinstance(nav_config.config, dict) else {}
-    config["dashboard_preferences"] = normalized
-    nav_config.config = config
-    nav_config.save(update_fields=["config"])
-
-    return JsonResponse({"ok": True, "dashboard_preferences": normalized})
-
-
-@login_required
-@require_http_methods(["GET"])
-def dashboard_snapshot(request):
-    context = _dashboard_snapshot_context(request.user)
-    return render(request, "core/partials/dashboard_snapshot.html", context)
+    session.last_used_at = now
+    session.save(update_fields=["last_used_at", "updated_at"])
+    return session, None
 
 
-@login_required
-def calendar_events(request):
-    start_raw = request.GET.get("start")
-    end_raw = request.GET.get("end")
+def _mobile_week_start_for(value: str | None) -> date:
     today = date.today()
-    try:
-        start = date.fromisoformat(start_raw) if start_raw else today.replace(day=1)
-    except ValueError:
-        start = today.replace(day=1)
-    try:
-        end = date.fromisoformat(end_raw) if end_raw else (start + timedelta(days=31))
-    except ValueError:
-        end = start + timedelta(days=31)
-
-    events = _calendar_events_for_range(request.user, start, end)
-    payload = [{"date": day, "items": items} for day, items in events.items()]
-    return JsonResponse({"events": payload})
+    if value:
+        try:
+            parsed = date.fromisoformat(value)
+            return parsed - timedelta(days=parsed.weekday())
+        except ValueError:
+            pass
+    return today - timedelta(days=today.weekday())
 
 
-class AccountPasswordChangeView(PasswordChangeView):
-    def form_valid(self, form):
-        response = super().form_valid(form)
-        if settings.CALDAV_ENABLED:
-            raw_password = (form.cleaned_data.get("new_password1") or "").strip()
-            if raw_password:
-                try:
-                    ensure_user_dav_access(self.request.user, raw_password=raw_password)
-                except DavProvisioningError as exc:
-                    django_messages.warning(
-                        self.request,
-                        f"Password account aggiornata, ma sync DAV non completata: {exc}",
-                    )
-                else:
-                    django_messages.success(
-                        self.request,
-                        "Credenziali DAV allineate alla nuova password account.",
-                    )
-        return response
+def _mobile_routines_stats_from_items(items, check_map):
+    planned = 0
+    done = 0
+    skipped = 0
+    for item in items:
+        check = check_map.get(item.id)
+        status = check.status if check else RoutineCheck.Status.PLANNED
+        if status == RoutineCheck.Status.DONE:
+            done += 1
+        elif status == RoutineCheck.Status.SKIPPED:
+            skipped += 1
+        else:
+            planned += 1
+    return {"planned": planned, "done": done, "skipped": skipped}
 
 
-class AccountLoginView(LoginView):
-    def form_valid(self, form):
-        if settings.CALDAV_ENABLED:
-            raw_password = (form.cleaned_data.get("password") or "").strip()
-            if raw_password:
-                try:
-                    ensure_user_dav_access(form.get_user(), raw_password=raw_password)
-                except DavProvisioningError as exc:
-                    django_messages.warning(
-                        self.request,
-                        f"Login completato, ma sync DAV non completata: {exc}",
-                    )
-                else:
-                    self.request._dav_synced = True
-        response = super().form_valid(form)
-        return response
-
-
-def signup(request):
-    if request.method == "POST":
-        form = SignUpForm(request.POST)
-        if form.is_valid():
-            user = form.save()
-            login(request, user)
-            if settings.CALDAV_ENABLED:
-                try:
-                    raw_password = (form.cleaned_data.get("password1") or "").strip()
-                    account, _ = ensure_user_dav_access(user, raw_password=raw_password)
-                except DavProvisioningError as exc:
-                    django_messages.warning(
-                        request,
-                        f"Account creato, ma provisioning DAV non completato: {exc}",
-                    )
-                else:
-                    django_messages.success(
-                        request,
-                        f"Accesso DAV attivo per {account.dav_username}: usa la stessa password del tuo account.",
-                    )
-            return redirect("/profile/#dav-access")
-    else:
-        form = SignUpForm()
-    return render(request, "registration/signup.html", {"form": form})
-
-
-@require_http_methods(["GET", "POST"])
-def logout_view(request):
-    auth_logout(request)
-    return redirect("/")
+def _api_authenticate_request(request):
+    token = _mobile_bearer_token(request)
+    if token:
+        return _mobile_authenticate_request(request)
+    if request.user.is_authenticated:
+        return SimpleNamespace(user=request.user), None
+    return None, _mobile_json_error("authentication_required", status=401)
 
 
 def _dav_collection_url(base_url: str, principal: str, collection_slug: str = "") -> str:
@@ -976,605 +891,16 @@ def _handle_dav_actions(request, action: str, *, redirect_base: str):
     return None
 
 
-@login_required
-def profile(request):
-    from archibald.models import ArchibaldInstructionState, ArchibaldPersonaConfig
-    from archibald.prompting import build_archibald_system_for_user
-
-    persona, _ = ArchibaldPersonaConfig.objects.get_or_create(owner=request.user)
-
-    if request.method == "POST":
-        action = (request.POST.get("action") or "").strip()
-        custom_text = (request.POST.get("archibald_custom_instructions") or "").strip()
-
-        if action == "rotate_dav_password" or action.startswith("dav_"):
-            dav_response = _handle_dav_actions(request, action, redirect_base="/profile/dav/")
-            if dav_response is not None:
-                return dav_response
-
-        if action == "save_archibald_instructions":
-            persona.custom_instructions = custom_text
-            persona.save()
-            django_messages.success(request, "Istruzioni Archibald salvate.")
-            return redirect("/profile/")
-
-        if action == "save_archibald_state":
-            state_name = (request.POST.get("state_name") or "").strip()
-            if not state_name:
-                django_messages.error(request, "Inserisci un nome stato prima di salvare.")
-            else:
-                persona.custom_instructions = custom_text
-                persona.save()
-                state, created = ArchibaldInstructionState.objects.update_or_create(
-                    owner=request.user,
-                    name=state_name,
-                    defaults={"instructions_text": custom_text},
-                )
-                label = "creato" if created else "aggiornato"
-                django_messages.success(request, f"Stato '{state.name}' {label}.")
-            return redirect("/profile/")
-
-        if action == "apply_archibald_state":
-            state_id = request.POST.get("state_id")
-            state = ArchibaldInstructionState.objects.filter(owner=request.user, id=state_id).first()
-            if not state:
-                django_messages.error(request, "Stato non trovato.")
-            else:
-                persona.custom_instructions = state.instructions_text
-                persona.save()
-                django_messages.success(request, f"Stato '{state.name}' applicato alle istruzioni attive.")
-            return redirect("/profile/")
-
-        if action == "delete_archibald_state":
-            state_id = request.POST.get("state_id")
-            state = ArchibaldInstructionState.objects.filter(owner=request.user, id=state_id).first()
-            if not state:
-                django_messages.error(request, "Stato non trovato.")
-            else:
-                label = state.name
-                state.delete()
-                django_messages.success(request, f"Stato '{label}' eliminato.")
-            return redirect("/profile/")
-
-        if action == "save_bias_settings":
-            persona.bias_catastrophizing = request.POST.get("bias_catastrophizing") == "on"
-            persona.bias_all_or_nothing = request.POST.get("bias_all_or_nothing") == "on"
-            persona.bias_overgeneralization = request.POST.get("bias_overgeneralization") == "on"
-            persona.bias_mind_reading = request.POST.get("bias_mind_reading") == "on"
-            persona.bias_negative_filtering = request.POST.get("bias_negative_filtering") == "on"
-            persona.bias_confirmation_bias = request.POST.get("bias_confirmation_bias") == "on"
-            persona.save(
-                update_fields=[
-                    "bias_catastrophizing",
-                    "bias_all_or_nothing",
-                    "bias_overgeneralization",
-                    "bias_mind_reading",
-                    "bias_negative_filtering",
-                    "bias_confirmation_bias",
-                ]
-            )
-            django_messages.success(request, "Impostazioni bias cognitivi salvate.")
-            return redirect("/profile/#bias-cognitivi")
-
-    states = ArchibaldInstructionState.objects.filter(owner=request.user).order_by("-updated_at", "name")
-    dav_context = _build_dav_context(request, consume_onboarding=False)
-    dav_onboarding = request.session.pop("dav_onboarding", None)
-    context = {
-        "archibald_custom_instructions": persona.custom_instructions or "",
-        "archibald_instruction_states": states[:24],
-        "archibald_system_preview": build_archibald_system_for_user(request.user),
-        "archibald_persona": persona,
-        "dav_onboarding_username": (dav_onboarding or {}).get("username", ""),
-        "dav_onboarding_password": (dav_onboarding or {}).get("password", ""),
-        **dav_context,
-    }
-    return render(request, "core/profile.html", context)
-
-
-@login_required
-def dav_management(request):
-    if request.method == "POST":
-        action = (request.POST.get("action") or "").strip()
-        dav_response = _handle_dav_actions(request, action, redirect_base="/profile/dav/")
-        if dav_response is not None:
-            return dav_response
-
-    context = _build_dav_context(request, consume_onboarding=True)
-    return render(request, "core/dav_management.html", context)
-
-
-@login_required
-def nav_settings(request):
-    config_obj, _ = UserNavConfig.objects.get_or_create(user=request.user)
-    raw = config_obj.config or {}
-    available_app_options = app_options_for_user(request.user)
-    normalized = normalize_nav_config(raw, available_app_options=available_app_options)
-    apps_by_key = {item["key"]: item for item in available_app_options}
-
-    if request.method == "POST":
-        errors = []
-        ordered_rows = []
-        for index, item in enumerate(available_app_options, start=1):
-            key = item["key"]
-            visible = request.POST.get(f"app_visible_{key}") == "on"
-            order_raw = (request.POST.get(f"app_order_{key}") or "").strip()
-            try:
-                order_value = int(order_raw) if order_raw else index
-            except ValueError:
-                order_value = index
-            ordered_rows.append((order_value, index, key, visible))
-        ordered_rows.sort(key=lambda row: (row[0], row[1]))
-
-        app_order = [row[2] for row in ordered_rows]
-        hidden_apps = [row[2] for row in ordered_rows if not row[3]]
-
-        custom_links = []
-        for idx in range(1, 7):
-            label = (request.POST.get(f"custom_label_{idx}") or "").strip()
-            url = (request.POST.get(f"custom_url_{idx}") or "").strip()
-            if not label and not url:
-                continue
-            if not label or not url:
-                errors.append(f"Link personalizzato #{idx}: inserisci sia etichetta che URL.")
-                continue
-            if not (url.startswith("/") or url.startswith("http://") or url.startswith("https://")):
-                errors.append(f"Link personalizzato #{idx}: URL non valido.")
-                continue
-            custom_links.append(
-                {
-                    "label": label[:40],
-                    "url": url[:300],
-                    "external": url.startswith("http://") or url.startswith("https://"),
-                }
-            )
-
-        widgets_json_raw = request.POST.get("widgets_json") or ""
-        try:
-            widgets = parse_widgets_json(widgets_json_raw)
-        except json.JSONDecodeError:
-            widgets = []
-            errors.append("JSON widgets non valido.")
-        except ValueError as exc:
-            widgets = []
-            errors.append(str(exc))
-
-        if errors:
-            for msg in errors:
-                django_messages.error(request, msg)
-            normalized = normalize_nav_config(
-                {
-                    "_configured": True,
-                    "app_order": app_order,
-                    "hidden_apps": hidden_apps,
-                    "custom_links": custom_links,
-                    "widgets": widgets,
-                },
-                available_app_options=available_app_options,
-            )
-        else:
-            config_obj.config = {
-                "_configured": True,
-                "app_order": app_order,
-                "hidden_apps": hidden_apps,
-                "custom_links": custom_links,
-                "widgets": widgets,
-            }
-            config_obj.save(update_fields=["config"])
-            django_messages.success(request, "Navigazione personalizzata salvata.")
-            return redirect("/profile/nav/")
-
-    app_rows = []
-    for position, key in enumerate(normalized["app_order"], start=1):
-        item = apps_by_key.get(key)
-        if not item:
-            continue
-        app_rows.append(
-            {
-                "key": key,
-                "label": item["label"],
-                "icon": item.get("icon", "thumbnails"),
-                "url": item["url"],
-                "visible": key not in normalized["hidden_apps"],
-                "order": position,
-            }
-        )
-
-    custom_link_rows = []
-    saved_links = normalized["custom_links"]
-    for idx in range(6):
-        if idx < len(saved_links):
-            row = saved_links[idx]
-            custom_link_rows.append({"index": idx + 1, "label": row.get("label", ""), "url": row.get("url", "")})
-        else:
-            custom_link_rows.append({"index": idx + 1, "label": "", "url": ""})
-
-    context = {
-        "app_rows": app_rows,
-        "custom_link_rows": custom_link_rows,
-        "widgets_json": json.dumps(normalized["widgets"], ensure_ascii=True, indent=2),
-    }
-    return render(request, "core/nav_settings.html", context)
-
-
-@login_required
-def hero_actions(request):
-    config_obj, _ = UserHeroActionsConfig.objects.get_or_create(user=request.user)
-    if request.method == "POST":
-        new_config = {}
-        for module, actions in HERO_ACTIONS.items():
-            enabled = []
-            for action in actions:
-                key = f"{module}:{action['key']}"
-                if request.POST.get(key) == "on":
-                    enabled.append(action["key"])
-            new_config[module] = enabled
-        new_config["_configured"] = True
-        config_obj.config = new_config
-        config_obj.save(update_fields=["config"])
-        return redirect("/profile/hero-actions/")
-
-    selected = config_obj.config or {}
-    if selected and not selected.get("_configured"):
-        # Backfill legacy config with defaults for missing modules.
-        for module, actions in HERO_ACTIONS.items():
-            if module not in selected:
-                selected[module] = [a["key"] for a in actions if a.get("default")]
-        selected["_configured"] = True
-        config_obj.config = selected
-        config_obj.save(update_fields=["config"])
-    context = {
-        "actions": HERO_ACTIONS,
-        "selected": selected,
-    }
-    return render(request, "core/hero_actions.html", context)
-
-
-@login_required
-def accounts(request):
-    accounts_list = Account.objects.filter(owner=request.user).order_by("name")
-    return render(request, "core/accounts.html", {"accounts": accounts_list})
-
-
-@login_required
-def add_account(request):
-    if request.method == "POST":
-        form = AccountForm(request.POST)
-        if form.is_valid():
-            account = form.save(commit=False)
-            account.owner = request.user
-            account.save()
-            return redirect("/core/accounts/")
-    else:
-        form = AccountForm()
-    return render(request, "core/add_account.html", {"form": form})
-
-
-@login_required
-def update_account(request):
-    account_id = request.GET.get("id")
-    account = None
-    if account_id:
-        account = get_object_or_404(Account, id=account_id, owner=request.user)
-        if request.method == "POST":
-            form = AccountForm(request.POST, instance=account)
-            if form.is_valid():
-                form.save()
-                return redirect("/core/accounts/")
-        else:
-            form = AccountForm(instance=account)
-        return render(request, "core/update_account.html", {"form": form, "account": account})
-    accounts_list = Account.objects.filter(owner=request.user).order_by("name")[:20]
-    return render(request, "core/update_account.html", {"accounts": accounts_list})
-
-
-@login_required
-def remove_account(request):
-    account_id = request.GET.get("id")
-    account = None
-    if account_id:
-        account = get_object_or_404(Account, id=account_id, owner=request.user)
-        if request.method == "POST":
-            account.delete()
-            return redirect("/core/accounts/")
-    accounts_list = Account.objects.filter(owner=request.user).order_by("name")[:20]
-    return render(request, "core/remove_account.html", {"account": account, "accounts": accounts_list})
-
-
-def _mobile_json_error(error: str, status: int = 400):
-    return JsonResponse({"ok": False, "error": error}, status=status)
-
-
-def _mobile_parse_json(request):
-    try:
-        payload = json.loads((request.body or b"{}").decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError):
-        return None
-    return payload if isinstance(payload, dict) else None
-
-
-def _mobile_hash_token(token: str) -> str:
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-
-def _mobile_access_ttl_seconds() -> int:
-    raw = int(getattr(settings, "MOBILE_API_ACCESS_TTL_SECONDS", 900) or 900)
-    return max(raw, 60)
-
-
-def _mobile_refresh_ttl_days() -> int:
-    raw = int(getattr(settings, "MOBILE_API_REFRESH_TTL_DAYS", 14) or 14)
-    return max(raw, 1)
-
-
-def _mobile_client_ip(request) -> str:
-    forwarded = (request.headers.get("X-Forwarded-For") or "").split(",")[0].strip()
-    if forwarded:
-        return forwarded
-    return (request.META.get("REMOTE_ADDR") or "").strip()
-
-
-def _mobile_issue_tokens():
-    return secrets.token_urlsafe(32), secrets.token_urlsafe(48)
-
-
-def _mobile_create_session(user, request, device_label: str = ""):
-    access_token, refresh_token = _mobile_issue_tokens()
-    now = timezone.now()
-    session = MobileApiSession.objects.create(
-        user=user,
-        access_token_hash=_mobile_hash_token(access_token),
-        refresh_token_hash=_mobile_hash_token(refresh_token),
-        access_expires_at=now + timedelta(seconds=_mobile_access_ttl_seconds()),
-        refresh_expires_at=now + timedelta(days=_mobile_refresh_ttl_days()),
-        device_label=(device_label or "")[:120],
-        user_agent=(request.headers.get("User-Agent") or "")[:255],
-        ip_address=_mobile_client_ip(request) or None,
-    )
-    return session, access_token, refresh_token
-
-
-def _mobile_payload(user, access_token: str, refresh_token: str, session: MobileApiSession):
-    return {
-        "ok": True,
-        "access_token": access_token,
-        "access_expires_at": session.access_expires_at.isoformat(),
-        "refresh_token": refresh_token,
-        "refresh_expires_at": session.refresh_expires_at.isoformat(),
-        "user": {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-        },
-    }
-
-
-def _mobile_bearer_token(request) -> str:
-    header = (request.headers.get("Authorization") or "").strip()
-    if not header.lower().startswith("bearer "):
-        return ""
-    return header[7:].strip()
-
-
-def _mobile_authenticate_request(request):
-    token = _mobile_bearer_token(request)
-    if not token:
-        return None, _mobile_json_error("missing_bearer_token", status=401)
-
-    now = timezone.now()
-    session = (
-        MobileApiSession.objects.select_related("user")
-        .filter(
-            access_token_hash=_mobile_hash_token(token),
-            revoked_at__isnull=True,
-            access_expires_at__gt=now,
-        )
-        .first()
-    )
-    if not session:
-        return None, _mobile_json_error("invalid_or_expired_access_token", status=401)
-
-    session.last_used_at = now
-    session.save(update_fields=["last_used_at", "updated_at"])
-    return session, None
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def mobile_auth_login(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        return _mobile_json_error("invalid_json", status=400)
-
-    identity = (payload.get("identity") or payload.get("email") or payload.get("username") or "").strip()
-    password = (payload.get("password") or "").strip()
-    device_label = (payload.get("device_label") or "").strip()
-
-    if not identity or not password:
-        return _mobile_json_error("missing_credentials", status=400)
-
-    user_model = get_user_model()
-    user_by_email = user_model.objects.filter(email__iexact=identity).first()
-    auth_username = user_by_email.username if user_by_email else identity
-    user = authenticate(request, username=auth_username, password=password)
-    if not user or not user.is_active:
-        return _mobile_json_error("invalid_credentials", status=401)
-
-    if settings.CALDAV_ENABLED:
-        try:
-            ensure_user_dav_access(user, raw_password=password)
-        except DavProvisioningError as exc:
-            logger.warning("DAV sync failed during mobile login for user=%s: %s", user.id, exc)
-
-    session, access_token, refresh_token = _mobile_create_session(user, request, device_label=device_label)
-    return JsonResponse(_mobile_payload(user, access_token, refresh_token, session))
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def mobile_auth_refresh(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        return _mobile_json_error("invalid_json", status=400)
-
-    refresh_token = (payload.get("refresh_token") or "").strip()
-    if not refresh_token:
-        return _mobile_json_error("missing_refresh_token", status=400)
-
-    now = timezone.now()
-    session = (
-        MobileApiSession.objects.select_related("user")
-        .filter(
-            refresh_token_hash=_mobile_hash_token(refresh_token),
-            revoked_at__isnull=True,
-            refresh_expires_at__gt=now,
-        )
-        .first()
-    )
-    if not session:
-        return _mobile_json_error("invalid_or_expired_refresh_token", status=401)
-
-    access_token, new_refresh_token = _mobile_issue_tokens()
-    session.access_token_hash = _mobile_hash_token(access_token)
-    session.refresh_token_hash = _mobile_hash_token(new_refresh_token)
-    session.access_expires_at = now + timedelta(seconds=_mobile_access_ttl_seconds())
-    session.refresh_expires_at = now + timedelta(days=_mobile_refresh_ttl_days())
-    session.last_used_at = now
-    session.save(
-        update_fields=[
-            "access_token_hash",
-            "refresh_token_hash",
-            "access_expires_at",
-            "refresh_expires_at",
-            "last_used_at",
-            "updated_at",
-        ]
-    )
-
-    return JsonResponse(_mobile_payload(session.user, access_token, new_refresh_token, session))
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def mobile_auth_logout(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        payload = {}
-
-    now = timezone.now()
-    session = None
-    access_token = _mobile_bearer_token(request)
-    if access_token:
-        session = (
-            MobileApiSession.objects.filter(
-                access_token_hash=_mobile_hash_token(access_token),
-                revoked_at__isnull=True,
-            )
-            .order_by("-id")
-            .first()
-        )
-
-    if not session:
-        refresh_token = (payload.get("refresh_token") or "").strip()
-        if refresh_token:
-            session = (
-                MobileApiSession.objects.filter(
-                    refresh_token_hash=_mobile_hash_token(refresh_token),
-                    revoked_at__isnull=True,
-                )
-                .order_by("-id")
-                .first()
-            )
-
-    if session:
-        session.revoked_at = now
-        session.save(update_fields=["revoked_at", "updated_at"])
-
-    return JsonResponse({"ok": True})
-
-
-@require_http_methods(["GET"])
-def mobile_dashboard(request):
-    session, error = _mobile_authenticate_request(request)
-    if error:
-        return error
-
-    snapshot_context = _dashboard_snapshot_context(session.user)
-    snapshot = snapshot_context["snapshot"]
-    today = date.today()
-    events = []
-    for row in snapshot_context["focus_rows"][:8]:
-        due_date = row.get("due_date")
-        events.append(
-            {
-                "kind": row.get("kind"),
-                "title": row.get("title"),
-                "due_date": due_date.isoformat() if due_date else "",
-                "url": row.get("url", ""),
-                "warn": bool(due_date and due_date < today),
-            }
-        )
-
-    return JsonResponse(
-        {
-            "ok": True,
-            "synced_at": timezone.now().isoformat(),
-            "metrics": {
-                "open_tasks": snapshot["open_tasks"],
-                "planner_queue": snapshot["planner_planned"],
-                "alerts_open": snapshot["overdue_tasks"],
-                "due_subscriptions_week": snapshot["due_subscriptions_week"],
-            },
-            "snapshot": {
-                "tasks_today": snapshot["tasks_today"],
-                "month_transactions": snapshot["month_transactions"],
-                "month_income": snapshot["month_income"],
-                "month_expense": snapshot["month_expense"],
-                "month_balance": snapshot["month_balance"],
-            },
-            "events": events,
-            "user": {
-                "id": session.user.id,
-                "username": session.user.username,
-                "email": session.user.email,
-            },
-        }
-    )
-
-
-def _mobile_week_start_for(value: str | None) -> date:
-    today = date.today()
-    if value:
-        try:
-            parsed = date.fromisoformat(value)
-            return parsed - timedelta(days=parsed.weekday())
-        except ValueError:
-            pass
-    return today - timedelta(days=today.weekday())
-
-
-def _mobile_routines_stats_from_items(items, check_map):
-    planned = 0
-    done = 0
-    skipped = 0
-    for item in items:
-        check = check_map.get(item.id)
-        status = check.status if check else RoutineCheck.Status.PLANNED
-        if status == RoutineCheck.Status.DONE:
-            done += 1
-        elif status == RoutineCheck.Status.SKIPPED:
-            skipped += 1
-        else:
-            planned += 1
-    return {"planned": planned, "done": done, "skipped": skipped}
-
-
-def _api_authenticate_request(request):
-    token = _mobile_bearer_token(request)
-    if token:
-        return _mobile_authenticate_request(request)
-    if request.user.is_authenticated:
-        return SimpleNamespace(user=request.user), None
-    return None, _mobile_json_error("authentication_required", status=401)
+def _dashboard_widgets_for_user(user):
+    nav_config, _ = UserNavConfig.objects.get_or_create(user=user)
+    config = nav_config.config if isinstance(nav_config.config, dict) else {}
+    return _normalize_dashboard_widgets(config.get("dashboard_widgets"))
+
+
+def _dashboard_preferences_for_user(user):
+    nav_config, _ = UserNavConfig.objects.get_or_create(user=user)
+    config = nav_config.config if isinstance(nav_config.config, dict) else {}
+    return _normalize_dashboard_preferences(config.get("dashboard_preferences"))
 
 
 def _routines_response_for_user(user, week_value: str | None):
@@ -1873,156 +1199,4 @@ def _agenda_response_for_user(user, start_value: str | None, duration_value):
             },
             "items": payload_items,
         }
-    )
-
-
-@require_http_methods(["GET"])
-def mobile_routines(request):
-    session, error = _mobile_authenticate_request(request)
-    if error:
-        return error
-    return _routines_response_for_user(session.user, request.GET.get("week"))
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def mobile_routines_check(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        return _mobile_json_error("invalid_json", status=400)
-    session, error = _mobile_authenticate_request(request)
-    if error:
-        return error
-    return _routines_check_for_user(session.user, payload)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def mobile_routines_item_create(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        return _mobile_json_error("invalid_json", status=400)
-    session, error = _mobile_authenticate_request(request)
-    if error:
-        return error
-    return _routines_item_create_for_user(session.user, payload)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def mobile_routines_item_update(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        return _mobile_json_error("invalid_json", status=400)
-    session, error = _mobile_authenticate_request(request)
-    if error:
-        return error
-    return _routines_item_update_for_user(session.user, payload)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def mobile_routines_item_delete(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        return _mobile_json_error("invalid_json", status=400)
-    session, error = _mobile_authenticate_request(request)
-    if error:
-        return error
-    return _routines_item_delete_for_user(session.user, payload)
-
-
-@require_http_methods(["GET"])
-def api_routines(request):
-    session, error = _api_authenticate_request(request)
-    if error:
-        return error
-    return _routines_response_for_user(session.user, request.GET.get("week"))
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_routines_check(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        return _mobile_json_error("invalid_json", status=400)
-    session, error = _api_authenticate_request(request)
-    if error:
-        return error
-    return _routines_check_for_user(session.user, payload)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_routines_item_create(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        return _mobile_json_error("invalid_json", status=400)
-    session, error = _api_authenticate_request(request)
-    if error:
-        return error
-    return _routines_item_create_for_user(session.user, payload)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_routines_item_update(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        return _mobile_json_error("invalid_json", status=400)
-    session, error = _api_authenticate_request(request)
-    if error:
-        return error
-    return _routines_item_update_for_user(session.user, payload)
-
-
-@csrf_exempt
-@require_http_methods(["POST"])
-def api_routines_item_delete(request):
-    payload = _mobile_parse_json(request)
-    if payload is None:
-        return _mobile_json_error("invalid_json", status=400)
-    session, error = _api_authenticate_request(request)
-    if error:
-        return error
-    return _routines_item_delete_for_user(session.user, payload)
-
-
-@require_http_methods(["GET"])
-def api_projects(request):
-    session, error = _api_authenticate_request(request)
-    if error:
-        return error
-    return _projects_response_for_user(session.user)
-
-
-@require_http_methods(["GET"])
-def mobile_projects(request):
-    session, error = _mobile_authenticate_request(request)
-    if error:
-        return error
-    return _projects_response_for_user(session.user)
-
-
-@require_http_methods(["GET"])
-def api_agenda(request):
-    session, error = _api_authenticate_request(request)
-    if error:
-        return error
-    return _agenda_response_for_user(
-        session.user,
-        request.GET.get("start"),
-        request.GET.get("duration"),
-    )
-
-
-@require_http_methods(["GET"])
-def mobile_agenda(request):
-    session, error = _mobile_authenticate_request(request)
-    if error:
-        return error
-    return _agenda_response_for_user(
-        session.user,
-        request.GET.get("start"),
-        request.GET.get("duration"),
     )
