@@ -1,0 +1,49 @@
+<form method="post" action="/vault/api/update?id={{ item.id }}"
+      hx-post="/vault/api/update?id={{ item.id }}"
+      hx-target="#vault-modal-body"
+      hx-swap="innerHTML">
+  {% csrf_token %}
+  <div class="uk-modal-header">
+    <h2 class="uk-modal-title">Modifica — {{ item.title }}</h2>
+  </div>
+  <div class="uk-modal-body">
+    {% if form.errors %}
+      <div class="uk-alert-danger uk-padding-small uk-margin-small-bottom">
+        {% for field in form %}{% for error in field.errors %}<div>{{ field.label }}: {{ error }}</div>{% endfor %}{% endfor %}
+        {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+      </div>
+    {% endif %}
+    <div class="uk-margin">
+      <label class="uk-form-label">Titolo</label>
+      <div class="uk-form-controls">{{ form.title }}</div>
+    </div>
+    <div class="uk-margin">
+      <label class="uk-form-label">Tipo</label>
+      <div class="uk-form-controls">{{ form.kind }}</div>
+    </div>
+    <div class="uk-margin">
+      <label class="uk-form-label">Login</label>
+      <div class="uk-form-controls">{{ form.login }}</div>
+    </div>
+    <div class="uk-margin">
+      <label class="uk-form-label">Sito web</label>
+      <div class="uk-form-controls">{{ form.website_url }}</div>
+    </div>
+    <div class="uk-margin">
+      <label class="uk-form-label">Password / Segreto</label>
+      <div class="uk-form-controls uk-flex uk-flex-middle uk-gap-small">
+        {{ form.secret_value }}
+        <button type="button" class="uk-button uk-button-default uk-button-small"
+          onclick="(function(btn){var inp=btn.previousElementSibling;inp.type=inp.type==='password'?'text':'password';btn.textContent=inp.type==='password'?'Mostra':'Nascondi';})(this)">Mostra</button>
+      </div>
+    </div>
+    <div class="uk-margin">
+      <label class="uk-form-label">Note private</label>
+      <div class="uk-form-controls">{{ form.notes_value }}</div>
+    </div>
+  </div>
+  <div class="uk-modal-footer uk-text-right">
+    <button class="uk-button uk-button-default uk-margin-small-right" type="button" uk-modal-close>Annulla</button>
+    <button class="uk-button uk-button-primary" type="submit">Aggiorna</button>
+  </div>
+</form>

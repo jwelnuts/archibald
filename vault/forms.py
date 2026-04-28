@@ -20,17 +20,23 @@ class VaultItemForm(forms.ModelForm):
     secret_value = forms.CharField(
         label="Password / Segreto",
         required=False,
-        widget=forms.TextInput(attrs={"autocomplete": "off"}),
+        widget=forms.TextInput(attrs={"autocomplete": "off", "class": "uk-input", "type": "password"}),
     )
     notes_value = forms.CharField(
         label="Note private",
         required=False,
-        widget=forms.Textarea(attrs={"rows": 5}),
+        widget=forms.Textarea(attrs={"rows": 4, "class": "uk-textarea"}),
     )
 
     class Meta:
         model = VaultItem
         fields = ("title", "kind", "login", "website_url")
+        widgets = {
+            "title": forms.TextInput(attrs={"class": "uk-input"}),
+            "kind": forms.Select(attrs={"class": "uk-select"}),
+            "login": forms.TextInput(attrs={"class": "uk-input"}),
+            "website_url": forms.URLInput(attrs={"class": "uk-input"}),
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

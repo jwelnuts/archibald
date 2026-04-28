@@ -5,7 +5,7 @@
 {% block content %}
 <style>
   .vault-secret-wrap { display: inline-flex; align-items: center; gap: 6px; }
-  .vault-secret-toggle { font-size: 0.75rem; padding: 1px 6px; cursor: pointer; }
+  .vault-secret-toggle, .vault-copy-btn { font-size: 0.75rem; padding: 1px 6px; cursor: pointer; }
 </style>
   <section class="panel">
     <h2>Archivio privato</h2>
@@ -63,7 +63,7 @@
                   <code class="vault-secret-display">{{ row.masked_secret }}</code>
                   <span class="vault-secret-plain" hidden>{{ row.plain_secret }}</span>
                   <button
-                    class="btn vault-secret-toggle"
+                    class="uk-button uk-button-default uk-button-small vault-secret-toggle"
                     type="button"
                     onclick="(function(btn){
                       var wrap = btn.closest('.vault-secret-wrap');
@@ -75,13 +75,35 @@
                       btn.textContent = visible ? 'Mostra' : 'Nascondi';
                     })(this)"
                   >Mostra</button>
+                  {% if row.plain_secret and row.plain_secret != '-' %}
+                  <button type="button" class="uk-button uk-button-default uk-button-small vault-copy-btn"
+                    data-copy="{{ row.plain_secret|escapejs }}"
+                    onclick="(function(btn){navigator.clipboard.writeText(btn.dataset.copy).then(function(){var t=btn.textContent;btn.textContent='Copiato!';setTimeout(function(){btn.textContent=t;},1500);});})(this)"
+                  >Copia</button>
+                  {% endif %}
                 </span>
               </td>
-              <td>{{ row.notes_preview }}</td>
+              <td>
+                {% if row.notes_full %}
+                  <span uk-tooltip="title: {{ row.notes_full|escapejs }}; pos: top-left">{{ row.notes_preview }}</span>
+                  <button type="button" class="uk-button uk-button-default uk-button-small vault-copy-btn"
+                    data-copy="{{ row.notes_full|escapejs }}"
+                    onclick="(function(btn){navigator.clipboard.writeText(btn.dataset.copy).then(function(){var t=btn.textContent;btn.textContent='Copiato!';setTimeout(function(){btn.textContent=t;},1500);});})(this)"
+                  >Copia</button>
+                {% else %}
+                  -
+                {% endif %}
+              </td>
               <td>{{ row.updated_at|date:"Y-m-d H:i" }}</td>
               <td>
-                <a class="btn" href="/vault/api/update?id={{ row.id }}">Modifica</a>
-                <a class="btn danger" href="/vault/api/remove?id={{ row.id }}">Rimuovi</a>
+                <button class="uk-button uk-button-default uk-button-small"
+                  type="button"
+                  hx-get="/vault/api/update?id={{ row.id }}"
+                  hx-target="#vault-modal-body"
+                  hx-swap="innerHTML"
+                  hx-on::after-request="UIkit.modal('#vault-modal').show()"
+                >Modifica</button>
+                <a class="uk-button uk-button-danger uk-button-small" href="/vault/api/remove?id={{ row.id }}">Rimuovi</a>
               </td>
             </tr>
           {% endfor %}
@@ -91,4 +113,9 @@
       <div class="info">Nessun elemento nel Vault.</div>
     {% endif %}
   </section>
+
+  <div id="vault-modal" uk-modal>
+    <div class="uk-modal-dialog uk-modal-body uk-padding-remove" id="vault-modal-body">
+    </div>
+  </div>
 {% endblock %}

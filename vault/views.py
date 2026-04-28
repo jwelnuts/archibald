@@ -82,7 +82,8 @@ def dashboard(request):
                 "website_url": item.website_url or "",
                 "masked_secret": _safe_read(item.masked_secret),
                 "plain_secret": _safe_read(item.get_secret_value),
-                "notes_preview": notes[:120] + ("..." if len(notes) > 120 else ""),
+                "notes_preview": notes[:80] + ("…" if len(notes) > 80 else ""),
+                "notes_full": notes,
                 "updated_at": item.updated_at,
             }
         )
@@ -235,9 +236,17 @@ def update_item(request):
         return redirect("/vault/")
     item = get_object_or_404(VaultItem, id=item_id, owner=request.user)
     form = VaultItemForm(request.POST or None, instance=item)
+    is_htmx = request.headers.get("HX-Request") == "true"
     if request.method == "POST" and form.is_valid():
         form.save()
+        if is_htmx:
+            from django.http import HttpResponse
+            response = HttpResponse("")
+            response["HX-Redirect"] = "/vault/"
+            return response
         return redirect("/vault/")
+    if is_htmx:
+        return render(request, "vault/partials/update_item_modal.html", {"form": form, "item": item})
     return render(request, "vault/update_item.html", {"form": form, "item": item})
 
 
