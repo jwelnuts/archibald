@@ -3,27 +3,20 @@
 <html lang="it">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.7">
-    <title>{% block title %}MIO - Archibald{% endblock %}</title>
-    <link rel="stylesheet" href="{% static 'core/vendor/google-fonts/archibald-fonts.css' %}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}MI.Organizzo - Archibald{% endblock %}</title>
     {% include "core/partials/uikit_head.html" %}
   </head>
-  <body class="archibald-body">
+  <body>
     <div class="page">
-      {% include "core/partials/site_header.html" with module_subtitle="Archibald module" %}
+      {% include "core/partials/site_header.html" with module_subtitle="Archibald" %}
 
       <main class="content">
         {% block content %}{% endblock %}
       </main>
-
-      <footer class="site-footer">
-        <span>Module: archibald</span>
-        <span>Version: alpha</span>
-      </footer>
     </div>
     {{ hero_actions_config|json_script:"hero-actions-config" }}
-        {% include "core/partials/uikit_body.html" %}
+    {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/dist/app.js' %}"></script>
-    <script type="module" src="{% static 'core/dist/archibald.js' %}"></script>
   </body>
 </html>

@@ -17,12 +17,10 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from archibald.openai_client import request_openai_response
-from archibald.prompting import build_archibald_system_for_user
 from memory_stock.models import MemoryStockItem
 from planner.models import PlannerItem
 from routines.models import RoutineCheck, RoutineItem
-from subscriptions.models import SubscriptionOccurrence
+from finance_hub.models import SubscriptionOccurrence
 from todo.models import Task
 
 from .actions import WORKLOG_TOKEN_AM, WORKLOG_TOKEN_PM, execute_action_from_email
@@ -265,33 +263,6 @@ def _build_email_operational_context(owner) -> str:
     return "\n".join(lines)
 
 
-def _openai_email_reply(owner, incoming: ParsedInboundEmail) -> str:
-    operational_context = _build_email_operational_context(owner)
-    instructions = (
-        build_archibald_system_for_user(owner)
-        + "\n"
-        + "Modalita email: rispondi in italiano, tono elegante ma concreto, max 220 parole, "
-        "senza markdown complesso, chiudi con una micro-azione consigliata.\n"
-        "Regole operative vincolanti:\n"
-        "- Usa solo i dati realmente presenti nel contesto operativo e nel testo email.\n"
-        "- Non inventare stati o automazioni che non esistono nel sistema.\n"
-        "- NON promettere azioni future con orari specifici (es. 'ti inviero tra 2 ore') "
-        "se non sono gia pianificate nel sistema.\n"
-        "- Se un dato non e disponibile, dichiaralo chiaramente e proponi un passo pratico immediato."
-    )
-    prompt = (
-        "Hai ricevuto una email e devi rispondere.\n"
-        f"Mittente: {incoming.sender or '-'}\n"
-        f"Oggetto: {incoming.subject or '-'}\n"
-        "Contesto operativo utente:\n"
-        f"{operational_context}\n\n"
-        "Testo email:\n"
-        f"{incoming.body_text or '(vuoto)'}\n\n"
-        "Genera il corpo della risposta email con riferimento esplicito ai dati disponibili sopra."
-    )
-    return (request_openai_response([{"role": "user", "content": prompt}], instructions) or "").strip()
-
-
 def send_email_via_smtp(
     config: ArchibaldMailboxConfig,
     *,
@@ -470,8 +441,6 @@ def process_inbox_for_config(
 
                     if action_outcome.handled:
                         reply_body = action_outcome.reply_text.strip() or "Azione completata."
-                    elif action_outcome.force_ai_reply:
-                        reply_body = _openai_email_reply(config.owner, incoming)
                     else:
                         inbound.status = ArchibaldEmailMessage.Status.SKIPPED
                         inbound.processed_at = timezone.now()
@@ -512,7 +481,7 @@ def process_inbox_for_config(
                     inbound.status = ArchibaldEmailMessage.Status.REPLIED
                     inbound.processed_at = timezone.now()
                     inbound.ai_response_text = reply_body
-                    if action_outcome.handled or action_outcome.force_ai_reply:
+                    if action_outcome.handled:
                         inbound.selected_action_key = action_outcome.action_key
                         inbound.classification_label = action_outcome.action_key
                         inbound.review_status = ArchibaldEmailMessage.ReviewStatus.APPLIED
@@ -835,20 +804,6 @@ def _notification_due_now(config: ArchibaldMailboxConfig, now=None) -> bool:
     return elapsed >= timedelta(hours=24)
 
 
-def _openai_notification_body(config: ArchibaldMailboxConfig, digest: str) -> str:
-    instructions = (
-        build_archibald_system_for_user(config.owner)
-        + "\nModalita promemoria email: massimo 260 parole, tono gentile ma assertivo, "
-        "lista operativa finale con max 3 azioni concrete per oggi."
-    )
-    prompt = (
-        "Trasforma questo digest in una email di promemoria firmata Archibald.\n"
-        "Inizia con un breve contesto e poi vai al punto.\n\n"
-        f"Digest:\n{digest}"
-    )
-    return (request_openai_response([{"role": "user", "content": prompt}], instructions) or "").strip()
-
-
 def send_notification_for_config(
     config: ArchibaldMailboxConfig,
     *,
@@ -871,14 +826,8 @@ def send_notification_for_config(
     if not has_items and not force:
         return {"status": "nothing_to_send", "sent": False, "reason": "empty_digest"}
 
-    subject = f"Archibald | Promemoria {timezone.localdate().isoformat()}"
+    subject = f"MI.Organizzo | Promemoria {timezone.localdate().isoformat()}"
     body = digest
-    try:
-        ai_body = _openai_notification_body(config, digest)
-        if ai_body:
-            body = ai_body + "\n\n---\n" + digest
-    except Exception:
-        pass
 
     try:
         send_email_via_smtp(config, recipient=target, subject=subject, body=body)

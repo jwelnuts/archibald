@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase
 
 from core.models import Payee
-from income.models import IncomeSource
+from finance_hub.models import IncomeSource
 from projects.models import Customer
 
 from .models import Contact, ContactDeliveryAddress, ContactPriceList, ContactPriceListItem, ContactToolbox

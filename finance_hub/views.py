@@ -1,5 +1,8 @@
 from datetime import timedelta
+from datetime import date as date_lib
+from calendar import monthrange
 from decimal import Decimal
+import json
 from urllib.parse import quote as urlquote
 
 from contacts.models import Contact, ContactDeliveryAddress
@@ -11,10 +14,11 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
-from projects.models import Customer
+from django.views.decorators.http import require_POST
+from projects.models import Customer, Project
 
-from .forms import InvoiceForm, PublicQuoteConfirmationForm, QuoteForm, QuoteLineFormSet, VatCodeForm, WorkOrderForm
-from .models import Invoice, Quote, VatCode, WorkOrder
+from .forms import InvoiceForm, PublicQuoteConfirmationForm, QuoteForm, QuoteLineFormSet, VatCodeForm, WorkOrderForm, SubscriptionForm
+from .models import Currency, Tag, Account, Subscription, SubscriptionOccurrence, Invoice, Quote, VatCode, WorkOrder
 from .quote_pdf import build_quote_pdf_bytes
 
 
@@ -725,3 +729,261 @@ def vat_codes(request):
             "edit_item": edit_item,
         },
     )
+
+
+def _safe_next_url(value: str) -> str:
+    value = (value or "").strip()
+    if value.startswith("/"):
+        return value
+    return ""
+
+
+def _add_months(anchor: date_lib, months: int) -> date_lib:
+    month_index = anchor.month - 1 + months
+    year = anchor.year + month_index // 12
+    month = month_index % 12 + 1
+    day = min(anchor.day, monthrange(year, month)[1])
+    return date_lib(year, month, day)
+
+
+def _compute_next_due_date(subscription: Subscription, paid_due_date: date_lib) -> date_lib:
+    step = max(subscription.interval or 1, 1)
+    if subscription.interval_unit == Subscription.IntervalUnit.DAY:
+        return paid_due_date + timedelta(days=step)
+    if subscription.interval_unit == Subscription.IntervalUnit.WEEK:
+        return paid_due_date + timedelta(days=step * 7)
+    if subscription.interval_unit == Subscription.IntervalUnit.YEAR:
+        return _add_months(paid_due_date, step * 12)
+    return _add_months(paid_due_date, step)
+
+
+def _is_htmx(request) -> bool:
+    return request.headers.get("HX-Request") == "true"
+
+
+def _dashboard_context(user):
+    today = timezone.now().date()
+    upcoming = list(
+        SubscriptionOccurrence.objects.filter(
+            owner=user,
+            subscription__status=Subscription.Status.ACTIVE,
+            state=SubscriptionOccurrence.State.PLANNED,
+        )
+        .select_related("subscription", "currency")
+        .order_by("due_date")[:8]
+    )
+    using_occurrences = True
+    if not upcoming:
+        upcoming = list(
+            Subscription.objects.filter(owner=user, status=Subscription.Status.ACTIVE)
+            .select_related("currency")
+            .order_by("next_due_date")[:8]
+        )
+        using_occurrences = False
+
+    overdue = list(
+        SubscriptionOccurrence.objects.filter(
+            owner=user,
+            due_date__lt=today,
+            subscription__status=Subscription.Status.ACTIVE,
+            state=SubscriptionOccurrence.State.PLANNED,
+        )
+        .select_related("subscription", "currency")
+        .order_by("due_date")[:8]
+    )
+    if not overdue:
+        overdue = list(
+            Subscription.objects.filter(
+                owner=user,
+                next_due_date__lt=today,
+                status=Subscription.Status.ACTIVE,
+            )
+            .select_related("currency")
+            .order_by("next_due_date")[:8]
+        )
+
+    total_due = None
+    next_due_date = None
+    if upcoming:
+        if using_occurrences:
+            total_due = sum([item.amount for item in upcoming])
+            next_due_date = upcoming[0].due_date
+        else:
+            total_due = sum([item.amount for item in upcoming])
+            next_due_date = upcoming[0].next_due_date
+
+    counts = {
+        "active": Subscription.objects.filter(owner=user, status=Subscription.Status.ACTIVE).count(),
+        "paused": Subscription.objects.filter(owner=user, status=Subscription.Status.PAUSED).count(),
+        "canceled": Subscription.objects.filter(owner=user, status=Subscription.Status.CANCELED).count(),
+    }
+    accounts = Account.objects.filter(owner=user, is_active=True).select_related("currency").order_by("name")
+    return {
+        "upcoming": upcoming,
+        "overdue": overdue,
+        "counts": counts,
+        "total_due": total_due,
+        "next_due_date": next_due_date,
+        "accounts": accounts,
+    }
+
+
+@login_required
+def subscriptions_dashboard(request):
+    return render(request, "subscriptions/dashboard.html", _dashboard_context(request.user))
+
+
+@login_required
+def dashboard_board(request):
+    return render(request, "subscriptions/partials/dashboard_board.html", _dashboard_context(request.user))
+
+
+@login_required
+def add_sub(request):
+    from projects.models import Project
+    next_url = _safe_next_url(request.GET.get("next") or request.POST.get("next"))
+    if request.method == "POST":
+        form = SubscriptionForm(request.POST, owner=request.user)
+        if form.is_valid():
+            sub = form.save(commit=False)
+            sub.owner = request.user
+            if not sub.currency_id:
+                sub.currency, _ = Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
+            sub.save()
+            form.save_m2m()
+            return redirect(next_url or "/subs/")
+    else:
+        initial = {}
+        project_id = (request.GET.get("project") or "").strip()
+        if project_id:
+            project = Project.objects.filter(id=project_id, owner=request.user).first()
+            if project:
+                initial["project"] = project
+        form = SubscriptionForm(owner=request.user, initial=initial)
+    return render(request, "subscriptions/add_sub.html", {"form": form, "next": next_url})
+
+
+@login_required
+def remove_sub(request):
+    sub_id = request.GET.get("id")
+    sub = None
+    if sub_id:
+        sub = get_object_or_404(Subscription, id=sub_id, owner=request.user)
+        if request.method == "POST":
+            sub.delete()
+            return redirect("/subs/")
+    subs = Subscription.objects.filter(owner=request.user).order_by("name")[:20]
+    return render(request, "subscriptions/remove_sub.html", {"sub": sub, "subs": subs})
+
+
+@login_required
+def update_sub(request):
+    sub_id = request.GET.get("id")
+    sub = None
+    if sub_id:
+        sub = get_object_or_404(Subscription, id=sub_id, owner=request.user)
+        if request.method == "POST":
+            if request.POST.get("action") == "cancel":
+                sub.status = Subscription.Status.CANCELED
+                sub.save(update_fields=["status"])
+                return redirect("/subs/")
+            form = SubscriptionForm(request.POST, instance=sub, owner=request.user)
+            if form.is_valid():
+                sub = form.save(commit=False)
+                if not sub.currency_id:
+                    sub.currency, _ = Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
+                sub.save()
+                form.save_m2m()
+                return redirect("/subs/")
+        else:
+            form = SubscriptionForm(instance=sub, owner=request.user)
+        return render(request, "subscriptions/update_sub.html", {"form": form, "sub": sub})
+    subs = Subscription.objects.filter(owner=request.user).order_by("name")[:20]
+    return render(request, "subscriptions/update_sub.html", {"subs": subs})
+
+
+@login_required
+@require_POST
+def pay_subscription(request):
+    from transactions.models import Transaction
+    user = request.user
+    account_id = request.POST.get("account_id")
+    occurrence_id = request.POST.get("occurrence_id")
+    subscription_id = request.POST.get("subscription_id")
+    due_date_raw = (request.POST.get("due_date") or "").strip()
+
+    if not account_id:
+        return redirect("/subs/")
+
+    account = get_object_or_404(Account, id=account_id, owner=user, is_active=True)
+
+    occurrence = None
+    if occurrence_id:
+        occurrence = get_object_or_404(
+            SubscriptionOccurrence.objects.select_related("subscription"),
+            id=occurrence_id,
+            owner=user,
+        )
+    elif subscription_id:
+        subscription = get_object_or_404(
+            Subscription.objects.select_related("currency", "project", "category", "payee"),
+            id=subscription_id,
+            owner=user,
+        )
+        try:
+            due_date = date_lib.fromisoformat(due_date_raw) if due_date_raw else subscription.next_due_date
+        except ValueError:
+            due_date = subscription.next_due_date
+        occurrence, _ = SubscriptionOccurrence.objects.get_or_create(
+            owner=user,
+            subscription=subscription,
+            due_date=due_date,
+            defaults={
+                "amount": subscription.amount,
+                "currency": subscription.currency,
+            },
+        )
+    else:
+        return redirect("/subs/")
+
+    if occurrence.transaction_id:
+        if occurrence.state != SubscriptionOccurrence.State.PAID:
+            occurrence.state = SubscriptionOccurrence.State.PAID
+            occurrence.save(update_fields=["state"])
+        if _is_htmx(request):
+            response = render(request, "subscriptions/partials/dashboard_board.html", _dashboard_context(user))
+            response["HX-Trigger"] = json.dumps({"subs:paid": {"message": "Pagamento gia registrato."}})
+            return response
+        return redirect("/subs/")
+
+    subscription = occurrence.subscription
+    payment_date = timezone.now().date()
+    payment_note = f"Pagamento abbonamento {subscription.name} - scadenza {occurrence.due_date.isoformat()}"
+
+    with transaction.atomic():
+        tx = Transaction.objects.create(
+            owner=user,
+            tx_type=Transaction.Type.EXPENSE,
+            date=payment_date,
+            amount=occurrence.amount,
+            currency=occurrence.currency,
+            account=account,
+            project=subscription.project,
+            category=subscription.category,
+            payee=subscription.payee,
+            note=payment_note,
+            source_subscription=subscription,
+        )
+        occurrence.transaction = tx
+        occurrence.state = SubscriptionOccurrence.State.PAID
+        occurrence.save(update_fields=["transaction", "state"])
+
+        if subscription.next_due_date <= occurrence.due_date:
+            subscription.next_due_date = _compute_next_due_date(subscription, occurrence.due_date)
+            subscription.save(update_fields=["next_due_date"])
+
+    if _is_htmx(request):
+        response = render(request, "subscriptions/partials/dashboard_board.html", _dashboard_context(user))
+        response["HX-Trigger"] = json.dumps({"subs:paid": {"message": "Pagamento registrato."}})
+        return response
+    return redirect("/subs/")

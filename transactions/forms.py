@@ -4,9 +4,9 @@ from django.core.exceptions import ValidationError
 from contacts.models import Contact
 from contacts.services import ensure_legacy_records_for_contact, upsert_contact
 from core.models import Payee
-from income.models import IncomeSource
+from finance_hub.models import IncomeSource
 from projects.models import Category, Project
-from subscriptions.models import Currency
+from finance_hub.models import Currency
 
 from .models import Transaction
 

@@ -24,7 +24,7 @@ from contacts.models import Contact
 from planner.models import PlannerItem
 from projects.models import Project, SubProject, ProjectNote
 from routines.models import Routine, RoutineCategory, RoutineCheck, RoutineItem
-from subscriptions.models import SubscriptionOccurrence, Account
+from finance_hub.models import SubscriptionOccurrence, Account
 from todo.models import Task
 from transactions.models import Transaction
 

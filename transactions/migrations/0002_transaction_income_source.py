@@ -7,8 +7,8 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('income', '0001_initial'),
         ('transactions', '0001_initial'),
+        ('income', '0001_initial'),
     ]
 
     operations = [

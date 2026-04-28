@@ -16,7 +16,6 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-from django.views.generic import RedirectView
 from core import views as core_views
 
 urlpatterns = [
@@ -24,9 +23,7 @@ urlpatterns = [
     path('media/<path:path>', core_views.protected_media, name='protected-media'),
 
     path('', include('core.urls')),
-    path('subs/', include('subscriptions.urls')),
-    path('income/', include('income.urls')),
-    path('outcome/', include('outcome.urls')),
+    path('subs/', include('finance_hub.urls')),
     path('projects/', include('projects.urls')),
     path('todo/', include('todo.urls')),
     path('agenda/', include('agenda.urls')),
@@ -39,13 +36,6 @@ urlpatterns = [
     path('memory-stock/', include('memory_stock.urls')),
     path('vault/', include('vault.urls')),
     path('finance/', include('finance_hub.urls')),
-    path(
-        'ui-generator/',
-        RedirectView.as_view(
-            url='/workbench/',
-            permanent=False,
-        ),
-    ),
     path('link_storage/', include('link_storage.urls')),
     path('contacts/', include('contacts.urls')),
 ]

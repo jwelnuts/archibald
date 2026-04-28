@@ -4,12 +4,12 @@
   <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
     <h1 class="uk-heading-bullet uk-margin-remove">Memory Stock</h1>
     <p class="uk-text-meta uk-margin-small-top">
-      Invia dal telefono una email ad Archibald con oggetto <code>[MEMORY]</code>, <code>[TODO]</code>, <code>[TRANSACTION]</code> o <code>[REMINDER]</code> (anche con <code>#...</code> o <code>ACTION:...</code>) per salvare automaticamente.
+      Invia una email con oggetto <code>[MEMORY]</code>, <code>[TODO]</code>, <code>[TRANSACTION]</code> o <code>[REMINDER]</code> (anche con <code>#...</code> o <code>ACTION:...</code>) per salvare automaticamente in MI.Organizzo.
     </p>
     <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top">
       <a class="uk-button uk-button-primary uk-button-small" href="./api/add">Nuova memoria</a>
       {% if user.is_superuser %}
-        <a class="uk-button uk-button-default uk-button-small" href="/archibald-mail/">Apri Archibald Mail</a>
+        <a class="uk-button uk-button-default uk-button-small" href="/archibald-mail/">Catture email</a>
       {% endif %}
     </div>
     <form method="get" action="" class="uk-grid-small uk-margin-small-top" uk-grid>
@@ -24,6 +24,49 @@
       </div>
     </form>
   </section>
+
+  {% if email_captures %}
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+      <div>
+        <h2 class="uk-margin-remove">Catture email recenti</h2>
+        <p class="uk-text-meta uk-margin-small-top">Ultimi elementi salvati via flag email (senza dimenticazione).</p>
+      </div>
+      <div class="uk-flex uk-flex-wrap uk-gap-small">
+        {% for action, count in action_counts.items %}
+          <span class="uk-label">{{ action }} &times;{{ count }}</span>
+        {% endfor %}
+        {% if user.is_superuser %}
+          <a class="uk-button uk-button-default uk-button-small" href="/archibald-mail/">Inbox email</a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="uk-overflow-auto uk-margin-small-top">
+      <table class="uk-table uk-table-small uk-table-divider uk-table-striped">
+        <thead>
+          <tr>
+            <th>Flag</th>
+            <th>Titolo</th>
+            <th>Da</th>
+            <th>Oggetto originale</th>
+            <th>Ricevuta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in email_captures %}
+            <tr>
+              <td><span class="uk-label">{{ item.source_action }}</span></td>
+              <td><strong>{{ item.title }}</strong></td>
+              <td><span class="uk-text-meta">{{ item.source_sender|default:"-" }}</span></td>
+              <td><span class="uk-text-meta">{{ item.source_subject|default:"-"|truncatechars:80 }}</span></td>
+              <td>{{ item.created_at|date:"d/m H:i" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
 
   <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
     {% if rows %}

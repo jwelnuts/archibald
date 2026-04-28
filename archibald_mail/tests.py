@@ -15,7 +15,6 @@ from .forms import ArchibaldEmailFlagRuleForm, ArchibaldMailboxConfigForm
 from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldInboundCategory, ArchibaldMailboxConfig
 from .services import (
     ParsedInboundEmail,
-    _openai_email_reply,
     _sender_allowed,
     parse_inbound_email,
     process_inbox_for_config,
@@ -244,8 +243,7 @@ class ArchibaldMailServicesTests(TestCase):
         )
         mock_execute_action.return_value = EmailActionOutcome(
             handled=False,
-            action_key="archi.reply",
-            force_ai_reply=True,
+            action_key="",
         )
 
         self.config.is_enabled = True
@@ -269,77 +267,6 @@ class ArchibaldMailServicesTests(TestCase):
         self.assertIn("Mittente non autorizzato", inbound.error_text)
 
     @patch("archibald_mail.services.send_email_via_smtp")
-    @patch("archibald_mail.services._openai_email_reply", return_value="Risposta AI forzata.")
-    @patch("archibald_mail.services.execute_action_from_email")
-    @patch("archibald_mail.services.parse_inbound_email")
-    @patch("archibald_mail.services.imaplib.IMAP4_SSL")
-    def test_process_inbox_forced_ai_reply_works_even_when_auto_reply_disabled(
-        self,
-        mock_imap_cls,
-        mock_parse,
-        mock_execute_action,
-        _mock_openai,
-        mock_smtp,
-    ):
-        class FakeMailbox:
-            def login(self, *_args, **_kwargs):
-                return "OK", [b""]
-
-            def select(self, *_args, **_kwargs):
-                return "OK", [b"1"]
-
-            def search(self, *_args, **_kwargs):
-                return "OK", [b"1"]
-
-            def fetch(self, *_args, **_kwargs):
-                return "OK", [(b"1", b"raw")]
-
-            def store(self, *_args, **_kwargs):
-                return "OK", [b""]
-
-            def close(self):
-                return "OK", [b""]
-
-            def logout(self):
-                return "BYE", [b""]
-
-        mock_imap_cls.return_value = FakeMailbox()
-        mock_parse.return_value = ParsedInboundEmail(
-            message_id="<msg-archi-1@example.com>",
-            in_reply_to="",
-            sender="sender@example.com",
-            recipient="archibald@miorganizzo.ovh",
-            subject="[ARCHI] Mi aiuti?",
-            body_text="Vorrei un consiglio rapido.",
-            raw_headers="",
-        )
-        mock_execute_action.return_value = EmailActionOutcome(
-            handled=False,
-            action_key="archi.reply",
-            force_ai_reply=True,
-        )
-
-        self.config.is_enabled = True
-        self.config.auto_reply_enabled = False
-        self.config.save(update_fields=["is_enabled", "auto_reply_enabled", "updated_at"])
-
-        result = process_inbox_for_config(self.config)
-
-        self.assertEqual(result["status"], "ok")
-        self.assertEqual(result["replied"], 1)
-        self.assertTrue(mock_smtp.called)
-
-        inbound = ArchibaldEmailMessage.objects.filter(
-            owner=self.user,
-            direction=ArchibaldEmailMessage.Direction.INBOUND,
-        ).first()
-        self.assertIsNotNone(inbound)
-        self.assertEqual(inbound.status, ArchibaldEmailMessage.Status.REPLIED)
-        self.assertEqual(inbound.selected_action_key, "archi.reply")
-        self.assertEqual(inbound.review_status, ArchibaldEmailMessage.ReviewStatus.APPLIED)
-
-    @patch("archibald_mail.services.send_email_via_smtp")
-    @patch("archibald_mail.services._openai_email_reply")
     @patch("archibald_mail.services.execute_action_from_email")
     @patch("archibald_mail.services.parse_inbound_email")
     @patch("archibald_mail.services.imaplib.IMAP4_SSL")
@@ -348,7 +275,6 @@ class ArchibaldMailServicesTests(TestCase):
         mock_imap_cls,
         mock_parse,
         mock_execute_action,
-        mock_openai_reply,
         mock_smtp,
     ):
         class FakeMailbox:
@@ -386,7 +312,6 @@ class ArchibaldMailServicesTests(TestCase):
         mock_execute_action.return_value = EmailActionOutcome(
             handled=False,
             action_key="",
-            force_ai_reply=False,
         )
 
         self.config.is_enabled = True
@@ -399,7 +324,6 @@ class ArchibaldMailServicesTests(TestCase):
         self.assertEqual(result["processed"], 1)
         self.assertEqual(result["replied"], 0)
         self.assertEqual(result["skipped"], 1)
-        self.assertFalse(mock_openai_reply.called)
         self.assertFalse(mock_smtp.called)
 
         inbound = ArchibaldEmailMessage.objects.filter(
@@ -481,8 +405,7 @@ class ArchibaldMailServicesTests(TestCase):
         self.assertEqual(inbound.status, ArchibaldEmailMessage.Status.REPLIED)
 
     @patch("archibald_mail.services.send_email_via_smtp")
-    @patch("archibald_mail.services._openai_notification_body", return_value="Reminder body")
-    def test_send_notification_force_creates_log(self, _mock_ai, mock_smtp):
+    def test_send_notification_force_creates_log(self, mock_smtp):
         self.config.notification_recipient = "digest@example.com"
         self.config.save(update_fields=["notification_recipient", "updated_at"])
         result = send_notification_for_config(self.config, force=True, only_due=False)
@@ -672,7 +595,7 @@ class ArchibaldMailActionsTests(TestCase):
         self.assertEqual(row.title, "Chiamare fornitore")
         self.assertEqual(row.source_action, "todo.capture")
 
-    def test_execute_archi_action_forces_ai_reply(self):
+    def test_execute_archi_action_falls_back_to_memory_stock(self):
         incoming = SimpleNamespace(
             sender="mario@example.com",
             subject="[ARCHI] Mi rispondi?",
@@ -681,9 +604,11 @@ class ArchibaldMailActionsTests(TestCase):
         )
 
         outcome = execute_action_from_email(owner=self.user, incoming=incoming, inbound_message=None)
-        self.assertFalse(outcome.handled)
+        self.assertTrue(outcome.handled)
         self.assertEqual(outcome.action_key, "archi.reply")
-        self.assertTrue(outcome.force_ai_reply)
+
+        row = MemoryStockItem.objects.get(owner=self.user, source_message_id="<msg-archi-action-1@example.com>")
+        self.assertEqual(row.source_action, "archi.reply")
 
     def test_execute_worklog_am_action_creates_worklog(self):
         incoming = SimpleNamespace(
@@ -771,49 +696,6 @@ class ArchibaldMailActionsTests(TestCase):
         self.assertTrue(outcome.handled)
         row = MemoryStockItem.objects.get(owner=self.user, source_message_id="<msg-reminder-1@example.com>")
         self.assertEqual(row.source_action, "reminder.capture")
-
-
-class ArchibaldMailPromptingTests(TestCase):
-    def setUp(self):
-        self.user = get_user_model().objects.create_user(
-            username="mail_prompt_user",
-            password="pwd12345",
-            email="prompt-owner@example.com",
-        )
-
-    @patch("archibald_mail.services.request_openai_response", return_value="Risposta pronta.")
-    @patch("archibald_mail.services.build_archibald_system_for_user", return_value="SYSTEM BASE")
-    def test_openai_email_reply_includes_real_operational_context_and_guardrails(self, _mock_system, mock_openai):
-        routine = Routine.objects.create(owner=self.user, name="Morning", is_active=True)
-        RoutineItem.objects.create(
-            owner=self.user,
-            routine=routine,
-            title="Stretching",
-            weekday=0,
-            is_active=True,
-        )
-
-        incoming = ParsedInboundEmail(
-            message_id="<msg-ctx-1@example.com>",
-            in_reply_to="",
-            sender="user@example.com",
-            recipient="archibald@miorganizzo.ovh",
-            subject="[ARCHI] Aggiornamento routines",
-            body_text="mi fai un aggiornamento sulle routines?",
-            raw_headers="",
-        )
-        _openai_email_reply(self.user, incoming)
-
-        self.assertTrue(mock_openai.called)
-        messages = mock_openai.call_args.args[0]
-        instructions = mock_openai.call_args.args[1]
-        prompt = messages[0]["content"]
-
-        self.assertIn("Contesto operativo reale (snapshot DB)", prompt)
-        self.assertIn("Task aperti:", prompt)
-        self.assertIn("Routine oggi:", prompt)
-        self.assertIn("Regole operative vincolanti:", instructions)
-        self.assertIn("NON promettere azioni future", instructions)
 
 
 class ArchibaldMailFlagCrudViewsTests(TestCase):

@@ -34,26 +34,21 @@ L'app `workbench` e il toolbox tecnico per debug, generazione AI e manutenzione 
 
 ## Integrazioni con altre app
 - Analizza URL resolver globale di tutto il progetto.
-- Usa introspezione DB e migration loader per audit tecnico.
-- Interagisce con generatori (`app_builder.py`) e cleanup utility.
+- Usa introspezione DB per audit tecnico.
 
 ## Casi d'uso reali
-- Prototipare nuove UI/app in modalita assistita.
 - Ispezionare endpoint e schema dati durante debug.
-- Ripulire in sicurezza artefatti di app generate.
 
 ## Note operative
-- Alcune azioni sono limitate o sensibili (es. app generator/cleanup).
 - Change log utile solo quando middleware debug e attivo.
 
 ## Copertura test esistente
-- `AppBuilderTests`
-- `WorkbenchCleanupViewTests`
+- `WorkbenchDashboardAuthTests`
+- `WorkbenchDavControlPanelTests`
 
 ## Debito tecnico / TODO
-- Separare area generator da area debug in moduli distinti.
-- Migliorare validazioni sicurezza sui prompt generator.
+- Nessuno.
 
 ## Ultimo aggiornamento doc
-- Data: 2026-03-22
+- Data: 2026-04-27
 - Autore: Codex

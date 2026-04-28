@@ -4,9 +4,9 @@ from contacts.models import Contact
 from contacts.services import ensure_legacy_records_for_contact, upsert_contact
 from projects.models import Category, Project
 from projects.quick_create import create_quick_category, create_quick_project
-from subscriptions.models import Currency
+from finance_hub.models import Currency
 from transactions.models import Transaction
-from .models import IncomeSource
+from finance_hub.models import IncomeSource
 
 
 class IncomeForm(forms.ModelForm):

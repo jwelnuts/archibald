@@ -6,6 +6,13 @@ urlpatterns = [
     path("", views.dashboard, name="finance-hub-dashboard"),
     path("vat-codes/", views.vat_codes, name="finance-hub-vat-codes"),
 
+    path("subscriptions/", views.subscriptions_dashboard, name="subs-dashboard"),
+    path("subscriptions/board", views.dashboard_board, name="subs-board"),
+    path("subscriptions/add", views.add_sub, name="subs-add"),
+    path("subscriptions/remove", views.remove_sub, name="subs-remove"),
+    path("subscriptions/update", views.update_sub, name="subs-update"),
+    path("subscriptions/pay", views.pay_subscription, name="subs-pay"),
+
     path("quotes/", views.quotes, name="finance-hub-quotes"),
     path("quotes/add", views.add_quote, name="finance-hub-quotes-add"),
     path("quotes/update", views.update_quote, name="finance-hub-quotes-update"),

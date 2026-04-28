@@ -13,7 +13,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('projects', '0009_project_hero_actions_config'),
-        ('subscriptions', '0005_alter_currency_table'),
+        ('subscriptions', '0002_alter_payee_unique_together_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

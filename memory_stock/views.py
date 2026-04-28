@@ -17,6 +17,19 @@ def dashboard(request):
         qs = qs.filter(title__icontains=query)
 
     rows = list(qs.order_by("-created_at")[:120])
+
+    email_captures = list(
+        MemoryStockItem.objects.filter(owner=request.user, is_archived=False)
+        .exclude(source_action="")
+        .order_by("-created_at")[:20]
+    )
+    from collections import Counter
+    action_counts = Counter(
+        MemoryStockItem.objects.filter(owner=request.user, is_archived=False)
+        .exclude(source_action="")
+        .values_list("source_action", flat=True)
+    )
+
     return render(
         request,
         "memory_stock/dashboard.html",
@@ -24,6 +37,8 @@ def dashboard(request):
             "rows": rows,
             "show_archived": show_archived,
             "query": query,
+            "email_captures": email_captures,
+            "action_counts": dict(action_counts),
         },
     )
 

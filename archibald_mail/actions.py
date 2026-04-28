@@ -33,6 +33,7 @@ ACTIONS_WITH_MEMORY_STOCK_FALLBACK = {
     "todo.capture",
     "transaction.capture",
     "reminder.capture",
+    "archi.reply",
 }
 ACTION_LABELS = {
     "memory_stock.save": "Memory",
@@ -109,7 +110,6 @@ class EmailActionOutcome:
     handled: bool
     action_key: str = ""
     reply_text: str = ""
-    force_ai_reply: bool = False
 
 
 def _destination_for_action(action_key: str) -> str:
@@ -453,9 +453,6 @@ def execute_action_from_email(*, owner, incoming, inbound_message) -> EmailActio
     action_key = detect_action_from_subject(incoming.subject, owner=owner)
     if not action_key:
         return EmailActionOutcome(handled=False)
-
-    if action_key == "archi.reply":
-        return EmailActionOutcome(handled=False, action_key=action_key, force_ai_reply=True)
 
     if action_key == WORKLOG_ACTION_AM:
         reply_text = _handle_worklog_am(owner=owner, incoming=incoming, inbound_message=inbound_message)

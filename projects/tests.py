@@ -13,7 +13,7 @@ from contacts.models import Contact, ContactDeliveryAddress, ContactPriceList, C
 from finance_hub.models import PaymentMethod, Quote, ShippingMethod
 from planner.models import PlannerItem
 from routines.models import Routine, RoutineItem
-from subscriptions.models import Account, Currency, Subscription
+from finance_hub.models import Account, Currency, Subscription
 from todo.models import Task
 from transactions.models import Transaction
 from contacts.models import Contact

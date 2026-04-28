@@ -114,10 +114,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'core.apps.CoreConfig',
-    'income',
-    'outcome',
     'projects',
-    'subscriptions',
     'todo',
     'agenda',
     'workbench',
@@ -130,6 +127,9 @@ INSTALLED_APPS = [
     'vault',
     'link_storage',
     'finance_hub',
+    'subscriptions',
+    'income',
+    'ai_lab',
     'contacts',
 ]
 

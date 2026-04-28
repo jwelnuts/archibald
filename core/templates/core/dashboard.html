@@ -100,7 +100,7 @@
               <a class="quick-card" href="/projects/api/add" data-dashboard-target="quickCard" data-dashboard-search="nuovo progetto">Nuovo progetto</a>
               <a class="quick-card" href="/contacts/add" data-dashboard-target="quickCard" data-dashboard-search="nuovo contatto">Nuovo contatto</a>
               {% if user.is_superuser %}
-                <a class="quick-card" href="/archibald-mail/" data-dashboard-target="quickCard" data-dashboard-search="archibald mail email notifiche">Archibald Mail</a>
+                <a class="quick-card" href="/archibald-mail/" data-dashboard-target="quickCard" data-dashboard-search="email cattura inbox notifiche">Archibald Mail</a>
               {% endif %}
               <a class="quick-card" href="/memory-stock/" data-dashboard-target="quickCard" data-dashboard-search="memory stock link salvataggi">Memory Stock</a>
               <a class="quick-card" href="/vault/" data-dashboard-target="quickCard" data-dashboard-search="vault sicurezza">Vault</a>
@@ -216,7 +216,6 @@
                 <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-dashboard-target="sectionToggle" data-section-key="snapshot" data-action="change->dashboard#sectionChanged"> Snapshot</label>
                 <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-dashboard-target="sectionToggle" data-section-key="widgets" data-action="change->dashboard#sectionChanged"> Widget</label>
                 <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-dashboard-target="sectionToggle" data-section-key="calendar" data-action="change->dashboard#sectionChanged"> Calendario</label>
-                <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-dashboard-target="sectionToggle" data-section-key="archibald" data-action="change->dashboard#sectionChanged"> Archibald</label>
                 <label class="uk-display-block"><input class="uk-checkbox" type="checkbox" data-dashboard-target="sectionToggle" data-section-key="quick_actions" data-action="change->dashboard#sectionChanged"> Azioni rapide</label>
               </div>
 
@@ -229,59 +228,6 @@
         </ul>
       </section>
 
-      <div class="archibald-float-shell" data-dashboard-section="archibald">
-        <button
-          class="uk-button uk-button-primary archibald-launcher"
-          type="button"
-          id="dashboard-archibald-launch"
-          uk-toggle="target: #dashboard-archibald-floating"
-        >
-          Chatta con Archibald
-        </button>
-        <section class="archibald-float-panel uk-hidden" id="dashboard-archibald-floating">
-          <div class="archibald-float-head">
-            <div>
-              <strong>Archibald</strong>
-              <div class="uk-text-meta">Assistente operativo su tutti i moduli</div>
-            </div>
-            <div class="uk-flex uk-flex-wrap uk-gap-small">
-              <button class="uk-button uk-button-default uk-button-small" type="button" id="dashboard-archibald-reset">Nuova chat</button>
-              <button
-                class="uk-button uk-button-default uk-button-small"
-                type="button"
-                id="dashboard-archibald-close"
-                uk-toggle="target: #dashboard-archibald-floating"
-              >Chiudi</button>
-            </div>
-          </div>
-
-          <div class="archibald-float-prompts">
-            <button class="uk-button uk-button-default uk-button-small" type="button" data-archibald-prompt="Dammi le 3 priorita tra tutti i moduli per oggi.">Priorita oggi</button>
-            <button class="uk-button uk-button-default uk-button-small" type="button" data-archibald-prompt="Fammi un recap veloce di task, entrate e scadenze.">Recap veloce</button>
-            <button class="uk-button uk-button-default uk-button-small" type="button" data-archibald-prompt="Suggerisci un piano di lavoro per le prossime 2 ore.">Piano 2 ore</button>
-          </div>
-
-          <div class="chat archibald-chat" id="dashboard-archibald-chat"></div>
-          <form class="uk-form-stacked archibald-float-form" id="dashboard-archibald-form" method="post" action="">
-            {% csrf_token %}
-            <input type="hidden" name="thread_id" id="dashboard-archibald-thread" value="">
-            <div class="uk-form-controls">
-              <textarea
-                class="uk-textarea"
-                id="dashboard-archibald-prompt"
-                name="prompt"
-                rows="2"
-                placeholder="Scrivi come se stessi chattando con un amico..."
-                required
-              ></textarea>
-            </div>
-            <div class="uk-margin-small-top uk-flex uk-flex-between uk-flex-middle uk-gap-small">
-              <div class="uk-text-meta" id="dashboard-archibald-status">Online</div>
-              <button class="uk-button uk-button-primary uk-button-small" type="submit">Invia</button>
-            </div>
-          </form>
-        </section>
-      </div>
     </div>
 
     <script>window.tui = window.tui || {};</script>

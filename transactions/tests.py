@@ -3,9 +3,9 @@ from decimal import Decimal
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from income.models import IncomeSource
+from finance_hub.models import IncomeSource
 from projects.models import Category, Project
-from subscriptions.models import Account, Currency
+from finance_hub.models import Account, Currency
 
 from .models import Transaction
 

@@ -1,0 +1,222 @@
+{
+  "main": {
+    "id": "4373ea08407dc479",
+    "type": "split",
+    "children": [
+      {
+        "id": "e43cd49a2d511765",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "179392af1e9400ce",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "ca7bf6e3cc57f09a",
+    "type": "split",
+    "children": [
+      {
+        "id": "fc07d018afd2163d",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "487bf7a5d02e7434",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "c0bd3242d313eba4",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "c157ddf0448f578f",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "9e21f846cea877f0",
+    "type": "split",
+    "children": [
+      {
+        "id": "26fd6ce94f278289",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5699ee53fd677585",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "moc-apps.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for moc-apps"
+            }
+          },
+          {
+            "id": "6e30520d8aa63013",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "moc-apps.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from moc-apps"
+            }
+          },
+          {
+            "id": "38e5717f72a06b48",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "0e586f7826b8eb7e",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "All properties"
+            }
+          },
+          {
+            "id": "3d1599a016d33e5e",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "moc-apps.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of moc-apps"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false,
+      "bases:Create new base": false
+    }
+  },
+  "active": "179392af1e9400ce",
+  "lastOpenFiles": [
+    "index.md",
+    "index.md.tmp.5715.1777310096183",
+    "project-identity.md.tmp.5715.1777310091121",
+    "project-identity.md.tmp.5715.1777310085489",
+    "dependencies.md",
+    "dependencies.md.tmp.5715.1777310068258",
+    "moc-apps.md",
+    "index.md.tmp.5715.1777309790085",
+    "archibald.md.tmp.5715.1777309782665",
+    "project-identity.md",
+    "project-identity.md.tmp.5715.1777309768005",
+    "2026-04-27.md",
+    "archibald-removal-analysis.md",
+    "archibald.md",
+    "apps/projects.md",
+    "apps/workbench.md",
+    "apps/archibald_mail.md",
+    "apps/archibald.md",
+    "apps/vault.md",
+    "apps/memory_stock.md",
+    "apps/link_storage.md",
+    "apps/outcome.md",
+    "apps/income.md",
+    "apps/todo.md",
+    "apps/routines.md",
+    "apps/planner.md",
+    "apps/agenda.md",
+    "apps/contacts.md",
+    "apps/core.md",
+    "apps/transactions.md",
+    "apps/subscriptions.md",
+    "apps/finance_hub.md",
+    "apps",
+    "apps.md",
+    "Untitled 2.canvas",
+    "Untitled 1.canvas",
+    "Untitled.canvas"
+  ]
+}

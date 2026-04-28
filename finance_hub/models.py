@@ -9,6 +9,21 @@ from django.utils import timezone
 from common.models import OwnedModel, TimeStampedModel
 
 
+class IncomeSource(OwnedModel, TimeStampedModel):
+    """
+    Fonte di denaro: clienti, rimborsi, borse di studio, ecc.
+    """
+    name = models.CharField(max_length=160)
+    website = models.URLField(blank=True)
+
+    class Meta:
+        unique_together = [("owner", "name")]
+        indexes = [models.Index(fields=["owner", "name"])]
+
+    def __str__(self):
+        return self.name
+
+
 class VatCode(OwnedModel, TimeStampedModel):
     code = models.CharField(max_length=20)
     description = models.CharField(max_length=120, blank=True)
@@ -96,7 +111,7 @@ class Quote(OwnedModel, TimeStampedModel):
     )
     issue_date = models.DateField(default=timezone.now)
     valid_until = models.DateField(null=True, blank=True)
-    currency = models.ForeignKey("subscriptions.Currency", on_delete=models.PROTECT)
+    currency = models.ForeignKey("finance_hub.Currency", on_delete=models.PROTECT)
     vat_code = models.ForeignKey(
         "finance_hub.VatCode",
         null=True,
@@ -223,7 +238,7 @@ class Invoice(OwnedModel, TimeStampedModel):
         related_name="finance_invoices",
     )
     account = models.ForeignKey(
-        "subscriptions.Account",
+        "finance_hub.Account",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -232,7 +247,7 @@ class Invoice(OwnedModel, TimeStampedModel):
     issue_date = models.DateField(default=timezone.now)
     due_date = models.DateField(null=True, blank=True)
     paid_date = models.DateField(null=True, blank=True)
-    currency = models.ForeignKey("subscriptions.Currency", on_delete=models.PROTECT)
+    currency = models.ForeignKey("finance_hub.Currency", on_delete=models.PROTECT)
     amount_net = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     tax_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     total_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
@@ -326,7 +341,7 @@ class WorkOrder(OwnedModel, TimeStampedModel):
         related_name="finance_work_orders",
     )
     account = models.ForeignKey(
-        "subscriptions.Account",
+        "finance_hub.Account",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -334,7 +349,7 @@ class WorkOrder(OwnedModel, TimeStampedModel):
     )
     start_date = models.DateField(default=timezone.now)
     end_date = models.DateField(null=True, blank=True)
-    currency = models.ForeignKey("subscriptions.Currency", on_delete=models.PROTECT)
+    currency = models.ForeignKey("finance_hub.Currency", on_delete=models.PROTECT)
     estimated_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     final_amount = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     is_billable = models.BooleanField(default=True)
@@ -356,3 +371,122 @@ class WorkOrder(OwnedModel, TimeStampedModel):
 
     def __str__(self):
         return self.code or self.title
+
+
+class Currency(models.Model):
+    code = models.CharField(max_length=3, unique=True)
+    name = models.CharField(max_length=64, blank=True)
+    symbol = models.CharField(max_length=8, blank=True)
+
+    class Meta:
+        db_table = "common_currency"
+
+    def __str__(self):
+        return self.code
+
+
+class Tag(OwnedModel, TimeStampedModel):
+    name = models.CharField(max_length=50)
+
+    class Meta:
+        unique_together = [("owner", "name")]
+        indexes = [models.Index(fields=["owner", "name"])]
+
+    def __str__(self):
+        return self.name
+
+
+class Account(OwnedModel, TimeStampedModel):
+    class Kind(models.TextChoices):
+        BANK = "BANK", "Bank"
+        CARD = "CARD", "Card"
+        CASH = "CASH", "Cash"
+        INVEST = "INVEST", "Investment"
+        OTHER = "OTHER", "Other"
+
+    name = models.CharField(max_length=120)
+    kind = models.CharField(max_length=10, choices=Kind.choices, default=Kind.BANK)
+    currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
+    opening_balance = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = [("owner", "name")]
+        indexes = [
+            models.Index(fields=["owner", "is_active"]),
+        ]
+        db_table = "core_accounts"
+
+    def __str__(self):
+        return f"{self.name} ({self.currency.code})"
+
+
+class Subscription(OwnedModel, TimeStampedModel):
+    class Status(models.TextChoices):
+        ACTIVE = "ACTIVE", "Active"
+        PAUSED = "PAUSED", "Paused"
+        CANCELED = "CANCELED", "Canceled"
+
+    class IntervalUnit(models.TextChoices):
+        DAY = "DAY", "Day"
+        WEEK = "WEEK", "Week"
+        MONTH = "MONTH", "Month"
+        YEAR = "YEAR", "Year"
+
+    name = models.CharField(max_length=160)
+    payee = models.ForeignKey("core.Payee", null=True, blank=True, on_delete=models.SET_NULL, related_name="subscriptions")
+    category = models.ForeignKey("projects.Category", null=True, blank=True, on_delete=models.SET_NULL, related_name="subscriptions")
+    project = models.ForeignKey("projects.Project", null=True, blank=True, on_delete=models.SET_NULL, related_name="subscriptions")
+    account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name="subscriptions")
+    currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    start_date = models.DateField()
+    next_due_date = models.DateField()
+    end_date = models.DateField(null=True, blank=True)
+    interval = models.PositiveSmallIntegerField(default=1)
+    interval_unit = models.CharField(max_length=8, choices=IntervalUnit.choices, default=IntervalUnit.MONTH)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    autopay = models.BooleanField(default=False)
+    note = models.TextField(blank=True)
+    tags = models.ManyToManyField(Tag, blank=True, related_name="subscriptions")
+
+    class Meta:
+        unique_together = [("owner", "name")]
+        indexes = [
+            models.Index(fields=["owner", "status", "next_due_date"]),
+            models.Index(fields=["owner", "project", "status"]),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class SubscriptionOccurrence(OwnedModel, TimeStampedModel):
+    class State(models.TextChoices):
+        PLANNED = "PLANNED", "Planned"
+        PAID = "PAID", "Paid"
+        SKIPPED = "SKIPPED", "Skipped"
+        FAILED = "FAILED", "Failed"
+
+    subscription = models.ForeignKey(Subscription, on_delete=models.CASCADE, related_name="occurrences")
+    due_date = models.DateField()
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.ForeignKey(Currency, on_delete=models.PROTECT)
+    state = models.CharField(max_length=10, choices=State.choices, default=State.PLANNED)
+    transaction = models.OneToOneField(
+        "transactions.Transaction",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="subscription_occurrence",
+    )
+
+    class Meta:
+        unique_together = [("subscription", "due_date")]
+        indexes = [
+            models.Index(fields=["owner", "due_date", "state"]),
+            models.Index(fields=["owner", "subscription", "due_date"]),
+        ]
+
+    def __str__(self):
+        return f"{self.subscription.name} - {self.due_date}"

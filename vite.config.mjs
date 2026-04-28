@@ -23,8 +23,7 @@ export default defineConfig({
         todo: resolvePath("core/static/core/todo.js"),
         routines: resolvePath("core/static/core/routines.js"),
         projects_storyboard: resolvePath("core/static/core/projects_storyboard.js"),
-        archibald: resolvePath("core/static/core/archibald.js"),
-        agenda: resolvePath("agenda/static/agenda/agenda.js"),
+agenda: resolvePath("agenda/static/agenda/agenda.js"),
         subscriptions_dashboard: resolvePath("subscriptions/static/subscriptions/dashboard.js"),
       },
       output: {

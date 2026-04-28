@@ -27,7 +27,6 @@ def migrate_income_sources(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("income", "0001_initial"),
         ("transactions", "0002_transaction_income_source"),
     ]
 

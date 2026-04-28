@@ -61,8 +61,8 @@ from routines.services import (
     parse_weekday,
     update_routine_item,
 )
-from subscriptions.models import Account
-from subscriptions.models import SubscriptionOccurrence
+from finance_hub.models import Account
+from finance_hub.models import SubscriptionOccurrence
 from todo.models import Task
 from transactions.models import Transaction
 
@@ -142,16 +142,9 @@ DEFAULT_DASHBOARD_WIDGETS = [
         "group": "planning",
     },
     {
-        "id": "archibald",
-        "title": "Archibald",
-        "description": "Assistente AI contestuale.",
-        "url": "/archibald/",
-        "group": "ops",
-    },
-    {
         "id": "archibald_mail",
         "title": "Archibald Mail",
-        "description": "Inbox AI e notifiche email.",
+        "description": "Inbox cattura via flag email e notifiche.",
         "url": "/archibald-mail/",
         "group": "ops",
     },
@@ -183,11 +176,11 @@ DASHBOARD_WIDGETS_BY_ID = {item["id"]: item for item in DEFAULT_DASHBOARD_WIDGET
 DEFAULT_DASHBOARD_PREFERENCES = {
     "density": "comfortable",
     "accent": "blue",
-    "sections": ["snapshot", "widgets", "calendar", "archibald", "quick_actions"],
+    "sections": ["snapshot", "widgets", "calendar", "quick_actions"],
 }
 ALLOWED_DASHBOARD_DENSITIES = {"comfortable", "compact"}
 ALLOWED_DASHBOARD_ACCENTS = {"blue", "green", "amber", "rose"}
-ALLOWED_DASHBOARD_SECTIONS = {"snapshot", "widgets", "calendar", "archibald", "quick_actions"}
+ALLOWED_DASHBOARD_SECTIONS = {"snapshot", "widgets", "calendar", "quick_actions"}
 
 
 def _resolve_owned_media_file(owner, relative_path):
@@ -978,92 +971,17 @@ def _handle_dav_actions(request, action: str, *, redirect_base: str):
 
 @login_required
 def profile(request):
-    from archibald.models import ArchibaldInstructionState, ArchibaldPersonaConfig
-    from archibald.prompting import build_archibald_system_for_user
-
-    persona, _ = ArchibaldPersonaConfig.objects.get_or_create(owner=request.user)
-
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
-        custom_text = (request.POST.get("archibald_custom_instructions") or "").strip()
 
         if action == "rotate_dav_password" or action.startswith("dav_"):
             dav_response = _handle_dav_actions(request, action, redirect_base="/profile/dav/")
             if dav_response is not None:
                 return dav_response
 
-        if action == "save_archibald_instructions":
-            persona.custom_instructions = custom_text
-            persona.save()
-            django_messages.success(request, "Istruzioni Archibald salvate.")
-            return redirect("/profile/")
-
-        if action == "save_archibald_state":
-            state_name = (request.POST.get("state_name") or "").strip()
-            if not state_name:
-                django_messages.error(request, "Inserisci un nome stato prima di salvare.")
-            else:
-                persona.custom_instructions = custom_text
-                persona.save()
-                state, created = ArchibaldInstructionState.objects.update_or_create(
-                    owner=request.user,
-                    name=state_name,
-                    defaults={"instructions_text": custom_text},
-                )
-                label = "creato" if created else "aggiornato"
-                django_messages.success(request, f"Stato '{state.name}' {label}.")
-            return redirect("/profile/")
-
-        if action == "apply_archibald_state":
-            state_id = request.POST.get("state_id")
-            state = ArchibaldInstructionState.objects.filter(owner=request.user, id=state_id).first()
-            if not state:
-                django_messages.error(request, "Stato non trovato.")
-            else:
-                persona.custom_instructions = state.instructions_text
-                persona.save()
-                django_messages.success(request, f"Stato '{state.name}' applicato alle istruzioni attive.")
-            return redirect("/profile/")
-
-        if action == "delete_archibald_state":
-            state_id = request.POST.get("state_id")
-            state = ArchibaldInstructionState.objects.filter(owner=request.user, id=state_id).first()
-            if not state:
-                django_messages.error(request, "Stato non trovato.")
-            else:
-                label = state.name
-                state.delete()
-                django_messages.success(request, f"Stato '{label}' eliminato.")
-            return redirect("/profile/")
-
-        if action == "save_bias_settings":
-            persona.bias_catastrophizing = request.POST.get("bias_catastrophizing") == "on"
-            persona.bias_all_or_nothing = request.POST.get("bias_all_or_nothing") == "on"
-            persona.bias_overgeneralization = request.POST.get("bias_overgeneralization") == "on"
-            persona.bias_mind_reading = request.POST.get("bias_mind_reading") == "on"
-            persona.bias_negative_filtering = request.POST.get("bias_negative_filtering") == "on"
-            persona.bias_confirmation_bias = request.POST.get("bias_confirmation_bias") == "on"
-            persona.save(
-                update_fields=[
-                    "bias_catastrophizing",
-                    "bias_all_or_nothing",
-                    "bias_overgeneralization",
-                    "bias_mind_reading",
-                    "bias_negative_filtering",
-                    "bias_confirmation_bias",
-                ]
-            )
-            django_messages.success(request, "Impostazioni bias cognitivi salvate.")
-            return redirect("/profile/#bias-cognitivi")
-
-    states = ArchibaldInstructionState.objects.filter(owner=request.user).order_by("-updated_at", "name")
     dav_context = _build_dav_context(request, consume_onboarding=False)
     dav_onboarding = request.session.pop("dav_onboarding", None)
     context = {
-        "archibald_custom_instructions": persona.custom_instructions or "",
-        "archibald_instruction_states": states[:24],
-        "archibald_system_preview": build_archibald_system_for_user(request.user),
-        "archibald_persona": persona,
         "dav_onboarding_username": (dav_onboarding or {}).get("username", ""),
         "dav_onboarding_password": (dav_onboarding or {}).get("password", ""),
         **dav_context,

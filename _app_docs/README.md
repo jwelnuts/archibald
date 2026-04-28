@@ -12,7 +12,6 @@ Documentazione descrittiva per ogni app Django locale del progetto.
 ## App coperte
 
 - `agenda`
-- `ai_lab`
 - `archibald`
 - `archibald_mail`
 - `contacts`

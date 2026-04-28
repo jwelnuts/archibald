@@ -14,14 +14,14 @@ class Transaction(OwnedModel, TimeStampedModel):
     tx_type = models.CharField(max_length=4, choices=Type.choices)
     date = models.DateField(default=timezone.now)
     amount = models.DecimalField(max_digits=12, decimal_places=2)
-    currency = models.ForeignKey("subscriptions.Currency", on_delete=models.PROTECT)
+    currency = models.ForeignKey("finance_hub.Currency", on_delete=models.PROTECT)
 
-    account = models.ForeignKey("subscriptions.Account", on_delete=models.PROTECT, related_name="transactions")
+    account = models.ForeignKey("finance_hub.Account", on_delete=models.PROTECT, related_name="transactions")
     project = models.ForeignKey("projects.Project", null=True, blank=True, on_delete=models.SET_NULL, related_name="transactions")
     category = models.ForeignKey("projects.Category", null=True, blank=True, on_delete=models.SET_NULL, related_name="transactions")
     payee = models.ForeignKey("core.Payee", null=True, blank=True, on_delete=models.SET_NULL, related_name="transactions")
     income_source = models.ForeignKey(
-        "income.IncomeSource",
+        "finance_hub.IncomeSource",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
@@ -30,10 +30,10 @@ class Transaction(OwnedModel, TimeStampedModel):
 
     note = models.TextField(blank=True)
     attachment = models.FileField(upload_to=transaction_attachment_upload_to, blank=True, null=True)
-    tags = models.ManyToManyField("subscriptions.Tag", blank=True, related_name="transactions")
+    tags = models.ManyToManyField("finance_hub.Tag", blank=True, related_name="transactions")
 
     source_subscription = models.ForeignKey(
-        "subscriptions.Subscription",
+        "finance_hub.Subscription",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,

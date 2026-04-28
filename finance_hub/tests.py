@@ -8,7 +8,7 @@ from django.utils import timezone
 from contacts.models import Contact, ContactDeliveryAddress
 from projects.models import Customer
 from .models import PaymentMethod, Quote, ShippingMethod, VatCode
-from subscriptions.models import Currency
+from finance_hub.models import Currency
 
 
 class FinanceHubViewsTests(TestCase):

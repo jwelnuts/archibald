@@ -447,7 +447,7 @@ def dashboard(request):
     if project_ids:
         from planner.models import PlannerItem
         from routines.models import RoutineItem
-        from subscriptions.models import Subscription
+        from finance_hub.models import Subscription
         from todo.models import Task
         from transactions.models import Transaction
 
@@ -693,7 +693,7 @@ def project_detail(request):
     project = get_object_or_404(Project, id=project_id, owner=request.user)
 
     from planner.models import PlannerItem
-    from subscriptions.models import Subscription
+    from finance_hub.models import Subscription
     from transactions.models import Transaction
     from routines.models import RoutineItem
 

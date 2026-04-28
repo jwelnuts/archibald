@@ -1,15 +1,13 @@
-# MIO Master (archibald)
+# MI.Organizzo — ERP personale, senza dimenticazioni
 
-Snapshot documentazione: 27 febbraio 2026
+Monolite Django per organizzazione personale: finanza, progetti, planner/todo/routine, knowledge link, vault cifrato e cattura email automatica — il tutto senza flussi di dimenticazione.
 
-Monolite Django per organizzazione personale: finanza, progetti, planner/todo/routine, knowledge link, vault cifrato e assistente AI (Archibald), con workspace tecnico (Workbench) per debug e generazione guidata.
-
-## Stato attuale (snapshot)
+## Stato attuale
 
 - Backend: Django `6.0.1` con app multi-modulo e ownership per utente (`OwnedModel`).
 - DB: PostgreSQL via `DATABASE_URL` (locale Docker + VPS).
 - Deploy: VPS con Docker Compose (Django + Postgres + Caddy).
-- AI: integrazione OpenAI Responses API per Archibald e generatori Workbench.
+- Cattura dati: `archibald_mail` processa email con flag soggetto (`[MEMORY]`, `[TODO]`, `[TX]`, `[REMINDER]`, `[WORKLOG_AM/PM]`).
 - Sicurezza: login richiesto su quasi tutte le viste, Vault con TOTP + cifratura contenuti.
 
 ## Stack tecnico
@@ -166,8 +164,6 @@ Entrypoint bundle principali:
   - archivio personale di contenuti interessanti (titolo, URL, nota)
   - cattura automatica via email quando l'oggetto contiene flag memoria
   - gestione manuale da pannello (aggiungi/modifica/archivia/elimina)
-- `ai_lab` (`/ai-lab/`):
-  - tracking studio/esperimenti AI (area, status, prompt, result, next_step, resource_url)
 - `link_storage` (`/link_storage/`):
   - CRUD semplice link categorizzati con importance + note
 
@@ -509,7 +505,6 @@ python manage.py sync_radicale_users
 
 Sono presenti test Django in diversi moduli, tra cui:
 
-- `ai_lab`
 - `finance_hub`
 - `planner`
 - `projects`
@@ -545,7 +540,6 @@ mio_master/
   archibald/         # assistente AI contestuale
   archibald_mail/    # inbox email Archibald + notifiche
   memory_stock/      # archivio memorie salvate anche da email
-  ai_lab/            # tracking studi/esperimenti AI
   vault/             # vault cifrato + TOTP
   link_storage/      # archivio link rapido
   workbench/         # debug + generatori AI + schema explorer

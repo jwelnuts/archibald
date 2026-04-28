@@ -77,7 +77,7 @@ def ensure_legacy_records_for_contact(contact: Contact):
         return
 
     from core.models import Payee
-    from income.models import IncomeSource
+    from finance_hub.models import IncomeSource
     from projects.models import Customer
 
     if contact.role_customer:
@@ -130,7 +130,7 @@ def sync_contacts_from_legacy(owner):
         return
 
     from core.models import Payee
-    from income.models import IncomeSource
+    from finance_hub.models import IncomeSource
     from projects.models import Customer
 
     customers = Customer.objects.filter(owner=owner).values("name", "email", "phone", "notes")
