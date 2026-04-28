@@ -81,6 +81,7 @@ def dashboard(request):
                 "login": item.login or "-",
                 "website_url": item.website_url or "",
                 "masked_secret": _safe_read(item.masked_secret),
+                "plain_secret": _safe_read(item.get_secret_value),
                 "notes_preview": notes[:120] + ("..." if len(notes) > 120 else ""),
                 "updated_at": item.updated_at,
             }

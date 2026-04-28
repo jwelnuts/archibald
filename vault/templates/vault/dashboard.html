@@ -3,6 +3,10 @@
 {% block title %}MIO - Vault Dashboard{% endblock %}
 
 {% block content %}
+<style>
+  .vault-secret-wrap { display: inline-flex; align-items: center; gap: 6px; }
+  .vault-secret-toggle { font-size: 0.75rem; padding: 1px 6px; cursor: pointer; }
+</style>
   <section class="panel">
     <h2>Archivio privato</h2>
     <p>Salva password e note private cifrate nel database.</p>
@@ -54,7 +58,25 @@
                   -
                 {% endif %}
               </td>
-              <td><code>{{ row.masked_secret }}</code></td>
+              <td>
+                <span class="vault-secret-wrap">
+                  <code class="vault-secret-display">{{ row.masked_secret }}</code>
+                  <span class="vault-secret-plain" hidden>{{ row.plain_secret }}</span>
+                  <button
+                    class="btn vault-secret-toggle"
+                    type="button"
+                    onclick="(function(btn){
+                      var wrap = btn.closest('.vault-secret-wrap');
+                      var masked = wrap.querySelector('.vault-secret-display');
+                      var plain = wrap.querySelector('.vault-secret-plain');
+                      var visible = !plain.hidden;
+                      plain.hidden = visible;
+                      masked.hidden = !visible;
+                      btn.textContent = visible ? 'Mostra' : 'Nascondi';
+                    })(this)"
+                  >Mostra</button>
+                </span>
+              </td>
               <td>{{ row.notes_preview }}</td>
               <td>{{ row.updated_at|date:"Y-m-d H:i" }}</td>
               <td>
