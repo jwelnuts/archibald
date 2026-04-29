@@ -160,6 +160,9 @@ echo "==> Stato servizi"
 docker compose ps
 
 if [[ "${SKIP_CHECKS}" -eq 0 ]]; then
+  echo "==> Django migrate"
+  docker compose exec -T web python manage.py migrate --noinput
+
   echo "==> Django check"
   docker compose exec -T web python manage.py check
 
