@@ -1,11 +1,13 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const resolvePath = (...parts) => path.resolve(__dirname, ...parts);
 
 export default defineConfig({
+  plugins: [svelte()],
   resolve: {
     alias: {
       "@core": resolvePath("core/static/core"),
@@ -23,8 +25,9 @@ export default defineConfig({
         todo: resolvePath("core/static/core/todo.js"),
         routines: resolvePath("core/static/core/routines.js"),
         projects_storyboard: resolvePath("core/static/core/projects_storyboard.js"),
-agenda: resolvePath("agenda/static/agenda/agenda.js"),
+        agenda: resolvePath("agenda/static/agenda/agenda.js"),
         subscriptions_dashboard: resolvePath("subscriptions/static/subscriptions/dashboard.js"),
+        spa_dashboard: resolvePath("spa_dashboard/static/spa_dashboard/main.js"),
       },
       output: {
         format: "es",

@@ -12,6 +12,8 @@
     "@hotwired/stimulus": "^3.2.2"
   },
   "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.1.1",
+    "svelte": "^5.55.5",
     "vite": "^6.2.0"
   }
 }
