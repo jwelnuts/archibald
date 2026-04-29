@@ -3,6 +3,8 @@
   import { layout, widgetData, widgetStatus } from './lib/store.svelte.js'
   import { fetchLayout, fetchWidgetData } from './lib/api.js'
   import WidgetGrid from './components/WidgetGrid.svelte'
+  import AppHeader from './components/AppHeader.svelte'
+  import AppToolbar from './components/AppToolbar.svelte'
 
   let pollInterval
 
@@ -41,36 +43,25 @@
 </script>
 
 <div class="spa-dashboard">
-  <header class="spa-header">
-    <h1>MI.Organizzo</h1>
-  </header>
+  <AppHeader />
   <main>
     <WidgetGrid />
   </main>
+  <AppToolbar />
 </div>
 
 <style>
   .spa-dashboard {
-    min-height: 100vh;
-    background: #f5f6fa;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    height: 100dvh;
+    overflow: hidden;
+    background: #f0ede8;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 
-  .spa-header {
-    padding: 1rem 1.5rem;
-    background: #fff;
-    border-bottom: 1px solid #e8e8e8;
-  }
-
-  .spa-header h1 {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #1a1a2e;
-  }
-
   main {
-    max-width: 1400px;
-    margin: 0 auto;
+    overflow-y: auto;
+    padding: 1rem;
   }
 </style>
