@@ -22,7 +22,7 @@
   {:else if status === 'error'}
     <div class="widget-error">Errore caricamento widget</div>
   {:else}
-    <svelte:component this={WidgetComponent} {slot} {data} />
+    <WidgetComponent {slot} {data} />
   {/if}
 </div>
 
