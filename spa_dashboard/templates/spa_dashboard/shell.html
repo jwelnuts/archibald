@@ -9,6 +9,7 @@
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; padding: 0; }
   </style>
+  <link rel="stylesheet" href="{% static 'core/dist/assets/spa_dashboard.css' %}">
   <script>
     window.__CSRF__ = "{{ csrf_token }}";
     window.__USER__ = { name: "{{ user_display_name }}", initials: "{{ user_initials }}" };
