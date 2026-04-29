@@ -154,7 +154,7 @@ echo "==> Verifica configurazione compose"
 docker compose config -q
 
 echo "==> Rebuild e restart container"
-docker compose up -d --build --wait --wait-timeout 240
+docker compose up -d --build --wait --wait-timeout 360
 
 echo "==> Stato servizi"
 docker compose ps
