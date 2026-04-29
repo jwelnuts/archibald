@@ -9,6 +9,7 @@ COPY package.json pnpm-lock.yaml vite.config.mjs /app/
 COPY core/static/core /app/core/static/core
 COPY agenda/static/agenda /app/agenda/static/agenda
 COPY subscriptions/static/subscriptions /app/subscriptions/static/subscriptions
+COPY spa_dashboard/static/spa_dashboard /app/spa_dashboard/static/spa_dashboard
 
 RUN pnpm install --frozen-lockfile \
     && pnpm build
