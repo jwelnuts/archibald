@@ -130,7 +130,6 @@ INSTALLED_APPS = [
     'finance_hub',
     'subscriptions',
     'income',
-    'ai_lab',
     'contacts',
 ]
 
