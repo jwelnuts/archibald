@@ -22,6 +22,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('media/<path:path>', core_views.protected_media, name='protected-media'),
 
+    path('', include('spa_dashboard.urls')),
     path('', include('core.urls')),
     path('subs/', include('finance_hub.urls')),
     path('projects/', include('projects.urls')),

@@ -1,0 +1,14 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MI.Organizzo</title>
+  <script>window.__CSRF__ = "{{ csrf_token }}";</script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="{% static 'core/dist/spa_dashboard.js' %}"></script>
+</body>
+</html>

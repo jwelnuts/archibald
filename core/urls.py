@@ -39,4 +39,5 @@ urlpatterns = [
     path('core/accounts/add', views.add_account, name='core-accounts-add'),
     path('core/accounts/remove', views.remove_account, name='core-accounts-remove'),
     path('core/accounts/update', views.update_account, name='core-accounts-update'),
+    path('core/legacy-dashboard/', views.dashboard, name='core-legacy-dashboard'),
 ]
