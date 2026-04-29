@@ -34,7 +34,13 @@ def _save_spa_layout(user, layout):
 
 @login_required
 def shell(request):
-    return render(request, "spa_dashboard/shell.html")
+    user = request.user
+    display_name = user.first_name if user.first_name else user.username
+    initials = display_name[0].upper() if display_name else "?"
+    return render(request, "spa_dashboard/shell.html", {
+        "user_display_name": display_name,
+        "user_initials": initials,
+    })
 
 
 @login_required
