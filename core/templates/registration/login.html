@@ -5,6 +5,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MIO - Login</title>
+    {% include "core/partials/uikit_head.html" %}
     <style>
       * {
         margin: 0;
@@ -69,23 +70,27 @@
         max-width: 400px;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         animation: slideIn 0.8s ease-out;
-        transition: transform 0.3s ease;
+        transition: transform 0.3s ease, opacity 0.3s ease;
       }
 
-      .login-form.loading {
+      .login-form.htmx-request {
         transform: scale(0.98);
         opacity: 0.8;
       }
 
       @keyframes slideIn {
-        from {
-          opacity: 0;
-          transform: translateX(50px);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0);
-        }
+        from { opacity: 0; transform: translateX(50px); }
+        to { opacity: 1; transform: translateX(0); }
+      }
+
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+        20%, 40%, 60%, 80% { transform: translateX(5px); }
+      }
+
+      .login-form.has-error {
+        animation: shake 0.5s ease;
       }
 
       .logo {
@@ -141,8 +146,8 @@
         box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
       }
 
-      .form-group input.error {
-        border-color: #e53e3e;
+      .form-group input.uk-form-danger {
+        border-color: #f0506e;
         background: #fff5f5;
       }
 
@@ -164,24 +169,27 @@
         gap: 10px;
       }
 
-      .btn-login:hover:not(:disabled) {
+      .btn-login:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
       }
 
-      .btn-login:disabled {
-        opacity: 0.7;
-        cursor: not-allowed;
-      }
-
-      /* Spinner di loading */
-      .spinner {
+      .btn-login .htmx-indicator {
+        display: none;
         width: 20px;
         height: 20px;
         border: 3px solid rgba(255,255,255,0.3);
         border-top-color: white;
         border-radius: 50%;
         animation: spin 1s linear infinite;
+      }
+
+      .btn-login.htmx-request .htmx-indicator {
+        display: inline-block;
+      }
+
+      .btn-login.htmx-request .btn-text {
+        display: none;
       }
 
       @keyframes spin {
@@ -241,21 +249,12 @@
       }
 
       @keyframes toastIn {
-        from {
-          opacity: 0;
-          transform: translateX(100px) scale(0.9);
-        }
-        to {
-          opacity: 1;
-          transform: translateX(0) scale(1);
-        }
+        from { opacity: 0; transform: translateX(100px) scale(0.9); }
+        to { opacity: 1; transform: translateX(0) scale(1); }
       }
 
       @keyframes toastOut {
-        to {
-          opacity: 0;
-          transform: translateX(100px) scale(0.9);
-        }
+        to { opacity: 0; transform: translateX(100px) scale(0.9); }
       }
 
       .toast-icon {
@@ -269,9 +268,7 @@
         flex-shrink: 0;
       }
 
-      .toast-content {
-        flex: 1;
-      }
+      .toast-content { flex: 1; }
 
       .toast-title {
         font-weight: 600;
@@ -280,10 +277,7 @@
         margin-bottom: 2px;
       }
 
-      .toast-message {
-        font-size: 13px;
-        color: #718096;
-      }
+      .toast-message { font-size: 13px; color: #718096; }
 
       .toast-close {
         background: none;
@@ -301,43 +295,19 @@
         transition: all 0.2s;
       }
 
-      .toast-close:hover {
-        background: #f7fafc;
-        color: #4a5568;
-      }
+      .toast-close:hover { background: #f7fafc; color: #4a5568; }
 
-      /* Tipi di toast */
-      .toast.success {
-        border-left-color: #48bb78;
-      }
-      .toast.success .toast-icon {
-        background: #c6f6d5;
-        color: #276749;
-      }
+      .toast.success { border-left-color: #48bb78; }
+      .toast.success .toast-icon { background: #c6f6d5; color: #276749; }
 
-      .toast.error {
-        border-left-color: #f56565;
-      }
-      .toast.error .toast-icon {
-        background: #fed7d7;
-        color: #c53030;
-      }
+      .toast.error { border-left-color: #f56565; }
+      .toast.error .toast-icon { background: #fed7d7; color: #c53030; }
 
-      .toast.warning {
-        border-left-color: #ed8936;
-      }
-      .toast.warning .toast-icon {
-        background: #feebc8;
-        color: #c05621;
-      }
+      .toast.warning { border-left-color: #ed8936; }
+      .toast.warning .toast-icon { background: #feebc8; color: #c05621; }
 
-      .toast.info {
-        border-left-color: #4299e1;
-      }
-      .toast.info .toast-icon {
-        background: #bee3f8;
-        color: #2b6cb0;
-      }
+      .toast.info { border-left-color: #4299e1; }
+      .toast.info .toast-icon { background: #bee3f8; color: #2b6cb0; }
 
       /* ============ ANIMATIONE CICLISTA ============ */
       .cyclist-container {
@@ -350,7 +320,6 @@
         z-index: 5;
       }
 
-      /* Strada in movimento */
       .road {
         position: absolute;
         bottom: 50px;
@@ -371,7 +340,6 @@
         100% { transform: translateX(-50%); }
       }
 
-      /* Marcia stradale */
       .road-lines {
         position: absolute;
         bottom: 50px;
@@ -393,7 +361,6 @@
         100% { transform: translateX(-100px); }
       }
 
-      /* Bicicletta */
       .bike {
         position: absolute;
         bottom: 60px;
@@ -403,7 +370,6 @@
         height: 140px;
       }
 
-      /* Ruote */
       .wheel {
         position: absolute;
         width: 70px;
@@ -414,22 +380,15 @@
         animation: wheelRotate 1s linear infinite;
       }
 
-      .wheel-front {
-        right: 0;
-      }
-
-      .wheel-back {
-        left: 0;
-      }
+      .wheel-front { right: 0; }
+      .wheel-back { left: 0; }
 
       @keyframes wheelRotate {
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
       }
 
-      /* Raggi ruote */
-      .wheel::before,
-      .wheel::after {
+      .wheel::before, .wheel::after {
         content: '';
         position: absolute;
         top: 50%;
@@ -440,15 +399,9 @@
         transform-origin: center;
       }
 
-      .wheel::before {
-        transform: translate(-50%, -50%) rotate(0deg);
-      }
+      .wheel::before { transform: translate(-50%, -50%) rotate(0deg); }
+      .wheel::after { transform: translate(-50%, -50%) rotate(90deg); }
 
-      .wheel::after {
-        transform: translate(-50%, -50%) rotate(90deg);
-      }
-
-      /* Telaio */
       .frame {
         position: absolute;
         bottom: 35px;
@@ -464,43 +417,12 @@
         border-radius: 2px;
       }
 
-      .frame-top {
-        width: 70px;
-        top: 0;
-        left: 25px;
-        transform: rotate(-5deg);
-      }
+      .frame-top { width: 70px; top: 0; left: 25px; transform: rotate(-5deg); }
+      .frame-down { width: 75px; top: 35px; left: 20px; transform: rotate(-25deg); }
+      .frame-seat { width: 40px; top: 0; left: 0; transform: rotate(60deg); transform-origin: left center; }
+      .frame-front { width: 55px; top: 0; right: 0; transform: rotate(70deg); transform-origin: right center; }
+      .frame-chain { width: 45px; bottom: 5px; left: 25px; }
 
-      .frame-down {
-        width: 75px;
-        top: 35px;
-        left: 20px;
-        transform: rotate(-25deg);
-      }
-
-      .frame-seat {
-        width: 40px;
-        top: 0;
-        left: 0;
-        transform: rotate(60deg);
-        transform-origin: left center;
-      }
-
-      .frame-front {
-        width: 55px;
-        top: 0;
-        right: 0;
-        transform: rotate(70deg);
-        transform-origin: right center;
-      }
-
-      .frame-chain {
-        width: 45px;
-        bottom: 5px;
-        left: 25px;
-      }
-
-      /* Pedali */
       .pedals {
         position: absolute;
         bottom: 20px;
@@ -527,15 +449,9 @@
         margin-top: -2px;
       }
 
-      .pedal-left {
-        transform: rotate(0deg) translateX(15px);
-      }
+      .pedal-left { transform: rotate(0deg) translateX(15px); }
+      .pedal-right { transform: rotate(180deg) translateX(15px); }
 
-      .pedal-right {
-        transform: rotate(180deg) translateX(15px);
-      }
-
-      /* Ciclista */
       .cyclist {
         position: absolute;
         bottom: 85px;
@@ -550,7 +466,6 @@
         100% { transform: translateY(3px); }
       }
 
-      /* Gambe */
       .leg {
         position: absolute;
         width: 6px;
@@ -559,19 +474,8 @@
         transform-origin: top center;
       }
 
-      .leg-left {
-        height: 35px;
-        top: 45px;
-        left: 15px;
-        animation: legLeft 1s ease-in-out infinite;
-      }
-
-      .leg-right {
-        height: 35px;
-        top: 45px;
-        left: 35px;
-        animation: legRight 1s ease-in-out infinite;
-      }
+      .leg-left { height: 35px; top: 45px; left: 15px; animation: legLeft 1s ease-in-out infinite; }
+      .leg-right { height: 35px; top: 45px; left: 35px; animation: legRight 1s ease-in-out infinite; }
 
       @keyframes legLeft {
         0%, 100% { transform: rotate(-20deg); }
@@ -583,7 +487,6 @@
         50% { transform: rotate(-20deg); }
       }
 
-      /* Corpo */
       .body {
         position: absolute;
         width: 25px;
@@ -595,7 +498,6 @@
         transform: rotate(-15deg);
       }
 
-      /* Testa */
       .head {
         position: absolute;
         width: 22px;
@@ -606,7 +508,6 @@
         left: 12px;
       }
 
-      /* Casco */
       .helmet {
         position: absolute;
         width: 24px;
@@ -617,7 +518,6 @@
         left: 11px;
       }
 
-      /* Braccia */
       .arm {
         position: absolute;
         width: 5px;
@@ -630,7 +530,6 @@
         transform-origin: top center;
       }
 
-      /* Manubrio */
       .handlebar {
         position: absolute;
         width: 35px;
@@ -642,7 +541,6 @@
         transform: rotate(-10deg);
       }
 
-      /* Effetto velocità */
       .speed-lines {
         position: absolute;
         top: 0;
@@ -667,7 +565,6 @@
         100% { transform: translateX(-100px); opacity: 0; }
       }
 
-      /* Nuvole */
       .clouds {
         position: fixed;
         top: 0;
@@ -699,67 +596,42 @@
           width: 250px;
           height: 250px;
         }
-
-        .bike {
-          transform: translateX(-50%) scale(0.7);
-        }
-
+        .bike { transform: translateX(-50%) scale(0.7); }
         .login-container {
           align-items: flex-end;
           justify-content: center;
           padding: 20px;
           padding-bottom: 40px;
         }
-
-        .login-form {
-          max-width: 100%;
-          padding: 30px 25px;
-        }
-
-        .toast-container {
-          left: 20px;
-          right: 20px;
-          top: 10px;
-        }
-
-        .toast {
-          min-width: auto;
-          max-width: none;
-        }
+        .login-form { max-width: 100%; padding: 30px 25px; }
+        .toast-container { left: 20px; right: 20px; top: 10px; }
+        .toast { min-width: auto; max-width: none; }
       }
 
       @media (max-height: 700px) {
-        .cyclist-container {
-          top: 10%;
-          transform: translateX(-50%) translateY(0);
-        }
+        .cyclist-container { top: 10%; transform: translateX(-50%) translateY(0); }
       }
     </style>
   </head>
-  <body>
+  <body data-controller="login-page">
     <!-- Toast Notifications Container -->
-    <div class="toast-container" id="toastContainer"></div>
+    <div class="toast-container" data-login-page-target="toastContainer"></div>
 
     <!-- Particelle di sfondo -->
-    <div class="particles" id="particles"></div>
+    <div class="particles" data-login-page-target="particles"></div>
 
     <!-- Nuvole -->
-    <div class="clouds" id="clouds"></div>
+    <div class="clouds" data-login-page-target="clouds"></div>
 
     <!-- Ciclista animato -->
-    <div class="cyclist-container">
-      <!-- Linee di velocità -->
-      <div class="speed-lines" id="speedLines"></div>
-      
-      <!-- Strada -->
+    <div class="cyclist-container" data-login-page-target="cyclist">
+      <div class="speed-lines" data-login-page-target="speedLines"></div>
       <div class="road"></div>
-      <div class="road-lines" id="roadLines"></div>
+      <div class="road-lines" data-login-page-target="roadLines"></div>
       
-      <!-- Bicicletta -->
       <div class="bike">
         <div class="wheel wheel-back"></div>
         <div class="wheel wheel-front"></div>
-        
         <div class="frame">
           <div class="frame-line frame-top"></div>
           <div class="frame-line frame-down"></div>
@@ -767,16 +639,13 @@
           <div class="frame-line frame-front"></div>
           <div class="frame-line frame-chain"></div>
         </div>
-        
         <div class="pedals">
           <div class="pedal pedal-left"></div>
           <div class="pedal pedal-right"></div>
         </div>
-        
         <div class="handlebar"></div>
       </div>
       
-      <!-- Ciclista -->
       <div class="cyclist">
         <div class="leg leg-left"></div>
         <div class="leg leg-right"></div>
@@ -789,13 +658,25 @@
 
     <!-- Form di login -->
     <div class="login-container">
-      <div class="login-form" id="loginForm">
+      <div 
+        class="login-form" 
+        id="loginForm"
+        data-login-page-target="form"
+      >
         <div class="logo">
           <div class="logo-mark">MIO</div>
           <div class="logo-title">Money Organizer</div>
         </div>
 
-        <form id="loginFormElement" method="post" action="/accounts/login/">
+        <form 
+          method="post" 
+          action="/accounts/login/"
+          data-action="submit->login-page#handleSubmit
+                       htmx:afterRequest->login-page#handleResponse"
+          hx-post="/accounts/login/"
+          hx-swap="none"
+          hx-headers='{"X-Login-Request": "true"}'
+        >
           {% csrf_token %}
           <div class="form-group">
             <label for="id_username">Username</label>
@@ -806,6 +687,8 @@
               autocomplete="username" 
               placeholder="Inserisci il tuo username"
               required
+              data-login-page-target="username"
+              data-action="input->login-page#clearError"
             >
           </div>
           <div class="form-group">
@@ -817,24 +700,112 @@
               autocomplete="current-password"
               placeholder="Inserisci la tua password"
               required
+              data-login-page-target="password"
+              data-action="input->login-page#clearError"
             >
           </div>
-          <button class="btn-login" type="submit" id="submitBtn">
-            <span>Accedi</span>
+          <button class="btn-login" type="submit" data-login-page-target="submitBtn">
+            <div class="htmx-indicator"></div>
+            <span class="btn-text">Accedi</span>
           </button>
           <a class="btn-signup" href="/accounts/signup/">Crea un account</a>
         </form>
       </div>
     </div>
 
-    <script>
-      // ============ TOAST NOTIFICATION SYSTEM ============
-      class ToastSystem {
-        constructor() {
-          this.container = document.getElementById('toastContainer');
+    {% include "core/partials/uikit_body.html" %}
+
+    <script type="module">
+      import { registerStimulusController } from "{% static 'core/stimulus.js' %}";
+
+      class LoginPageController extends window.StimulusModule.Controller {
+        static targets = [
+          "form", "username", "password", "submitBtn",
+          "toastContainer", "particles", "clouds", "roadLines", "speedLines", "cyclist"
+        ];
+
+        connect() {
+          this.initBackgroundAnimations();
+          
+          // Show welcome toast after a short delay
+          setTimeout(() => {
+            this.showToast("Inserisci le tue credenziali per accedere", "info", "Benvenuto in MIO");
+          }, 800);
+
+          // Listen for HTMX events
+          document.body.addEventListener('htmx:afterRequest', (event) => this.handleResponse(event));
         }
 
-        show(message, type = 'info', title = '', duration = 5000) {
+        handleSubmit(event) {
+          // Client-side validation
+          let hasError = false;
+
+          if (!this.usernameTarget.value.trim()) {
+            this.usernameTarget.classList.add('uk-form-danger');
+            this.showToast("Inserisci il tuo username", "warning", "Campo richiesto");
+            hasError = true;
+          }
+
+          if (!this.passwordTarget.value.trim()) {
+            this.passwordTarget.classList.add('uk-form-danger');
+            this.showToast("Inserisci la tua password", "warning", "Campo richiesto");
+            hasError = true;
+          }
+
+          if (hasError) {
+            event.preventDefault();
+            event.stopPropagation();
+            this.shakeForm();
+            return false;
+          }
+
+          // Form is valid, let HTMX handle the submission
+          return true;
+        }
+
+        handleResponse(event) {
+          const response = event.detail.xhr;
+          const url = response.responseURL || window.location.href;
+          
+          // Check if we're still on login page (error) or redirected (success)
+          const isLoginPage = url.includes('/accounts/login/');
+          
+          if (!isLoginPage || response.status === 200 && !response.responseText.includes('login')) {
+            // Success!
+            this.showToast("Login effettuato con successo! Reindirizzamento...", "success", "Benvenuto!");
+            
+            // Animate success
+            this.formTarget.style.transform = 'scale(0.95)';
+            this.formTarget.style.opacity = '0.7';
+
+            // Redirect after short delay
+            setTimeout(() => {
+              window.location.href = url || '/';
+            }, 1000);
+          } else {
+            // Error - still on login page
+            this.showToast("Username o password non corretti. Riprova.", "error", "Login fallito");
+            
+            // Highlight fields
+            this.usernameTarget.classList.add('uk-form-danger');
+            this.passwordTarget.classList.add('uk-form-danger');
+            
+            this.shakeForm();
+          }
+        }
+
+        shakeForm() {
+          this.formTarget.classList.add('has-error');
+          setTimeout(() => {
+            this.formTarget.classList.remove('has-error');
+          }, 500);
+        }
+
+        clearError(event) {
+          event.target.classList.remove('uk-form-danger');
+        }
+
+        showToast(message, type = 'info', title = '') {
           const icons = {
             success: '✓',
             error: '✕',
@@ -857,214 +828,69 @@
               <div class="toast-title">${title || titles[type]}</div>
               <div class="toast-message">${message}</div>
             </div>
-            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+            <button class="toast-close" data-action="click->login-page#closeToast">×</button>
           `;
 
-          this.container.appendChild(toast);
+          this.toastContainerTarget.appendChild(toast);
 
-          // Auto-remove after duration
-          if (duration > 0) {
-            setTimeout(() => {
-              toast.classList.add('hiding');
-              setTimeout(() => toast.remove(), 300);
-            }, duration);
+          // Auto-remove after 5 seconds
+          setTimeout(() => {
+            toast.classList.add('hiding');
+            setTimeout(() => toast.remove(), 300);
+          }, 5000);
+        }
+
+        closeToast(event) {
+          const toast = event.target.closest('.toast');
+          toast.classList.add('hiding');
+          setTimeout(() => toast.remove(), 300);
+        }
+
+        initBackgroundAnimations() {
+          // Generate particles
+          for (let i = 0; i < 50; i++) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.animationDelay = Math.random() * 15 + 's';
+            particle.style.animationDuration = (10 + Math.random() * 10) + 's';
+            this.particlesTarget.appendChild(particle);
           }
 
-          return toast;
-        }
-
-        success(message, title) {
-          return this.show(message, 'success', title);
-        }
-
-        error(message, title) {
-          return this.show(message, 'error', title);
-        }
-
-        warning(message, title) {
-          return this.show(message, 'warning', title);
-        }
-
-        info(message, title) {
-          return this.show(message, 'info', title);
-        }
-      }
-
-      const toast = new ToastSystem();
-
-      // ============ AJAX LOGIN ============
-      const loginForm = document.getElementById('loginFormElement');
-      const submitBtn = document.getElementById('submitBtn');
-      const formContainer = document.getElementById('loginForm');
-      const usernameInput = document.getElementById('id_username');
-      const passwordInput = document.getElementById('id_password');
-
-      // Check for URL error messages (from redirects)
-      const urlParams = new URLSearchParams(window.location.search);
-      if (urlParams.has('error')) {
-        toast.error('Credenziali non valide. Riprova.', 'Login fallito');
-      }
-
-      loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        // Validate inputs
-        let hasError = false;
-
-        if (!usernameInput.value.trim()) {
-          usernameInput.classList.add('error');
-          toast.warning('Inserisci il tuo username', 'Campo richiesto');
-          hasError = true;
-        } else {
-          usernameInput.classList.remove('error');
-        }
-
-        if (!passwordInput.value.trim()) {
-          passwordInput.classList.add('error');
-          toast.warning('Inserisci la tua password', 'Campo richiesto');
-          hasError = true;
-        } else {
-          passwordInput.classList.remove('error');
-        }
-
-        if (hasError) return;
-
-        // Show loading state
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<div class="spinner"></div><span>Accesso in corso...</span>';
-        formContainer.classList.add('loading');
-
-        const formData = new FormData(loginForm);
-
-        try {
-          const response = await fetch('/accounts/login/', {
-            method: 'POST',
-            body: formData,
-            headers: {
-              'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin'
-          });
-
-          // Check if we got redirected (success) or if we're still on login page (error)
-          const responseUrl = response.url;
-          const isLoginPage = responseUrl.includes('/accounts/login/');
-
-          if (!isLoginPage) {
-            // Login successful!
-            toast.success('Login effettuato con successo! Reindirizzamento...', 'Benvenuto!');
-
-            // Animate success
-            formContainer.style.transform = 'scale(0.95)';
-            formContainer.style.opacity = '0.7';
-
-            // Redirect after short delay
-            setTimeout(() => {
-              window.location.href = responseUrl || '/';
-            }, 1000);
-          } else {
-            // Login failed - still on login page
-            const html = await response.text();
-
-            // Check for specific error messages in the HTML
-            if (html.includes('Credenziali non valide') || html.includes('error')) {
-              toast.error('Username o password non corretti. Riprova.', 'Login fallito');
-            } else {
-              toast.error('Si è verificato un errore durante il login.', 'Errore');
-            }
-
-            // Shake animation
-            formContainer.style.animation = 'shake 0.5s ease';
-            setTimeout(() => {
-              formContainer.style.animation = '';
-            }, 500);
-
-            // Highlight fields
-            usernameInput.classList.add('error');
-            passwordInput.classList.add('error');
-
-            // Reset button
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = '<span>Accedi</span>';
-            formContainer.classList.remove('loading');
+          // Generate road lines
+          for (let i = 0; i < 4; i++) {
+            const line = document.createElement('div');
+            line.className = 'road-line';
+            line.style.animationDelay = (i * 0.75) + 's';
+            this.roadLinesTarget.appendChild(line);
           }
-        } catch (error) {
-          console.error('Login error:', error);
-          toast.error('Errore di connessione. Verifica la tua rete.', 'Errore di rete');
 
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = '<span>Accedi</span>';
-          formContainer.classList.remove('loading');
+          // Generate speed lines
+          for (let i = 0; i < 8; i++) {
+            const line = document.createElement('div');
+            line.className = 'speed-line';
+            line.style.width = (50 + Math.random() * 100) + 'px';
+            line.style.top = (20 + Math.random() * 80) + '%';
+            line.style.animationDelay = (i * 0.2) + 's';
+            line.style.animationDuration = (1 + Math.random() * 0.5) + 's';
+            this.speedLinesTarget.appendChild(line);
+          }
+
+          // Generate clouds
+          for (let i = 0; i < 5; i++) {
+            const cloud = document.createElement('div');
+            cloud.className = 'cloud';
+            cloud.style.width = (60 + Math.random() * 100) + 'px';
+            cloud.style.height = (30 + Math.random() * 40) + 'px';
+            cloud.style.top = (5 + Math.random() * 40) + '%';
+            cloud.style.animationDelay = (i * 4) + 's';
+            cloud.style.animationDuration = (15 + Math.random() * 10) + 's';
+            this.cloudsTarget.appendChild(cloud);
+          }
         }
-      });
-
-      // Remove error styles on input
-      usernameInput.addEventListener('input', () => usernameInput.classList.remove('error'));
-      passwordInput.addEventListener('input', () => passwordInput.classList.remove('error'));
-
-      // Add shake animation
-      const style = document.createElement('style');
-      style.textContent = `
-        @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-          20%, 40%, 60%, 80% { transform: translateX(5px); }
-        }
-      `;
-      document.head.appendChild(style);
-
-      // ============ BACKGROUND ANIMATIONS ============
-      // Genera particelle di sfondo
-      const particlesContainer = document.getElementById('particles');
-      for (let i = 0; i < 50; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
-        particle.style.left = Math.random() * 100 + '%';
-        particle.style.animationDelay = Math.random() * 15 + 's';
-        particle.style.animationDuration = (10 + Math.random() * 10) + 's';
-        particlesContainer.appendChild(particle);
       }
 
-      // Genera linee stradali
-      const roadLinesContainer = document.getElementById('roadLines');
-      for (let i = 0; i < 4; i++) {
-        const line = document.createElement('div');
-        line.className = 'road-line';
-        line.style.animationDelay = (i * 0.75) + 's';
-        roadLinesContainer.appendChild(line);
-      }
-
-      // Genera linee di velocità
-      const speedLinesContainer = document.getElementById('speedLines');
-      for (let i = 0; i < 8; i++) {
-        const line = document.createElement('div');
-        line.className = 'speed-line';
-        line.style.width = (50 + Math.random() * 100) + 'px';
-        line.style.top = (20 + Math.random() * 80) + '%';
-        line.style.animationDelay = (i * 0.2) + 's';
-        line.style.animationDuration = (1 + Math.random() * 0.5) + 's';
-        speedLinesContainer.appendChild(line);
-      }
-
-      // Genera nuvole
-      const cloudsContainer = document.getElementById('clouds');
-      for (let i = 0; i < 5; i++) {
-        const cloud = document.createElement('div');
-        cloud.className = 'cloud';
-        cloud.style.width = (60 + Math.random() * 100) + 'px';
-        cloud.style.height = (30 + Math.random() * 40) + 'px';
-        cloud.style.top = (5 + Math.random() * 40) + '%';
-        cloud.style.animationDelay = (i * 4) + 's';
-        cloud.style.animationDuration = (15 + Math.random() * 10) + 's';
-        cloudsContainer.appendChild(cloud);
-      }
-
-      // Welcome toast on page load
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          toast.info('Inserisci le tue credenziali per accedere', 'Benvenuto in MIO');
-        }, 800);
-      });
+      registerStimulusController("login-page", LoginPageController);
     </script>
   </body>
 </html>

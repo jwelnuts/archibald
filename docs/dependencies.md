@@ -149,9 +149,13 @@ graph LR
   PRP -->|customer| CTC
   PRP -->|category| PRC
 
+  COMMON -.-> MS
+  MS -.optional FK.-> LS
+  
   classDef base fill:#eee
   classDef hub fill:#fde
   classDef ops fill:#def
+  classDef memory fill:#e6ffe6,stroke:#2d5a2d
 ```
 
 ### Riepilogo FK per app
@@ -170,9 +174,9 @@ graph LR
 | **routines** | projects.{Project,Category} | self-FK (Routine→Item→Check) |
 | **agenda** | projects.Project | aggregatore eventi |
 | **archibald_mail** | self only | FK interne (Config, Message, Category) |
-| **memory_stock** | — | isolato |
+| **memory_stock** | — | hub memoria (base per Link, Note, ecc.) |
 | **vault** | — | isolato |
-| **link_storage** | — | isolato |
+| **link_storage** | memory_stock.MemoryStockItem | specializzazione Link (opzionale FK OneToOne) |
 | **workbench** | django.User | log debug per user |
 
 ## Dipendenze codice (import cross-app)
@@ -260,7 +264,9 @@ graph TB
 - **Per modificare `finance_hub.Account/Currency`** → tocchi transactions e subscriptions.
 - **Per modificare `projects.Project`** → tocchi transactions, finance_hub, planner, todo, routines, agenda.
 - **Per aggiungere nuova app L3** → dipende da L2 (hub) o L1 (core), mai upward.
-- **Le isolate** (vault, memory_stock, link_storage) → modifiche locali, zero blast radius.
+- **Le isolate** (vault) → modifiche locali, zero blast radius.
+- **Memory hub** (memory_stock) → hub per la conoscenza, link_storage è una specializzazione (FK opzionale).
+- **Aggiungere nuovo tipo a memory_stock** → creare modello con FK a MemoryStockItem, come Link.
 
 ## Vedi anche
 
