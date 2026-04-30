@@ -23,6 +23,15 @@
         </nav>
       </header>
 
+      {% if messages %}
+        <section class="profile-flash-stack">
+          {% for message in messages %}
+            <div class="profile-flash {{ message.tags|default:'info' }}">{{ message }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
+
+      {% block content %}
       <section class="panel profile-hero">
         <div class="profile-hero-head">
           <h1>Profilo</h1>
@@ -48,14 +57,6 @@
           <a href="#sicurezza">Sicurezza</a>
         </nav>
       </section>
-
-      {% if messages %}
-        <section class="profile-flash-stack">
-          {% for message in messages %}
-            <div class="profile-flash {{ message.tags|default:'info' }}">{{ message }}</div>
-          {% endfor %}
-        </section>
-      {% endif %}
 
       <div class="profile-layout">
         <main class="profile-main">
@@ -84,10 +85,6 @@
             <h2>Preferenze e collegamenti</h2>
             <p class="muted">Accessi rapidi alle configurazioni utente disponibili.</p>
             <div class="profile-link-grid">
-              <a class="profile-link-card" href="/profile/hero-actions/">
-                <span class="profile-link-title">Hero actions</span>
-                <span class="profile-link-meta">Configura azioni rapide</span>
-              </a>
               <a class="profile-link-card" href="/profile/nav/">
                 <span class="profile-link-title">Navigazione app</span>
                 <span class="profile-link-meta">Ordine moduli e scorciatoie</span>
@@ -147,6 +144,7 @@
           </section>
         </aside>
       </div>
+      {% endblock %}
     </div>
     {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/dist/app.js' %}"></script>

@@ -611,23 +611,144 @@
       @media (max-height: 700px) {
         .cyclist-container { top: 10%; transform: translateX(-50%) translateY(0); }
       }
+
+      /* ============ NINJA EASTER EGG ============ */
+      .ninja {
+        position: fixed;
+        width: 40px;
+        height: 40px;
+        z-index: 100;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .ninja.visible {
+        opacity: 1;
+      }
+
+      /* Corpo ninja */
+      .ninja-body {
+        width: 100%;
+        height: 100%;
+        background: #1a1a2e;
+        border-radius: 50% 50% 45% 45%;
+        position: relative;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      }
+
+      /* Fascia */
+      .ninja-headband {
+        position: absolute;
+        top: 35%;
+        left: 0;
+        width: 100%;
+        height: 8px;
+        background: #e53e3e;
+        z-index: 2;
+      }
+
+      /* Occhi visibili */
+      .ninja-eyes {
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60%;
+        height: 12px;
+        display: flex;
+        justify-content: space-between;
+        z-index: 3;
+      }
+
+      .ninja-eye {
+        width: 10px;
+        height: 10px;
+        background: white;
+        border-radius: 50%;
+        animation: ninjaBlink 3s infinite;
+      }
+
+      @keyframes ninjaBlink {
+        0%, 48%, 52%, 100% { transform: scaleY(1); }
+        50% { transform: scaleY(0.1); }
+      }
+
+      /* Animazione salto */
+      @keyframes ninjaJump {
+        0% { transform: translateY(0) scale(1); }
+        10% { transform: translateY(-10px) scale(1.1, 0.9); }
+        40% { transform: translateY(-80px) scale(0.9, 1.1); }
+        60% { transform: translateY(-80px) scale(0.9, 1.1); }
+        90% { transform: translateY(-10px) scale(1.1, 0.9); }
+        100% { transform: translateY(0) scale(1); }
+      }
+
+      .ninja.jumping {
+        animation: ninjaJump 0.6s ease-out;
+      }
+
+      /* Ombra */
+      .ninja-shadow {
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 30px;
+        height: 8px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 50%;
+        transition: transform 0.6s ease-out;
+      }
+
+      .ninja.jumping .ninja-shadow {
+        transform: translateX(-50%) scale(0.5);
+      }
+
+      /* Nuvola di fumo quando appare */
+      @keyframes smokePuff {
+        0% { transform: scale(0); opacity: 0.8; }
+        100% { transform: scale(3); opacity: 0; }
+      }
+
+      .smoke {
+        position: absolute;
+        width: 40px;
+        height: 40px;
+        background: radial-gradient(circle, rgba(200,200,200,0.8) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+        animation: smokePuff 0.5s ease-out forwards;
+      }
     </style>
   </head>
-  <body data-controller="login-page">
+  <body>
     <!-- Toast Notifications Container -->
-    <div class="toast-container" data-login-page-target="toastContainer"></div>
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Ninja Easter Egg -->
+    <div class="ninja" id="ninja">
+      <div class="ninja-body">
+        <div class="ninja-headband"></div>
+        <div class="ninja-eyes">
+          <div class="ninja-eye"></div>
+          <div class="ninja-eye"></div>
+        </div>
+      </div>
+      <div class="ninja-shadow"></div>
+    </div>
 
     <!-- Particelle di sfondo -->
-    <div class="particles" data-login-page-target="particles"></div>
+    <div class="particles" id="particles"></div>
 
     <!-- Nuvole -->
-    <div class="clouds" data-login-page-target="clouds"></div>
+    <div class="clouds" id="clouds"></div>
 
     <!-- Ciclista animato -->
-    <div class="cyclist-container" data-login-page-target="cyclist">
-      <div class="speed-lines" data-login-page-target="speedLines"></div>
+    <div class="cyclist-container" id="cyclist">
+      <div class="speed-lines" id="speedLines"></div>
       <div class="road"></div>
-      <div class="road-lines" data-login-page-target="roadLines"></div>
+      <div class="road-lines" id="roadLines"></div>
       
       <div class="bike">
         <div class="wheel wheel-back"></div>
@@ -658,25 +779,13 @@
 
     <!-- Form di login -->
     <div class="login-container">
-      <div 
-        class="login-form" 
-        id="loginForm"
-        data-login-page-target="form"
-      >
+      <div class="login-form" id="loginForm">
         <div class="logo">
           <div class="logo-mark">MIO</div>
           <div class="logo-title">Money Organizer</div>
         </div>
 
-        <form 
-          method="post" 
-          action="/accounts/login/"
-          data-action="submit->login-page#handleSubmit
-                       htmx:afterRequest->login-page#handleResponse"
-          hx-post="/accounts/login/"
-          hx-swap="none"
-          hx-headers='{"X-Login-Request": "true"}'
-        >
+        <form id="loginFormElement" method="post" action="/accounts/login/">
           {% csrf_token %}
           <div class="form-group">
             <label for="id_username">Username</label>
@@ -687,8 +796,6 @@
               autocomplete="username" 
               placeholder="Inserisci il tuo username"
               required
-              data-login-page-target="username"
-              data-action="input->login-page#clearError"
             >
           </div>
           <div class="form-group">
@@ -700,197 +807,307 @@
               autocomplete="current-password"
               placeholder="Inserisci la tua password"
               required
-              data-login-page-target="password"
-              data-action="input->login-page#clearError"
             >
           </div>
-          <button class="btn-login" type="submit" data-login-page-target="submitBtn">
-            <div class="htmx-indicator"></div>
-            <span class="btn-text">Accedi</span>
+          <button class="btn-login" type="submit" id="submitBtn">
+            <div class="spinner" id="btnSpinner" style="display: none;"></div>
+            <span class="btn-text" id="btnText">Accedi</span>
           </button>
           <a class="btn-signup" href="/accounts/signup/">Crea un account</a>
         </form>
       </div>
     </div>
 
-    {% include "core/partials/uikit_body.html" %}
-
-    <script type="module">
-      import { registerStimulusController } from "{% static 'core/stimulus.js' %}";
-
-      class LoginPageController extends window.StimulusModule.Controller {
-        static targets = [
-          "form", "username", "password", "submitBtn",
-          "toastContainer", "particles", "clouds", "roadLines", "speedLines", "cyclist"
-        ];
-
-        connect() {
-          this.initBackgroundAnimations();
-          
-          // Show welcome toast after a short delay
-          setTimeout(() => {
-            this.showToast("Inserisci le tue credenziali per accedere", "info", "Benvenuto in MIO");
-          }, 800);
-
-          // Listen for HTMX events
-          document.body.addEventListener('htmx:afterRequest', (event) => this.handleResponse(event));
-        }
-
-        handleSubmit(event) {
-          // Client-side validation
-          let hasError = false;
-
-          if (!this.usernameTarget.value.trim()) {
-            this.usernameTarget.classList.add('uk-form-danger');
-            this.showToast("Inserisci il tuo username", "warning", "Campo richiesto");
-            hasError = true;
-          }
-
-          if (!this.passwordTarget.value.trim()) {
-            this.passwordTarget.classList.add('uk-form-danger');
-            this.showToast("Inserisci la tua password", "warning", "Campo richiesto");
-            hasError = true;
-          }
-
-          if (hasError) {
-            event.preventDefault();
-            event.stopPropagation();
-            this.shakeForm();
-            return false;
-          }
-
-          // Form is valid, let HTMX handle the submission
-          return true;
-        }
-
-        handleResponse(event) {
-          const response = event.detail.xhr;
-          const url = response.responseURL || window.location.href;
-          
-          // Check if we're still on login page (error) or redirected (success)
-          const isLoginPage = url.includes('/accounts/login/');
-          
-          if (!isLoginPage || response.status === 200 && !response.responseText.includes('login')) {
-            // Success!
-            this.showToast("Login effettuato con successo! Reindirizzamento...", "success", "Benvenuto!");
-            
-            // Animate success
-            this.formTarget.style.transform = 'scale(0.95)';
-            this.formTarget.style.opacity = '0.7';
-
-            // Redirect after short delay
-            setTimeout(() => {
-              window.location.href = url || '/';
-            }, 1000);
-          } else {
-            // Error - still on login page
-            this.showToast("Username o password non corretti. Riprova.", "error", "Login fallito");
-            
-            // Highlight fields
-            this.usernameTarget.classList.add('uk-form-danger');
-            this.passwordTarget.classList.add('uk-form-danger');
-            
-            this.shakeForm();
-          }
-        }
-
-        shakeForm() {
-          this.formTarget.classList.add('has-error');
-          setTimeout(() => {
-            this.formTarget.classList.remove('has-error');
-          }, 500);
-        }
-
-        clearError(event) {
-          event.target.classList.remove('uk-form-danger');
-        }
-
-        showToast(message, type = 'info', title = '') {
-          const icons = {
-            success: '✓',
-            error: '✕',
-            warning: '⚠',
-            info: 'ℹ'
-          };
-
-          const titles = {
-            success: 'Successo!',
-            error: 'Errore',
-            warning: 'Attenzione',
-            info: 'Info'
-          };
-
-          const toast = document.createElement('div');
-          toast.className = `toast ${type}`;
-          toast.innerHTML = `
-            <div class="toast-icon">${icons[type]}</div>
-            <div class="toast-content">
-              <div class="toast-title">${title || titles[type]}</div>
-              <div class="toast-message">${message}</div>
-            </div>
-            <button class="toast-close" data-action="click->login-page#closeToast">×</button>
-          `;
-
-          this.toastContainerTarget.appendChild(toast);
-
-          // Auto-remove after 5 seconds
+    <script>
+      // ============ TOAST NOTIFICATION SYSTEM ============
+      const toastContainer = document.getElementById('toastContainer');
+      
+      function showToast(message, type = 'info', title = '', duration = 5000) {
+        const icons = {
+          success: '✓',
+          error: '✕',
+          warning: '⚠',
+          info: 'ℹ'
+        };
+        
+        const titles = {
+          success: 'Successo!',
+          error: 'Errore',
+          warning: 'Attenzione',
+          info: 'Info'
+        };
+        
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `
+          <div class="toast-icon">${icons[type]}</div>
+          <div class="toast-content">
+            <div class="toast-title">${title || titles[type]}</div>
+            <div class="toast-message">${message}</div>
+          </div>
+          <button class="toast-close">×</button>
+        `;
+        
+        // Close button handler
+        toast.querySelector('.toast-close').addEventListener('click', () => {
+          toast.classList.add('hiding');
+          setTimeout(() => toast.remove(), 300);
+        });
+        
+        toastContainer.appendChild(toast);
+        
+        // Auto-remove after duration
+        if (duration > 0) {
           setTimeout(() => {
             toast.classList.add('hiding');
             setTimeout(() => toast.remove(), 300);
-          }, 5000);
+          }, duration);
+        }
+        
+        return toast;
+      }
+
+      // ============ FORM HANDLING ============
+      const loginForm = document.getElementById('loginFormElement');
+      const submitBtn = document.getElementById('submitBtn');
+      const btnText = document.getElementById('btnText');
+      const btnSpinner = document.getElementById('btnSpinner');
+      const formContainer = document.getElementById('loginForm');
+      const usernameInput = document.getElementById('id_username');
+      const passwordInput = document.getElementById('id_password');
+
+      // Show welcome toast on page load
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          showToast("Inserisci le tue credenziali per accedere", "info", "Benvenuto in MIO");
+        }, 800);
+      });
+
+      // Form submission handler
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Client-side validation
+        let hasError = false;
+        
+        if (!usernameInput.value.trim()) {
+          usernameInput.classList.add('uk-form-danger');
+          showToast("Inserisci il tuo username", "warning", "Campo richiesto");
+          hasError = true;
+        } else {
+          usernameInput.classList.remove('uk-form-danger');
+        }
+        
+        if (!passwordInput.value.trim()) {
+          passwordInput.classList.add('uk-form-danger');
+          showToast("Inserisci la tua password", "warning", "Campo richiesto");
+          hasError = true;
+        } else {
+          passwordInput.classList.remove('uk-form-danger');
+        }
+        
+        if (hasError) {
+          shakeForm();
+          return;
+        }
+        
+        // Show loading state
+        submitBtn.disabled = true;
+        btnText.style.display = 'none';
+        btnSpinner.style.display = 'inline-block';
+        formContainer.classList.add('loading');
+        
+        const formData = new FormData(loginForm);
+        
+        try {
+          const response = await fetch('/accounts/login/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            redirect: 'follow'
+          });
+          
+          const responseUrl = response.url;
+          const isLoginPage = responseUrl.includes('/accounts/login/');
+          
+          if (!isLoginPage) {
+            // Success!
+            showToast("Login effettuato con successo! Reindirizzamento...", "success", "Benvenuto!");
+            
+            formContainer.style.transform = 'scale(0.95)';
+            formContainer.style.opacity = '0.7';
+            
+            setTimeout(() => {
+              window.location.href = responseUrl || '/';
+            }, 1000);
+          } else {
+            // Error - parse HTML to check for error message
+            const html = await response.text();
+            
+            if (html.includes('Credenziali non valide') || html.includes('error')) {
+              showToast("Username o password non corretti. Riprova.", "error", "Login fallito");
+            } else {
+              showToast("Si è verificato un errore durante il login.", "error", "Errore");
+            }
+            
+            usernameInput.classList.add('uk-form-danger');
+            passwordInput.classList.add('uk-form-danger');
+            shakeForm();
+            
+            // Reset button
+            submitBtn.disabled = false;
+            btnText.style.display = 'inline';
+            btnSpinner.style.display = 'none';
+            formContainer.classList.remove('loading');
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          showToast("Errore di connessione. Verifica la tua rete.", "error", "Errore di rete");
+          
+          submitBtn.disabled = false;
+          btnText.style.display = 'inline';
+          btnSpinner.style.display = 'none';
+          formContainer.classList.remove('loading');
+        }
+      });
+
+      function shakeForm() {
+        formContainer.classList.add('has-error');
+        setTimeout(() => {
+          formContainer.classList.remove('has-error');
+        }, 500);
+      }
+
+      // Remove error styles on input
+      usernameInput.addEventListener('input', () => usernameInput.classList.remove('uk-form-danger'));
+      passwordInput.addEventListener('input', () => passwordInput.classList.remove('uk-form-danger'));
+
+      // ============ BACKGROUND ANIMATIONS ============
+      function initBackgroundAnimations() {
+        const particlesContainer = document.getElementById('particles');
+        const roadLinesContainer = document.getElementById('roadLines');
+        const speedLinesContainer = document.getElementById('speedLines');
+        const cloudsContainer = document.getElementById('clouds');
+        
+        // Generate particles
+        for (let i = 0; i < 50; i++) {
+          const particle = document.createElement('div');
+          particle.className = 'particle';
+          particle.style.left = Math.random() * 100 + '%';
+          particle.style.animationDelay = Math.random() * 15 + 's';
+          particle.style.animationDuration = (10 + Math.random() * 10) + 's';
+          particlesContainer.appendChild(particle);
         }
 
-        closeToast(event) {
-          const toast = event.target.closest('.toast');
-          toast.classList.add('hiding');
-          setTimeout(() => toast.remove(), 300);
+        // Generate road lines
+        for (let i = 0; i < 4; i++) {
+          const line = document.createElement('div');
+          line.className = 'road-line';
+          line.style.animationDelay = (i * 0.75) + 's';
+          roadLinesContainer.appendChild(line);
         }
 
-        initBackgroundAnimations() {
-          // Generate particles
-          for (let i = 0; i < 50; i++) {
-            const particle = document.createElement('div');
-            particle.className = 'particle';
-            particle.style.left = Math.random() * 100 + '%';
-            particle.style.animationDelay = Math.random() * 15 + 's';
-            particle.style.animationDuration = (10 + Math.random() * 10) + 's';
-            this.particlesTarget.appendChild(particle);
-          }
+        // Generate speed lines
+        for (let i = 0; i < 8; i++) {
+          const line = document.createElement('div');
+          line.className = 'speed-line';
+          line.style.width = (50 + Math.random() * 100) + 'px';
+          line.style.top = (20 + Math.random() * 80) + '%';
+          line.style.animationDelay = (i * 0.2) + 's';
+          line.style.animationDuration = (1 + Math.random() * 0.5) + 's';
+          speedLinesContainer.appendChild(line);
+        }
 
-          // Generate road lines
-          for (let i = 0; i < 4; i++) {
-            const line = document.createElement('div');
-            line.className = 'road-line';
-            line.style.animationDelay = (i * 0.75) + 's';
-            this.roadLinesTarget.appendChild(line);
-          }
-
-          // Generate speed lines
-          for (let i = 0; i < 8; i++) {
-            const line = document.createElement('div');
-            line.className = 'speed-line';
-            line.style.width = (50 + Math.random() * 100) + 'px';
-            line.style.top = (20 + Math.random() * 80) + '%';
-            line.style.animationDelay = (i * 0.2) + 's';
-            line.style.animationDuration = (1 + Math.random() * 0.5) + 's';
-            this.speedLinesTarget.appendChild(line);
-          }
-
-          // Generate clouds
-          for (let i = 0; i < 5; i++) {
-            const cloud = document.createElement('div');
-            cloud.className = 'cloud';
-            cloud.style.width = (60 + Math.random() * 100) + 'px';
-            cloud.style.height = (30 + Math.random() * 40) + 'px';
-            cloud.style.top = (5 + Math.random() * 40) + '%';
-            cloud.style.animationDelay = (i * 4) + 's';
-            cloud.style.animationDuration = (15 + Math.random() * 10) + 's';
-            this.cloudsTarget.appendChild(cloud);
-          }
+        // Generate clouds
+        for (let i = 0; i < 5; i++) {
+          const cloud = document.createElement('div');
+          cloud.className = 'cloud';
+          cloud.style.width = (60 + Math.random() * 100) + 'px';
+          cloud.style.height = (30 + Math.random() * 40) + 'px';
+          cloud.style.top = (5 + Math.random() * 40) + '%';
+          cloud.style.animationDelay = (i * 4) + 's';
+          cloud.style.animationDuration = (15 + Math.random() * 10) + 's';
+          cloudsContainer.appendChild(cloud);
         }
       }
 
-      registerStimulusController("login-page", LoginPageController);
+      initBackgroundAnimations();
+
+      // ============ NINJA EASTER EGG ============
+      const ninja = document.getElementById('ninja');
+      let ninjaTimeout;
+      let ninjaInterval;
+
+      function getRandomPosition() {
+        const margin = 60; // margine dai bordi
+        const x = margin + Math.random() * (window.innerWidth - margin * 2);
+        const y = margin + Math.random() * (window.innerHeight - margin * 2);
+        return { x, y };
+      }
+
+      function createSmoke(x, y) {
+        const smoke = document.createElement('div');
+        smoke.className = 'smoke';
+        smoke.style.left = x + 'px';
+        smoke.style.top = y + 'px';
+        document.body.appendChild(smoke);
+        setTimeout(() => smoke.remove(), 500);
+      }
+
+      function appearNinja() {
+        const pos = getRandomPosition();
+        ninja.style.left = pos.x + 'px';
+        ninja.style.top = pos.y + 'px';
+        
+        createSmoke(pos.x, pos.y);
+        
+        setTimeout(() => {
+          ninja.classList.add('visible');
+          
+          // Salta dopo un attimo
+          setTimeout(() => {
+            ninja.classList.add('jumping');
+            
+            setTimeout(() => {
+              ninja.classList.remove('jumping');
+            }, 600);
+          }, 300);
+          
+          // Scompari dopo 2-3 secondi
+          const visibleTime = 2000 + Math.random() * 2000;
+          setTimeout(() => {
+            ninja.classList.remove('visible');
+          }, visibleTime);
+        }, 100);
+      }
+
+      function startNinjaGame() {
+        // Il ninja appare ogni 15-45 secondi
+        const scheduleNext = () => {
+          const delay = 15000 + Math.random() * 30000;
+          ninjaTimeout = setTimeout(() => {
+            appearNinja();
+            scheduleNext();
+          }, delay);
+        };
+        
+        scheduleNext();
+      }
+
+      // Avvia il gioco del ninja
+      startNinjaGame();
+
+      // Pausa quando la tab non è visibile (risparmio risorse)
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          clearTimeout(ninjaTimeout);
+        } else {
+          startNinjaGame();
+        }
+      });
     </script>
   </body>
 </html>

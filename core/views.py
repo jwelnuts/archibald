@@ -37,7 +37,6 @@ from .dav import (
     set_managed_calendar_active,
 )
 from .forms import AccountForm, SignUpForm
-from .hero_actions import HERO_ACTIONS
 from .models import (
     DavAccount,
     DavCalendarGrant,
@@ -45,7 +44,6 @@ from .models import (
     DavManagedCalendar,
     DavTeam,
     MobileApiSession,
-    UserHeroActionsConfig,
     UserNavConfig,
 )
 from .navigation import DEFAULT_APP_OPTIONS, app_options_for_user, normalize_nav_config, parse_widgets_json
@@ -1112,39 +1110,6 @@ def nav_settings(request):
         "widgets_json": json.dumps(normalized["widgets"], ensure_ascii=True, indent=2),
     }
     return render(request, "core/nav_settings.html", context)
-
-
-@login_required
-def hero_actions(request):
-    config_obj, _ = UserHeroActionsConfig.objects.get_or_create(user=request.user)
-    if request.method == "POST":
-        new_config = {}
-        for module, actions in HERO_ACTIONS.items():
-            enabled = []
-            for action in actions:
-                key = f"{module}:{action['key']}"
-                if request.POST.get(key) == "on":
-                    enabled.append(action["key"])
-            new_config[module] = enabled
-        new_config["_configured"] = True
-        config_obj.config = new_config
-        config_obj.save(update_fields=["config"])
-        return redirect("/profile/hero-actions/")
-
-    selected = config_obj.config or {}
-    if selected and not selected.get("_configured"):
-        # Backfill legacy config with defaults for missing modules.
-        for module, actions in HERO_ACTIONS.items():
-            if module not in selected:
-                selected[module] = [a["key"] for a in actions if a.get("default")]
-        selected["_configured"] = True
-        config_obj.config = selected
-        config_obj.save(update_fields=["config"])
-    context = {
-        "actions": HERO_ACTIONS,
-        "selected": selected,
-    }
-    return render(request, "core/hero_actions.html", context)
 
 
 @login_required

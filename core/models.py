@@ -19,18 +19,6 @@ class Payee(OwnedModel, TimeStampedModel):
         return self.name
 
 
-class UserHeroActionsConfig(models.Model):
-    user = models.OneToOneField(
-        "auth.User",
-        on_delete=models.CASCADE,
-        related_name="hero_actions_config",
-    )
-    config = models.JSONField(default=dict, blank=True)
-
-    def __str__(self):
-        return f"HeroActionsConfig({self.user_id})"
-
-
 class UserNavConfig(models.Model):
     user = models.OneToOneField(
         "auth.User",

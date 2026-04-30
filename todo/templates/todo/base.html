@@ -22,8 +22,7 @@
       </footer>
     </div>
     <script src="{% static 'core/vendor/flatpickr/flatpickr.min.js' %}"></script>
-    {{ hero_actions_config|json_script:"hero-actions-config" }}
-        {% include "core/partials/uikit_body.html" %}
+    {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/dist/app.js' %}"></script>
     <script type="module" src="{% static 'core/dist/todo.js' %}"></script>
   </body>

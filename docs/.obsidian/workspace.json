@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "index.md",
+                "file": "archibald.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "index"
+              "title": "archibald"
             }
           }
         ]
@@ -185,11 +185,16 @@
   },
   "active": "5b6f056cadbdcfdc",
   "lastOpenFiles": [
+    "business-logic.md",
+    "archibald-removal-analysis.md",
+    "archibald.md",
+    "apps.md",
+    "index.md",
+    "local-deploy.md",
     "views.md",
     "models.md",
     "dependencies.md",
     "db/models/Currency.md",
-    "apps.md",
     "db/models/ProjectHeroActionsConfig.md",
     "db/models/Project.md",
     "db/DATABASE.md",
@@ -198,7 +203,6 @@
     "db/models/DebugChangeLog.md",
     "db/models/Payee.md",
     "2026-04-27.md",
-    "index.md",
     "index.md.tmp.5715.1777310096183",
     "project-identity.md.tmp.5715.1777310091121",
     "project-identity.md.tmp.5715.1777310085489",
@@ -208,16 +212,12 @@
     "archibald.md.tmp.5715.1777309782665",
     "project-identity.md",
     "project-identity.md.tmp.5715.1777309768005",
-    "archibald-removal-analysis.md",
-    "archibald.md",
     "apps/projects.md",
     "apps/workbench.md",
     "apps/archibald_mail.md",
     "apps/archibald.md",
     "apps/vault.md",
     "apps/memory_stock.md",
-    "apps/link_storage.md",
-    "apps/outcome.md",
     "apps",
     "Untitled 2.canvas",
     "Untitled 1.canvas",

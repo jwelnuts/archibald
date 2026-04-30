@@ -22,8 +22,7 @@
         window.flatpickr(el, { dateFormat: "Y-m-d" });
       });
     </script>
-    {{ hero_actions_config|json_script:"hero-actions-config" }}
-        {% include "core/partials/uikit_body.html" %}
+    {% include "core/partials/uikit_body.html" %}
     <script type="module" src="{% static 'core/dist/app.js' %}"></script>
   </body>
 </html>

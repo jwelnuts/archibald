@@ -1,0 +1,65 @@
+# Docker Compose Override per sviluppo locale con hot reload
+# Questo file viene automaticamente caricato da docker compose insieme a docker-compose.yml
+# Le configurazioni qui sovrascrivono quelle del file principale
+
+services:
+  web:
+    # Override per sviluppo
+    environment:
+      DJANGO_DEBUG: "true"
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY:-local-dev-secret-key-change-in-production}
+      LESS_DEV_MODE: "true"
+      UI_STYLE_MODE: "DEV"
+    # Mount dei sorgenti per hot reload
+    volumes:
+      - ./:/app  # Mount completo del progetto
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+      - radicale_data:/radicale-data
+    # Comando personalizzato per hot reload
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 3 &&
+        echo 'Running migrations...' &&
+        python manage.py migrate --noinput &&
+        echo 'Starting development server with hot reload...' &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    ports:
+      - "8000:8000"  # Espone Django direttamente per sviluppo
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  mail_worker:
+    environment:
+      DJANGO_DEBUG: "true"
+      LESS_DEV_MODE: "true"
+    volumes:
+      - ./:/app  # Mount per vedere cambiamenti al codice
+      - radicale_data:/radicale-data
+    # In dev, eseguiamo una volta e poi riavviamo su cambiamenti
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 5 &&
+        echo 'Running migrations...' &&
+        python manage.py migrate --noinput &&
+        echo 'Starting mail worker...' &&
+        python manage.py run_archibald_mail_worker
+        --interval-seconds ${ARCHIBALD_MAIL_POLL_SECONDS:-60}
+        --limit ${ARCHIBALD_MAIL_POLL_LIMIT:-10}
+      "
+
+  # Disabilita Caddy in dev per usare direttamente Django su :8000
+  caddy:
+    profiles:
+      - production  # Non parte automaticamente, usa: docker compose --profile production up
+    ports: []  # Disabilita port binding quando non in uso
+
+# Non serve modificare i volumi esistenti
+# I volumi dichiarati in docker-compose.yml vengono mantenuti
