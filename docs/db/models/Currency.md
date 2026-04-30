@@ -10,11 +10,11 @@ tags: [db, model, finance, finance_hub]
 Valuta globale condivisa (non per-utente).
 
 ## Campi principali
-| Campo | Tipo | Note |
-|---|---|---|
-| code | CharField(3) | unique, es. EUR |
-| name | CharField(64) | |
-| symbol | CharField(8) | |
+| Campo  | Tipo          | Note            |
+| ------ | ------------- | --------------- |
+| code   | CharField(3)  | unique, es. EUR |
+| name   | CharField(64) |                 |
+| symbol | CharField(8)  |                 |
 
 ## Relazioni inverse
 - `account_set` ← [[Account]]

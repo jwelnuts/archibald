@@ -4,17 +4,17 @@
     "type": "split",
     "children": [
       {
-        "id": "e43cd49a2d511765",
+        "id": "70ed8f4a34d5ea92",
         "type": "tabs",
         "children": [
           {
-            "id": "179392af1e9400ce",
+            "id": "5b6f056cadbdcfdc",
             "type": "leaf",
             "state": {
-              "type": "graph",
+              "type": "empty",
               "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "icon": "lucide-file",
+              "title": "New tab"
             }
           }
         ]
@@ -179,20 +179,30 @@
       "bases:Create new base": false
     }
   },
-  "active": "179392af1e9400ce",
+  "active": "5b6f056cadbdcfdc",
   "lastOpenFiles": [
+    "models.md",
+    "dependencies.md",
+    "db/models/Currency.md",
+    "apps.md",
+    "db/models/ProjectHeroActionsConfig.md",
+    "db/models/Project.md",
+    "db/DATABASE.md",
+    "db/models/WorkOrder.md",
+    "db/models/DavTeam.md",
+    "db/models/DebugChangeLog.md",
+    "db/models/Payee.md",
+    "2026-04-27.md",
     "index.md",
     "index.md.tmp.5715.1777310096183",
     "project-identity.md.tmp.5715.1777310091121",
     "project-identity.md.tmp.5715.1777310085489",
-    "dependencies.md",
     "dependencies.md.tmp.5715.1777310068258",
     "moc-apps.md",
     "index.md.tmp.5715.1777309790085",
     "archibald.md.tmp.5715.1777309782665",
     "project-identity.md",
     "project-identity.md.tmp.5715.1777309768005",
-    "2026-04-27.md",
     "archibald-removal-analysis.md",
     "archibald.md",
     "apps/projects.md",
@@ -204,17 +214,7 @@
     "apps/link_storage.md",
     "apps/outcome.md",
     "apps/income.md",
-    "apps/todo.md",
-    "apps/routines.md",
-    "apps/planner.md",
-    "apps/agenda.md",
-    "apps/contacts.md",
-    "apps/core.md",
-    "apps/transactions.md",
-    "apps/subscriptions.md",
-    "apps/finance_hub.md",
     "apps",
-    "apps.md",
     "Untitled 2.canvas",
     "Untitled 1.canvas",
     "Untitled.canvas"
