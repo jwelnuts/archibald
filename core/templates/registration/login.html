@@ -3,49 +3,1068 @@
 <html lang="it">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.7">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MIO - Login</title>
-    {% include "core/partials/uikit_head.html" %}
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        min-height: 100vh;
+        overflow: hidden;
+        position: relative;
+      }
+
+      /* Sfondo animato con particelle */
+      .particles {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: 0;
+      }
+
+      .particle {
+        position: absolute;
+        width: 4px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        animation: float 15s infinite;
+      }
+
+      @keyframes float {
+        0%, 100% { transform: translateY(100vh) rotate(0deg); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+      }
+
+      /* Container principale */
+      .login-container {
+        position: relative;
+        z-index: 10;
+        width: 100%;
+        height: 100vh;
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-end;
+        padding: 40px;
+      }
+
+      /* Form di login */
+      .login-form {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 40px;
+        width: 100%;
+        max-width: 400px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        animation: slideIn 0.8s ease-out;
+        transition: transform 0.3s ease;
+      }
+
+      .login-form.loading {
+        transform: scale(0.98);
+        opacity: 0.8;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(50px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+
+      .logo {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+
+      .logo-mark {
+        font-size: 48px;
+        font-weight: 900;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        letter-spacing: -2px;
+      }
+
+      .logo-title {
+        font-size: 14px;
+        color: #666;
+        margin-top: 5px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #333;
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .form-group input {
+        width: 100%;
+        padding: 14px 16px;
+        border: 2px solid #e0e0e0;
+        border-radius: 12px;
+        font-size: 16px;
+        transition: all 0.3s ease;
+        background: #fafafa;
+      }
+
+      .form-group input:focus {
+        outline: none;
+        border-color: #667eea;
+        background: white;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+      }
+
+      .form-group input.error {
+        border-color: #e53e3e;
+        background: #fff5f5;
+      }
+
+      .btn-login {
+        width: 100%;
+        padding: 16px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+      }
+
+      .btn-login:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+      }
+
+      .btn-login:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+
+      /* Spinner di loading */
+      .spinner {
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .btn-signup {
+        width: 100%;
+        padding: 14px;
+        background: transparent;
+        color: #667eea;
+        border: 2px solid #667eea;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        text-decoration: none;
+        display: block;
+        text-align: center;
+        transition: all 0.3s ease;
+      }
+
+      .btn-signup:hover {
+        background: #667eea;
+        color: white;
+      }
+
+      /* ============ TOAST NOTIFICATIONS ============ */
+      .toast-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        pointer-events: none;
+      }
+
+      .toast {
+        background: white;
+        border-radius: 12px;
+        padding: 16px 20px;
+        min-width: 300px;
+        max-width: 400px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        pointer-events: auto;
+        animation: toastIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border-left: 4px solid;
+      }
+
+      .toast.hiding {
+        animation: toastOut 0.3s ease forwards;
+      }
+
+      @keyframes toastIn {
+        from {
+          opacity: 0;
+          transform: translateX(100px) scale(0.9);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0) scale(1);
+        }
+      }
+
+      @keyframes toastOut {
+        to {
+          opacity: 0;
+          transform: translateX(100px) scale(0.9);
+        }
+      }
+
+      .toast-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+      }
+
+      .toast-content {
+        flex: 1;
+      }
+
+      .toast-title {
+        font-weight: 600;
+        font-size: 15px;
+        color: #1a202c;
+        margin-bottom: 2px;
+      }
+
+      .toast-message {
+        font-size: 13px;
+        color: #718096;
+      }
+
+      .toast-close {
+        background: none;
+        border: none;
+        font-size: 20px;
+        color: #a0aec0;
+        cursor: pointer;
+        padding: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        transition: all 0.2s;
+      }
+
+      .toast-close:hover {
+        background: #f7fafc;
+        color: #4a5568;
+      }
+
+      /* Tipi di toast */
+      .toast.success {
+        border-left-color: #48bb78;
+      }
+      .toast.success .toast-icon {
+        background: #c6f6d5;
+        color: #276749;
+      }
+
+      .toast.error {
+        border-left-color: #f56565;
+      }
+      .toast.error .toast-icon {
+        background: #fed7d7;
+        color: #c53030;
+      }
+
+      .toast.warning {
+        border-left-color: #ed8936;
+      }
+      .toast.warning .toast-icon {
+        background: #feebc8;
+        color: #c05621;
+      }
+
+      .toast.info {
+        border-left-color: #4299e1;
+      }
+      .toast.info .toast-icon {
+        background: #bee3f8;
+        color: #2b6cb0;
+      }
+
+      /* ============ ANIMATIONE CICLISTA ============ */
+      .cyclist-container {
+        position: fixed;
+        left: 5%;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 350px;
+        height: 400px;
+        z-index: 5;
+      }
+
+      /* Strada in movimento */
+      .road {
+        position: absolute;
+        bottom: 50px;
+        left: -50%;
+        width: 200%;
+        height: 3px;
+        background: linear-gradient(90deg, 
+          transparent 0%, 
+          rgba(255,255,255,0.3) 20%, 
+          rgba(255,255,255,0.5) 50%, 
+          rgba(255,255,255,0.3) 80%, 
+          transparent 100%);
+        animation: roadMove 2s linear infinite;
+      }
+
+      @keyframes roadMove {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+      }
+
+      /* Marcia stradale */
+      .road-lines {
+        position: absolute;
+        bottom: 50px;
+        left: -50%;
+        width: 200%;
+        height: 2px;
+      }
+
+      .road-line {
+        position: absolute;
+        width: 60px;
+        height: 2px;
+        background: rgba(255,255,255,0.4);
+        animation: lineMove 3s linear infinite;
+      }
+
+      @keyframes lineMove {
+        0% { transform: translateX(400px); }
+        100% { transform: translateX(-100px); }
+      }
+
+      /* Bicicletta */
+      .bike {
+        position: absolute;
+        bottom: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 200px;
+        height: 140px;
+      }
+
+      /* Ruote */
+      .wheel {
+        position: absolute;
+        width: 70px;
+        height: 70px;
+        border: 4px solid rgba(255,255,255,0.9);
+        border-radius: 50%;
+        bottom: 0;
+        animation: wheelRotate 1s linear infinite;
+      }
+
+      .wheel-front {
+        right: 0;
+      }
+
+      .wheel-back {
+        left: 0;
+      }
+
+      @keyframes wheelRotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      /* Raggi ruote */
+      .wheel::before,
+      .wheel::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 100%;
+        height: 2px;
+        background: rgba(255,255,255,0.5);
+        transform-origin: center;
+      }
+
+      .wheel::before {
+        transform: translate(-50%, -50%) rotate(0deg);
+      }
+
+      .wheel::after {
+        transform: translate(-50%, -50%) rotate(90deg);
+      }
+
+      /* Telaio */
+      .frame {
+        position: absolute;
+        bottom: 35px;
+        left: 35px;
+        width: 130px;
+        height: 60px;
+      }
+
+      .frame-line {
+        position: absolute;
+        background: rgba(255,255,255,0.8);
+        height: 3px;
+        border-radius: 2px;
+      }
+
+      .frame-top {
+        width: 70px;
+        top: 0;
+        left: 25px;
+        transform: rotate(-5deg);
+      }
+
+      .frame-down {
+        width: 75px;
+        top: 35px;
+        left: 20px;
+        transform: rotate(-25deg);
+      }
+
+      .frame-seat {
+        width: 40px;
+        top: 0;
+        left: 0;
+        transform: rotate(60deg);
+        transform-origin: left center;
+      }
+
+      .frame-front {
+        width: 55px;
+        top: 0;
+        right: 0;
+        transform: rotate(70deg);
+        transform-origin: right center;
+      }
+
+      .frame-chain {
+        width: 45px;
+        bottom: 5px;
+        left: 25px;
+      }
+
+      /* Pedali */
+      .pedals {
+        position: absolute;
+        bottom: 20px;
+        left: 55px;
+        width: 30px;
+        height: 30px;
+        animation: pedalRotate 1s linear infinite;
+      }
+
+      @keyframes pedalRotate {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .pedal {
+        position: absolute;
+        width: 20px;
+        height: 4px;
+        background: rgba(255,200,100,0.9);
+        border-radius: 2px;
+        top: 50%;
+        left: 50%;
+        margin-left: -10px;
+        margin-top: -2px;
+      }
+
+      .pedal-left {
+        transform: rotate(0deg) translateX(15px);
+      }
+
+      .pedal-right {
+        transform: rotate(180deg) translateX(15px);
+      }
+
+      /* Ciclista */
+      .cyclist {
+        position: absolute;
+        bottom: 85px;
+        left: 55px;
+        width: 60px;
+        height: 100px;
+        animation: cyclistBounce 0.5s ease-in-out infinite alternate;
+      }
+
+      @keyframes cyclistBounce {
+        0% { transform: translateY(0); }
+        100% { transform: translateY(3px); }
+      }
+
+      /* Gambe */
+      .leg {
+        position: absolute;
+        width: 6px;
+        background: rgba(255,255,255,0.9);
+        border-radius: 3px;
+        transform-origin: top center;
+      }
+
+      .leg-left {
+        height: 35px;
+        top: 45px;
+        left: 15px;
+        animation: legLeft 1s ease-in-out infinite;
+      }
+
+      .leg-right {
+        height: 35px;
+        top: 45px;
+        left: 35px;
+        animation: legRight 1s ease-in-out infinite;
+      }
+
+      @keyframes legLeft {
+        0%, 100% { transform: rotate(-20deg); }
+        50% { transform: rotate(30deg); }
+      }
+
+      @keyframes legRight {
+        0%, 100% { transform: rotate(30deg); }
+        50% { transform: rotate(-20deg); }
+      }
+
+      /* Corpo */
+      .body {
+        position: absolute;
+        width: 25px;
+        height: 45px;
+        background: linear-gradient(180deg, rgba(102,126,234,0.9) 0%, rgba(118,75,162,0.9) 100%);
+        border-radius: 12px;
+        top: 5px;
+        left: 17px;
+        transform: rotate(-15deg);
+      }
+
+      /* Testa */
+      .head {
+        position: absolute;
+        width: 22px;
+        height: 22px;
+        background: rgba(255,200,150,0.9);
+        border-radius: 50%;
+        top: -5px;
+        left: 12px;
+      }
+
+      /* Casco */
+      .helmet {
+        position: absolute;
+        width: 24px;
+        height: 14px;
+        background: rgba(255,100,100,0.9);
+        border-radius: 12px 12px 0 0;
+        top: -12px;
+        left: 11px;
+      }
+
+      /* Braccia */
+      .arm {
+        position: absolute;
+        width: 5px;
+        height: 30px;
+        background: rgba(255,200,150,0.9);
+        border-radius: 3px;
+        top: 15px;
+        left: 35px;
+        transform: rotate(-30deg);
+        transform-origin: top center;
+      }
+
+      /* Manubrio */
+      .handlebar {
+        position: absolute;
+        width: 35px;
+        height: 4px;
+        background: rgba(255,255,255,0.8);
+        border-radius: 2px;
+        top: 40px;
+        right: 25px;
+        transform: rotate(-10deg);
+      }
+
+      /* Effetto velocità */
+      .speed-lines {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+
+      .speed-line {
+        position: absolute;
+        height: 2px;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent);
+        border-radius: 1px;
+        animation: speedMove 1.5s linear infinite;
+      }
+
+      @keyframes speedMove {
+        0% { transform: translateX(300px); opacity: 0; }
+        20% { opacity: 1; }
+        80% { opacity: 1; }
+        100% { transform: translateX(-100px); opacity: 0; }
+      }
+
+      /* Nuvole */
+      .clouds {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .cloud {
+        position: absolute;
+        background: rgba(255,255,255,0.1);
+        border-radius: 50px;
+        animation: cloudMove 20s linear infinite;
+      }
+
+      @keyframes cloudMove {
+        0% { transform: translateX(-200px); }
+        100% { transform: translateX(calc(100vw + 200px)); }
+      }
+
+      /* Responsive */
+      @media (max-width: 768px) {
+        .cyclist-container {
+          left: 50%;
+          top: 15%;
+          transform: translateX(-50%);
+          width: 250px;
+          height: 250px;
+        }
+
+        .bike {
+          transform: translateX(-50%) scale(0.7);
+        }
+
+        .login-container {
+          align-items: flex-end;
+          justify-content: center;
+          padding: 20px;
+          padding-bottom: 40px;
+        }
+
+        .login-form {
+          max-width: 100%;
+          padding: 30px 25px;
+        }
+
+        .toast-container {
+          left: 20px;
+          right: 20px;
+          top: 10px;
+        }
+
+        .toast {
+          min-width: auto;
+          max-width: none;
+        }
+      }
+
+      @media (max-height: 700px) {
+        .cyclist-container {
+          top: 10%;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+    </style>
   </head>
   <body>
-    <div class="shell">
-      <header class="shell-header">
-        <div class="brand">
-          <div class="brand-mark">MIO</div>
-          <div class="brand-text">
-            <div class="brand-title">Money Organizer</div>
-            <div class="brand-sub">Login</div>
-          </div>
+    <!-- Toast Notifications Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Particelle di sfondo -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Nuvole -->
+    <div class="clouds" id="clouds"></div>
+
+    <!-- Ciclista animato -->
+    <div class="cyclist-container">
+      <!-- Linee di velocità -->
+      <div class="speed-lines" id="speedLines"></div>
+      
+      <!-- Strada -->
+      <div class="road"></div>
+      <div class="road-lines" id="roadLines"></div>
+      
+      <!-- Bicicletta -->
+      <div class="bike">
+        <div class="wheel wheel-back"></div>
+        <div class="wheel wheel-front"></div>
+        
+        <div class="frame">
+          <div class="frame-line frame-top"></div>
+          <div class="frame-line frame-down"></div>
+          <div class="frame-line frame-seat"></div>
+          <div class="frame-line frame-front"></div>
+          <div class="frame-line frame-chain"></div>
         </div>
-      </header>
-
-      <section class="panel login-panel">
-        <h1>Accedi</h1>
-        <p class="muted">Inserisci le credenziali per accedere alla dashboard.</p>
-
-        {% if form.errors %}
-          <div class="warning-box">Credenziali non valide. Riprova.</div>
-        {% endif %}
-
-        <form method="post">
-          {% csrf_token %}
-          <div class="form">
-            <div class="field">
-              <label for="id_username">Username</label>
-              <input id="id_username" name="username" type="text" autocomplete="username" required>
-            </div>
-            <div class="field">
-              <label for="id_password">Password</label>
-              <input id="id_password" name="password" type="password" autocomplete="current-password" required>
-            </div>
-            <div class="actions">
-              <button class="btn primary" type="submit">Login</button>
-              <a class="btn" href="/accounts/signup/">Crea account</a>
-            </div>
-          </div>
-        </form>
-      </section>
+        
+        <div class="pedals">
+          <div class="pedal pedal-left"></div>
+          <div class="pedal pedal-right"></div>
+        </div>
+        
+        <div class="handlebar"></div>
+      </div>
+      
+      <!-- Ciclista -->
+      <div class="cyclist">
+        <div class="leg leg-left"></div>
+        <div class="leg leg-right"></div>
+        <div class="body"></div>
+        <div class="head"></div>
+        <div class="helmet"></div>
+        <div class="arm"></div>
+      </div>
     </div>
-      {% include "core/partials/uikit_body.html" %}
+
+    <!-- Form di login -->
+    <div class="login-container">
+      <div class="login-form" id="loginForm">
+        <div class="logo">
+          <div class="logo-mark">MIO</div>
+          <div class="logo-title">Money Organizer</div>
+        </div>
+
+        <form id="loginFormElement" method="post" action="/accounts/login/">
+          {% csrf_token %}
+          <div class="form-group">
+            <label for="id_username">Username</label>
+            <input 
+              id="id_username" 
+              name="username" 
+              type="text" 
+              autocomplete="username" 
+              placeholder="Inserisci il tuo username"
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label for="id_password">Password</label>
+            <input 
+              id="id_password" 
+              name="password" 
+              type="password" 
+              autocomplete="current-password"
+              placeholder="Inserisci la tua password"
+              required
+            >
+          </div>
+          <button class="btn-login" type="submit" id="submitBtn">
+            <span>Accedi</span>
+          </button>
+          <a class="btn-signup" href="/accounts/signup/">Crea un account</a>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // ============ TOAST NOTIFICATION SYSTEM ============
+      class ToastSystem {
+        constructor() {
+          this.container = document.getElementById('toastContainer');
+        }
+
+        show(message, type = 'info', title = '', duration = 5000) {
+          const icons = {
+            success: '✓',
+            error: '✕',
+            warning: '⚠',
+            info: 'ℹ'
+          };
+
+          const titles = {
+            success: 'Successo!',
+            error: 'Errore',
+            warning: 'Attenzione',
+            info: 'Info'
+          };
+
+          const toast = document.createElement('div');
+          toast.className = `toast ${type}`;
+          toast.innerHTML = `
+            <div class="toast-icon">${icons[type]}</div>
+            <div class="toast-content">
+              <div class="toast-title">${title || titles[type]}</div>
+              <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+          `;
+
+          this.container.appendChild(toast);
+
+          // Auto-remove after duration
+          if (duration > 0) {
+            setTimeout(() => {
+              toast.classList.add('hiding');
+              setTimeout(() => toast.remove(), 300);
+            }, duration);
+          }
+
+          return toast;
+        }
+
+        success(message, title) {
+          return this.show(message, 'success', title);
+        }
+
+        error(message, title) {
+          return this.show(message, 'error', title);
+        }
+
+        warning(message, title) {
+          return this.show(message, 'warning', title);
+        }
+
+        info(message, title) {
+          return this.show(message, 'info', title);
+        }
+      }
+
+      const toast = new ToastSystem();
+
+      // ============ AJAX LOGIN ============
+      const loginForm = document.getElementById('loginFormElement');
+      const submitBtn = document.getElementById('submitBtn');
+      const formContainer = document.getElementById('loginForm');
+      const usernameInput = document.getElementById('id_username');
+      const passwordInput = document.getElementById('id_password');
+
+      // Check for URL error messages (from redirects)
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.has('error')) {
+        toast.error('Credenziali non valide. Riprova.', 'Login fallito');
+      }
+
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        // Validate inputs
+        let hasError = false;
+
+        if (!usernameInput.value.trim()) {
+          usernameInput.classList.add('error');
+          toast.warning('Inserisci il tuo username', 'Campo richiesto');
+          hasError = true;
+        } else {
+          usernameInput.classList.remove('error');
+        }
+
+        if (!passwordInput.value.trim()) {
+          passwordInput.classList.add('error');
+          toast.warning('Inserisci la tua password', 'Campo richiesto');
+          hasError = true;
+        } else {
+          passwordInput.classList.remove('error');
+        }
+
+        if (hasError) return;
+
+        // Show loading state
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<div class="spinner"></div><span>Accesso in corso...</span>';
+        formContainer.classList.add('loading');
+
+        const formData = new FormData(loginForm);
+
+        try {
+          const response = await fetch('/accounts/login/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
+          });
+
+          // Check if we got redirected (success) or if we're still on login page (error)
+          const responseUrl = response.url;
+          const isLoginPage = responseUrl.includes('/accounts/login/');
+
+          if (!isLoginPage) {
+            // Login successful!
+            toast.success('Login effettuato con successo! Reindirizzamento...', 'Benvenuto!');
+
+            // Animate success
+            formContainer.style.transform = 'scale(0.95)';
+            formContainer.style.opacity = '0.7';
+
+            // Redirect after short delay
+            setTimeout(() => {
+              window.location.href = responseUrl || '/';
+            }, 1000);
+          } else {
+            // Login failed - still on login page
+            const html = await response.text();
+
+            // Check for specific error messages in the HTML
+            if (html.includes('Credenziali non valide') || html.includes('error')) {
+              toast.error('Username o password non corretti. Riprova.', 'Login fallito');
+            } else {
+              toast.error('Si è verificato un errore durante il login.', 'Errore');
+            }
+
+            // Shake animation
+            formContainer.style.animation = 'shake 0.5s ease';
+            setTimeout(() => {
+              formContainer.style.animation = '';
+            }, 500);
+
+            // Highlight fields
+            usernameInput.classList.add('error');
+            passwordInput.classList.add('error');
+
+            // Reset button
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span>Accedi</span>';
+            formContainer.classList.remove('loading');
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          toast.error('Errore di connessione. Verifica la tua rete.', 'Errore di rete');
+
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>Accedi</span>';
+          formContainer.classList.remove('loading');
+        }
+      });
+
+      // Remove error styles on input
+      usernameInput.addEventListener('input', () => usernameInput.classList.remove('error'));
+      passwordInput.addEventListener('input', () => passwordInput.classList.remove('error'));
+
+      // Add shake animation
+      const style = document.createElement('style');
+      style.textContent = `
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+          20%, 40%, 60%, 80% { transform: translateX(5px); }
+        }
+      `;
+      document.head.appendChild(style);
+
+      // ============ BACKGROUND ANIMATIONS ============
+      // Genera particelle di sfondo
+      const particlesContainer = document.getElementById('particles');
+      for (let i = 0; i < 50; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.animationDelay = Math.random() * 15 + 's';
+        particle.style.animationDuration = (10 + Math.random() * 10) + 's';
+        particlesContainer.appendChild(particle);
+      }
+
+      // Genera linee stradali
+      const roadLinesContainer = document.getElementById('roadLines');
+      for (let i = 0; i < 4; i++) {
+        const line = document.createElement('div');
+        line.className = 'road-line';
+        line.style.animationDelay = (i * 0.75) + 's';
+        roadLinesContainer.appendChild(line);
+      }
+
+      // Genera linee di velocità
+      const speedLinesContainer = document.getElementById('speedLines');
+      for (let i = 0; i < 8; i++) {
+        const line = document.createElement('div');
+        line.className = 'speed-line';
+        line.style.width = (50 + Math.random() * 100) + 'px';
+        line.style.top = (20 + Math.random() * 80) + '%';
+        line.style.animationDelay = (i * 0.2) + 's';
+        line.style.animationDuration = (1 + Math.random() * 0.5) + 's';
+        speedLinesContainer.appendChild(line);
+      }
+
+      // Genera nuvole
+      const cloudsContainer = document.getElementById('clouds');
+      for (let i = 0; i < 5; i++) {
+        const cloud = document.createElement('div');
+        cloud.className = 'cloud';
+        cloud.style.width = (60 + Math.random() * 100) + 'px';
+        cloud.style.height = (30 + Math.random() * 40) + 'px';
+        cloud.style.top = (5 + Math.random() * 40) + '%';
+        cloud.style.animationDelay = (i * 4) + 's';
+        cloud.style.animationDuration = (15 + Math.random() * 10) + 's';
+        cloudsContainer.appendChild(cloud);
+      }
+
+      // Welcome toast on page load
+      window.addEventListener('load', () => {
+        setTimeout(() => {
+          toast.info('Inserisci le tue credenziali per accedere', 'Benvenuto in MIO');
+        }, 800);
+      });
+    </script>
   </body>
 </html>
