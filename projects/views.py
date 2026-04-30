@@ -21,14 +21,11 @@ from .models import (
     Category,
     Customer,
     Project,
-    ProjectHeroActionsConfig,
     ProjectNote,
     SubProject,
     SubProjectActivity,
 )
 from .storyboard_forms import StoryboardPlannerForm, StoryboardTaskForm
-from core.hero_actions import HERO_ACTIONS
-from core.models import UserHeroActionsConfig
 
 
 STORYBOARD_ACTIVITY_KINDS = {
@@ -50,20 +47,6 @@ def _choice_counts(queryset, field_name, enum_class):
         {"key": member.value, "label": member.label, "total": counts.get(member.value, 0)}
         for member in enum_class
     ]
-
-
-def _resolve_hero_actions(user, module, override_config=None):
-    if override_config and override_config.get("_configured"):
-        override_list = override_config.get(module)
-        if isinstance(override_list, list):
-            return set(override_list)
-    user_config = UserHeroActionsConfig.objects.filter(user=user).first()
-    if user_config and user_config.config.get("_configured"):
-        allowed = user_config.config.get(module, [])
-        if isinstance(allowed, list):
-            return set(allowed)
-    defaults = HERO_ACTIONS.get(module, [])
-    return {action["key"] for action in defaults if action.get("default")}
 
 
 def _as_sort_datetime(value):
@@ -119,25 +102,12 @@ def _is_htmx_request(request):
 def _storyboard_page_context(request, project, note_form=None, task_form=None, planner_form=None, active_form="note"):
     activity_filters = _storyboard_filters_from_request(request)
     activity_context = _build_storyboard_activity_context(request.user, project, activity_filters)
-    override = ProjectHeroActionsConfig.objects.filter(user=request.user, project=project).first()
-    override_config = override.config if override else {}
-    module_key = "projects_storyboard"
-    allowed_actions = _resolve_hero_actions(request.user, module_key, override_config)
-    actions_meta = HERO_ACTIONS.get(module_key, [])
-    hidden_actions = [
-        {"key": action["key"], "label": action["label"]}
-        for action in actions_meta
-        if action["key"] not in allowed_actions
-    ]
     context = {
         "project": project,
         "note_form": note_form if note_form is not None else ProjectNoteForm(),
         "task_form": task_form if task_form is not None else StoryboardTaskForm(prefix="task"),
         "planner_form": planner_form if planner_form is not None else StoryboardPlannerForm(prefix="planner"),
         "active_form": active_form,
-        "hero_actions_override": override_config,
-        "allowed_actions": allowed_actions,
-        "hidden_actions": hidden_actions,
     }
     context.update(activity_context)
     return context
@@ -789,16 +759,6 @@ def project_detail(request):
         .order_by("is_archived", "due_date", "title")
     )
 
-    override = ProjectHeroActionsConfig.objects.filter(user=request.user, project=project).first()
-    override_config = override.config if override else {}
-    module_key = "projects_detail"
-    allowed_actions = _resolve_hero_actions(request.user, module_key, override_config)
-    actions_meta = HERO_ACTIONS.get(module_key, [])
-    hidden_actions = [
-        {"key": action["key"], "label": action["label"]}
-        for action in actions_meta
-        if action["key"] not in allowed_actions
-    ]
     context = {
         "project": project,
         "transactions": tx_qs.select_related("currency").order_by("-date", "-id")[:5],
@@ -821,9 +781,6 @@ def project_detail(request):
         "subproject_counts": _subproject_counts(subproject_qs),
         "planner_quick_form": planner_quick_form,
         "planner_modal_open": planner_modal_open,
-        "hero_actions_override": override_config,
-        "allowed_actions": allowed_actions,
-        "hidden_actions": hidden_actions,
     }
     return render(request, "projects/project_detail.html", context)
 
@@ -1060,40 +1017,7 @@ def project_hero_actions(request):
     if not project_id:
         return redirect("/projects/")
     project = get_object_or_404(Project, id=project_id, owner=request.user)
-    config_obj, _ = ProjectHeroActionsConfig.objects.get_or_create(user=request.user, project=project)
-    modules = {
-        "projects_detail": HERO_ACTIONS.get("projects_detail", []),
-        "projects_storyboard": HERO_ACTIONS.get("projects_storyboard", []),
-    }
-    if request.method == "POST":
-        new_config = {}
-        for module, actions in modules.items():
-            enabled = []
-            for action in actions:
-                key = f"{module}:{action['key']}"
-                if request.POST.get(key) == "on":
-                    enabled.append(action["key"])
-            new_config[module] = enabled
-        new_config["_configured"] = True
-        config_obj.config = new_config
-        config_obj.save(update_fields=["config"])
-        return redirect(f"/projects/view?id={project.id}")
-
-    selected = config_obj.config or {}
-    if selected and not selected.get("_configured"):
-        for module, actions in modules.items():
-            if module not in selected:
-                selected[module] = [a["key"] for a in actions if a.get("default")]
-        selected["_configured"] = True
-        config_obj.config = selected
-        config_obj.save(update_fields=["config"])
-
-    context = {
-        "project": project,
-        "actions": modules,
-        "selected": selected,
-    }
-    return render(request, "projects/hero_actions.html", context)
+    return redirect(f"/projects/view?id={project.id}")
 
 
 @login_required

@@ -300,13 +300,12 @@ def _rights_permissions_for_grant(access_level: str) -> str:
 
 
 def _build_rights_payload() -> str:
-    lines: list[str] = [
-        "[allow-discovery-root]",
-        "user: .+",
-        "collection:",
-        "permissions: R",
-        "",
-    ]
+    """Build rights file with strict account isolation.
+    
+    Each user can only see/discover their own collections.
+    External accounts can only see collections explicitly shared via DavCalendarGrant.
+    """
+    lines: list[str] = []
 
     svc_username = _service_account_username()
     if svc_username:
@@ -320,28 +319,27 @@ def _build_rights_payload() -> str:
             ]
         )
 
-    app_usernames = list(
+    # Get all app users and their principal names
+    app_accounts = list(
         DavAccount.objects.filter(is_active=True).order_by("dav_username").values_list("dav_username", flat=True)
     )
-    for idx, username in enumerate(app_usernames, start=1):
+    
+    # Each app user can only access their OWN principal and calendars
+    for idx, username in enumerate(app_accounts, start=1):
+        # Can only see own principal in root (not others)
         lines.extend(
             [
+                f"[allow-app-root-{idx}]",
+                f"user: ^{re.escape(username)}$",
+                f"collection: ^{re.escape(username)}/?$",
+                "permissions: R",
+                "",
                 f"[allow-app-principal-{idx}]",
                 f"user: ^{re.escape(username)}$",
-                "collection: {user}/?",
+                f"collection: ^{re.escape(username)}/[^/]+/?$",
                 "permissions: RW",
                 "",
                 f"[allow-app-calendars-{idx}]",
-                f"user: ^{re.escape(username)}$",
-                "collection: {user}/[^/]+(?:/.*)?",
-                "permissions: RWrw",
-                "",
-                f"[allow-app-team-principal-{idx}]",
-                f"user: ^{re.escape(username)}$",
-                f"collection: ^{re.escape(username)}/[^/]+/?$",
-                "permissions: R",
-                "",
-                f"[allow-app-team-calendars-{idx}]",
                 f"user: ^{re.escape(username)}$",
                 f"collection: ^{re.escape(username)}/[^/]+/[^/]+(?:/.*)?$",
                 "permissions: RWrw",
@@ -349,42 +347,34 @@ def _build_rights_payload() -> str:
             ]
         )
 
-    app_users_regex = _join_username_regex(app_usernames)
-    if app_users_regex:
-        lines.extend(
-            [
-                "[allow-app-team-principal]",
-                f"user: {app_users_regex}",
-                "collection: team/?",
-                "permissions: R",
-                "",
-                "[allow-app-team-calendars]",
-                f"user: {app_users_regex}",
-                "collection: team/[^/]+(?:/.*)?",
-                "permissions: RWrw",
-                "",
-            ]
-        )
-
-    external_usernames = list(
+    # External accounts - can only access their own collections AND explicitly shared ones
+    external_accounts = list(
         DavExternalAccount.objects.filter(is_active=True).order_by("dav_username").values_list("dav_username", flat=True)
     )
-    for idx, username in enumerate(external_usernames, start=1):
+    
+    for idx, username in enumerate(external_accounts, start=1):
+        # Can only see own principal in root
         lines.extend(
             [
+                f"[allow-ext-root-{idx}]",
+                f"user: ^{re.escape(username)}$",
+                f"collection: ^{re.escape(username)}/?$",
+                "permissions: R",
+                "",
                 f"[allow-ext-principal-{idx}]",
                 f"user: ^{re.escape(username)}$",
-                "collection: {user}/?",
+                f"collection: ^{re.escape(username)}/[^/]+/?$",
                 "permissions: RW",
                 "",
                 f"[allow-ext-calendars-{idx}]",
                 f"user: ^{re.escape(username)}$",
-                "collection: {user}/[^/]+(?:/.*)?",
+                f"collection: ^{re.escape(username)}/[^/]+/[^/]+(?:/.*)?$",
                 "permissions: RWrw",
                 "",
             ]
         )
 
+    # Grants for external accounts - can only access explicitly shared collections
     grants_rows = DavCalendarGrant.objects.filter(
         is_active=True,
         external_account__is_active=True,
@@ -412,6 +402,7 @@ def _build_rights_payload() -> str:
             grants_map[(username_value, path)] = DavCalendarGrant.ACCESS_READONLY
         principals_per_user.setdefault(username_value, set()).add(principal_value)
 
+    # Add permissions for external accounts to access shared principals (for discovery)
     for idx, (username, principals) in enumerate(sorted(principals_per_user.items()), start=1):
         for principal in sorted(principals):
             lines.extend(
@@ -424,6 +415,7 @@ def _build_rights_payload() -> str:
                 ]
             )
 
+    # Add permissions for external accounts to access shared calendars
     for idx, ((username, path), access_level) in enumerate(sorted(grants_map.items()), start=1):
         lines.extend(
             [
@@ -435,6 +427,7 @@ def _build_rights_payload() -> str:
             ]
         )
 
+    # Deny all other access by default (implicit deny)
     return "\n".join(lines).strip() + "\n"
 
 

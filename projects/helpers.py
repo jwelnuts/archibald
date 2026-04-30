@@ -11,12 +11,9 @@ from django.utils.html import strip_tags
 from contacts.models import Contact, ContactPriceList, ContactToolbox
 from contacts.services import ensure_legacy_records_for_contact, upsert_contact
 from finance_hub.models import Quote, VatCode
-from core.hero_actions import HERO_ACTIONS
-from core.models import UserHeroActionsConfig
 from planner.models import PlannerItem
 from projects.models import (
     Project,
-    ProjectHeroActionsConfig,
     ProjectNote,
     SubProject,
     SubProjectActivity,
@@ -43,20 +40,6 @@ def _choice_counts(queryset, field_name, enum_class):
         {"key": member.value, "label": member.label, "total": counts.get(member.value, 0)}
         for member in enum_class
     ]
-
-
-def _resolve_hero_actions(user, module, override_config=None):
-    if override_config and override_config.get("_configured"):
-        override_list = override_config.get(module)
-        if isinstance(override_list, list):
-            return set(override_list)
-    user_config = UserHeroActionsConfig.objects.filter(user=user).first()
-    if user_config and user_config.config.get("_configured"):
-        allowed = user_config.config.get(module, [])
-        if isinstance(allowed, list):
-            return set(allowed)
-    defaults = HERO_ACTIONS.get(module, [])
-    return {action["key"] for action in defaults if action.get("default")}
 
 
 def _as_sort_datetime(value):
@@ -112,24 +95,14 @@ def _is_htmx_request(request):
 def _storyboard_page_context(request, project, note_form=None, task_form=None, planner_form=None, active_form="note"):
     activity_filters = _storyboard_filters_from_request(request)
     activity_context = _build_storyboard_activity_context(request.user, project, activity_filters)
-    override = ProjectHeroActionsConfig.objects.filter(user=request.user, project=project).first()
-    override_config = override.config if override else {}
-    module_key = "projects_storyboard"
-    allowed_actions = _resolve_hero_actions(request.user, module_key, override_config)
-    actions_meta = HERO_ACTIONS.get(module_key, [])
-    hidden_actions = [
-        {"key": action["key"], "label": action["label"]}
-        for action in actions_meta
-        if action["key"] not in allowed_actions
-    ]
     # Calculate Health and Progress
     subprojects = project.subprojects.filter(is_archived=False)
     total_progress = 0
     if subprojects.exists():
         total_progress = sum(sp.completion_percent for sp in subprojects) // subprojects.count()
-    
+
     overdue_tasks = Task.objects.filter(owner=request.user, project=project, status=Task.Status.TODO, due_date__lt=timezone.now().date()).count()
-    
+
     health = "good"
     if overdue_tasks > 0:
         health = "warning"
@@ -142,9 +115,6 @@ def _storyboard_page_context(request, project, note_form=None, task_form=None, p
         "task_form": task_form,
         "planner_form": planner_form,
         "active_form": active_form,
-        "hero_actions_override": override_config,
-        "allowed_actions": allowed_actions,
-        "hidden_actions": hidden_actions,
         "project_progress": total_progress,
         "project_health": health,
         "overdue_tasks": overdue_tasks,
