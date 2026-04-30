@@ -7,7 +7,7 @@ from typing import Optional
 from .models import MemoryStockItem
 
 
-URL_PATTERN = re.compile(r"https?://[^\s<>()\[\]{}"']+", re.IGNORECASE)
+URL_PATTERN = re.compile(r'https?://[^\s<>()\[\]{}"\']+', re.IGNORECASE)
 ACTION_TOKEN_PATTERN = re.compile(
     r"\[\s*(memory|todo|transaction|reminder)\s*\]|#(memory|todo|transaction|reminder|tx)\b|action\s*:\s*[a-z0-9_.-]+",
     re.IGNORECASE,
