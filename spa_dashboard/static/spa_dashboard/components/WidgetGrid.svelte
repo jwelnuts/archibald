@@ -11,15 +11,16 @@
 
 <style>
   .widget-grid {
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
-    gap: 1rem;
+    columns: 3;
+    column-gap: 1rem;
     padding: 1rem;
   }
 
-  @media (max-width: 768px) {
-    .widget-grid {
-      grid-template-columns: 1fr;
-    }
+  @media (max-width: 1024px) {
+    .widget-grid { columns: 2; }
+  }
+
+  @media (max-width: 600px) {
+    .widget-grid { columns: 1; }
   }
 </style>

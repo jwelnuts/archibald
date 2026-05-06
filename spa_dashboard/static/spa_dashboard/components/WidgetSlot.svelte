@@ -17,10 +17,7 @@
   let WidgetComponent = $derived(WIDGET_COMPONENTS[slot.type] ?? WidgetPlaceholder)
 </script>
 
-<div
-  class="widget-slot"
-  style="grid-column: span {slot.col_span}; grid-row: span {slot.row_span};"
->
+<div class="widget-slot">
   {#if status === 'loading'}
     <div class="widget-skeleton"></div>
   {:else if status === 'error'}
@@ -32,7 +29,8 @@
 
 <style>
   .widget-slot {
-    min-height: 120px;
+    break-inside: avoid;
+    margin-bottom: 1rem;
   }
 
   .widget-skeleton {
