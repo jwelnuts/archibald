@@ -103,12 +103,13 @@
   {#if upcoming.length > 0}
     <ul class="subs-list">
       {#each upcoming as item}
-        <li class="subs-row" class:is-paying={paying === item}>
-          <span class="subs-date">{item.date}</span>
+        {@const isOverdue = item.due_date_raw && item.due_date_raw < new Date().toISOString().slice(0,10)}
+        <li class="subs-row" class:is-paying={paying === item} class:is-overdue={isOverdue}>
+          <span class="subs-date" class:date-overdue={isOverdue}>{item.date}</span>
           <span class="subs-name">{item.name}</span>
           <span class="subs-amount">{item.amount} {item.currency}</span>
           {#if paying !== item}
-            <button class="btn-pay" onclick={() => openPay(item)}>Pagato</button>
+            <button class="btn-pay" class:btn-pay-overdue={isOverdue} onclick={() => openPay(item)}>Pagato</button>
           {:else}
             <button class="btn-cancel" onclick={closePay}>✕</button>
           {/if}
@@ -260,6 +261,11 @@
     transition: background 0.12s, color 0.12s;
   }
   .btn-pay:hover { background: #f59e0b; color: #fff; border-color: #f59e0b; }
+
+  .is-overdue { background: rgba(239, 68, 68, 0.04); }
+  .date-overdue { color: #ef4444; }
+  .btn-pay-overdue { border-color: #fca5a5; color: #dc2626; }
+  .btn-pay-overdue:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
 
   .btn-cancel {
     font-size: 0.75rem;

@@ -29,7 +29,6 @@ def _fetch_subscriptions(user, slot):
             Subscription.objects.filter(
                 owner=user,
                 status=Subscription.Status.ACTIVE,
-                next_due_date__gte=today,
             )
             .select_related("currency")
             .order_by("next_due_date")[:5]
