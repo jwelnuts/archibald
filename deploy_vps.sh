@@ -155,29 +155,33 @@ if [[ "${STASHED}" -eq 1 ]]; then
 fi
 
 echo "==> Commit attivo: $(git rev-parse --short HEAD)"
+
+# Usa solo docker-compose.yml (ignora docker-compose.override.yml che e' solo per dev locale)
+DC="docker compose -f docker-compose.yml"
+
 echo "==> Verifica configurazione compose"
-docker compose config -q
+${DC} config -q
 
 echo "==> Rebuild e restart container"
-docker compose up -d --build --wait --wait-timeout 360
+${DC} up -d --build --wait --wait-timeout 360
 
 echo "==> Stato servizi"
-docker compose ps
+${DC} ps
 
 if [[ "${SKIP_CHECKS}" -eq 0 ]]; then
   echo "==> Django migrate"
-  docker compose exec -T web python manage.py migrate --noinput
+  ${DC} exec -T web python manage.py migrate --noinput
 
   echo "==> Django check"
-  docker compose exec -T web python manage.py check
+  ${DC} exec -T web python manage.py check
 
   echo "==> Sync utenti Radicale"
-  docker compose exec -T web python manage.py sync_radicale_users
+  ${DC} exec -T web python manage.py sync_radicale_users
 fi
 
 if [[ "${RESET_LAYOUT}" -eq 1 ]]; then
   echo "==> Reset layout SPA nel DB"
-  docker compose exec -T web python manage.py shell -c "
+  ${DC} exec -T web python manage.py shell -c "
 from core.models import UserNavConfig
 updated = 0
 for nc in UserNavConfig.objects.all():
@@ -190,15 +194,15 @@ print(f'Layout SPA resettato per {updated} utenti')
 fi
 
 echo "==> Log recenti web"
-docker compose logs --tail=80 web || true
+${DC} logs --tail=80 web || true
 
 echo "==> Log recenti mail_worker"
-docker compose logs --tail=80 mail_worker || true
+${DC} logs --tail=80 mail_worker || true
 
 echo "==> Log recenti caddy"
-docker compose logs --tail=80 caddy || true
+${DC} logs --tail=80 caddy || true
 
 echo "==> Log recenti radicale"
-docker compose logs --tail=80 radicale || true
+${DC} logs --tail=80 radicale || true
 
 echo "==> Deploy completato"
