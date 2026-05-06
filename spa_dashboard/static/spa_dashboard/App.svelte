@@ -8,8 +8,8 @@
 
   let pollInterval
 
-  async function loadWidgetData(slot) {
-    widgetStatus[slot.id] = 'loading'
+  async function loadWidgetData(slot, { silent = false } = {}) {
+    if (!silent) widgetStatus[slot.id] = 'loading'
     try {
       const result = await fetchWidgetData(slot.id)
       widgetData[slot.id] = result.data
@@ -21,7 +21,7 @@
 
   async function refreshAll() {
     for (const slot of layout) {
-      await loadWidgetData(slot)
+      await loadWidgetData(slot, { silent: true })
     }
   }
 

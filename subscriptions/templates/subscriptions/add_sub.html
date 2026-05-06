@@ -63,8 +63,9 @@
         <input id="id_project_name" name="project_name" type="text" placeholder="Nome nuovo progetto" value="{{ form.project_name.value|default:'' }}" style="display:none;">
       </div>
       <div class="field">
-        <label for="id_account">Account</label>
-        {{ form.account }}
+        <label for="id_account_choice">Account</label>
+        {{ form.account_choice }}
+        <input id="id_account_name" name="account_name" type="text" placeholder="Nome nuovo account" value="{{ form.account_name.value|default:'' }}" style="display:none;">
       </div>
       <div class="field">
         <label for="id_amount">Importo</label>
@@ -135,6 +136,7 @@
         bindSelect("id_payee_choice", "id_payee_name");
         bindSelect("id_category_choice", "id_category_name");
         bindSelect("id_project_choice", "id_project_name");
+        bindSelect("id_account_choice", "id_account_name");
       })();
     </script>
   </section>

@@ -761,8 +761,31 @@ def _is_htmx(request) -> bool:
     return request.headers.get("HX-Request") == "true"
 
 
+_MONTHS_IT = {
+    1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile",
+    5: "Maggio", 6: "Giugno", 7: "Luglio", 8: "Agosto",
+    9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre",
+}
+
+
+def _group_by_month(items, date_fn):
+    groups = []
+    current_key = None
+    for item in items:
+        d = date_fn(item)
+        key = (d.year, d.month) if d else (9999, 1)
+        if key != current_key:
+            current_key = key
+            label = f"{_MONTHS_IT[d.month]} {d.year}" if d else "Senza data"
+            groups.append({"month_label": label, "items": []})
+        groups[-1]["items"].append(item)
+    return groups
+
+
 def _dashboard_context(user):
     today = timezone.now().date()
+    horizon = today + timedelta(days=90)
+
     upcoming = list(
         SubscriptionOccurrence.objects.filter(
             owner=user,
@@ -770,14 +793,18 @@ def _dashboard_context(user):
             state=SubscriptionOccurrence.State.PLANNED,
         )
         .select_related("subscription", "currency")
-        .order_by("due_date")[:8]
+        .order_by("due_date")[:30]
     )
     using_occurrences = True
     if not upcoming:
         upcoming = list(
-            Subscription.objects.filter(owner=user, status=Subscription.Status.ACTIVE)
+            Subscription.objects.filter(
+                owner=user,
+                status=Subscription.Status.ACTIVE,
+                next_due_date__gte=today,
+            )
             .select_related("currency")
-            .order_by("next_due_date")[:8]
+            .order_by("next_due_date")[:30]
         )
         using_occurrences = False
 
@@ -789,7 +816,7 @@ def _dashboard_context(user):
             state=SubscriptionOccurrence.State.PLANNED,
         )
         .select_related("subscription", "currency")
-        .order_by("due_date")[:8]
+        .order_by("due_date")[:30]
     )
     if not overdue:
         overdue = list(
@@ -799,18 +826,21 @@ def _dashboard_context(user):
                 status=Subscription.Status.ACTIVE,
             )
             .select_related("currency")
-            .order_by("next_due_date")[:8]
+            .order_by("next_due_date")[:30]
         )
+
+    if using_occurrences:
+        upcoming_groups = _group_by_month(upcoming, lambda x: x.due_date)
+        overdue_groups = _group_by_month(overdue, lambda x: x.due_date)
+    else:
+        upcoming_groups = _group_by_month(upcoming, lambda x: x.next_due_date)
+        overdue_groups = _group_by_month(overdue, lambda x: x.next_due_date)
 
     total_due = None
     next_due_date = None
     if upcoming:
-        if using_occurrences:
-            total_due = sum([item.amount for item in upcoming])
-            next_due_date = upcoming[0].due_date
-        else:
-            total_due = sum([item.amount for item in upcoming])
-            next_due_date = upcoming[0].next_due_date
+        total_due = sum(item.amount for item in upcoming)
+        next_due_date = upcoming[0].due_date if using_occurrences else upcoming[0].next_due_date
 
     counts = {
         "active": Subscription.objects.filter(owner=user, status=Subscription.Status.ACTIVE).count(),
@@ -821,6 +851,8 @@ def _dashboard_context(user):
     return {
         "upcoming": upcoming,
         "overdue": overdue,
+        "upcoming_groups": upcoming_groups,
+        "overdue_groups": overdue_groups,
         "counts": counts,
         "total_due": total_due,
         "next_due_date": next_due_date,

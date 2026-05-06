@@ -439,13 +439,14 @@ class SubscriptionForm(forms.ModelForm):
     category_name = forms.CharField(label="Categoria", max_length=80, required=False)
     project_choice = forms.ChoiceField(label="Progetto", required=False)
     project_name = forms.CharField(label="Nuovo progetto", max_length=120, required=False)
+    account_choice = forms.ChoiceField(label="Account", required=True)
+    account_name = forms.CharField(label="Nuovo account", max_length=120, required=False)
 
     class Meta:
         model = Subscription
         fields = (
             "name",
             "project",
-            "account",
             "currency",
             "amount",
             "start_date",
@@ -470,6 +471,7 @@ class SubscriptionForm(forms.ModelForm):
         self._owner = owner
         self._category_qs = Category.objects.none()
         self._project_qs = Project.objects.none()
+        self._account_qs = Account.objects.none()
         if owner is not None:
             payees = Payee.objects.filter(owner=owner).order_by("name")
             self.fields["payee_choice"].choices = [("", "Seleziona...")] + [
@@ -485,12 +487,17 @@ class SubscriptionForm(forms.ModelForm):
             self.fields["project_choice"].choices = [("", "Nessuno")] + [
                 (str(p.id), p.name) for p in self._project_qs
             ] + [("__new__", "+Nuovo")]
-            self.fields["account"].queryset = self.fields["account"].queryset.filter(owner=owner)
+            accounts = Account.objects.filter(owner=owner, is_active=True).select_related("currency").order_by("name")
+            self._account_qs = accounts
+            self.fields["account_choice"].choices = [("", "Seleziona...")] + [
+                (str(a.id), str(a)) for a in accounts
+            ] + [("__new__", "+ Nuovo Account")]
             self.fields["tags"].queryset = self.fields["tags"].queryset.filter(owner=owner)
         else:
             self.fields["payee_choice"].choices = [("", "Seleziona..."), ("__new__", "+ Nuovo Beneficiario")]
             self.fields["category_choice"].choices = [("", "Seleziona..."), ("__new__", "+ Nuova Categoria")]
             self.fields["project_choice"].choices = [("", "Nessuno"), ("__new__", "+Nuovo")]
+            self.fields["account_choice"].choices = [("", "Seleziona..."), ("__new__", "+ Nuovo Account")]
         currency, _ = Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
         self._default_currency = currency
         self.fields["currency"].queryset = Currency.objects.filter(code="EUR")
@@ -509,6 +516,8 @@ class SubscriptionForm(forms.ModelForm):
             initial_project = self.initial.get("project")
             if initial_project:
                 self.fields["project_choice"].initial = str(getattr(initial_project, "id", initial_project))
+        if self.instance and self.instance.pk and self.instance.account_id:
+            self.fields["account_choice"].initial = str(self.instance.account_id)
 
     def clean_name(self):
         name = (self.cleaned_data.get("name") or "").strip()
@@ -544,6 +553,19 @@ class SubscriptionForm(forms.ModelForm):
                 self.add_error("project_choice", "Progetto non valido.")
             elif self._owner is not None and not self._project_qs.filter(id=project_choice).exists():
                 self.add_error("project_choice", "Progetto non trovato.")
+
+        account_choice = (cleaned.get("account_choice") or "").strip()
+        account_name_val = (cleaned.get("account_name") or "").strip()
+        if not account_choice:
+            self.add_error("account_choice", "Seleziona o crea un account.")
+        elif account_choice == "__new__":
+            if not account_name_val:
+                self.add_error("account_name", "Inserisci il nome del nuovo account.")
+        elif not account_choice.isdigit():
+            self.add_error("account_choice", "Account non valido.")
+        elif self._owner is not None and not self._account_qs.filter(id=account_choice).exists():
+            self.add_error("account_choice", "Account non trovato.")
+
         return cleaned
 
     def _resolve_project(self):
@@ -584,6 +606,21 @@ class SubscriptionForm(forms.ModelForm):
             instance.category = category_obj
         else:
             instance.category = None
+        account_choice = (self.cleaned_data.get("account_choice") or "").strip()
+        account_name_val = (self.cleaned_data.get("account_name") or "").strip()
+        if account_choice == "__new__" and account_name_val and self._owner is not None:
+            eur, _ = Currency.objects.get_or_create(code="EUR", defaults={"name": "Euro"})
+            account_obj, _ = Account.objects.get_or_create(
+                owner=self._owner,
+                name=account_name_val,
+                defaults={"currency": eur, "kind": Account.Kind.BANK},
+            )
+            instance.account = account_obj
+        elif account_choice and account_choice.isdigit():
+            try:
+                instance.account = self._account_qs.get(id=account_choice)
+            except Account.DoesNotExist:
+                pass
         if commit:
             instance.save()
             self.save_m2m()

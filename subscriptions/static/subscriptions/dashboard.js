@@ -67,46 +67,39 @@ withStimulusModule(({ Controller }) => {
       notify("Operazione non riuscita. Riprova.", "danger");
     }
 
+    _modalEl() {
+      return this.modalElement || document.getElementById("subs-pay-modal");
+    }
+
+    _q(sel) {
+      const m = this._modalEl();
+      return m ? m.querySelector(sel) : null;
+    }
+
     openPayModal(trigger) {
-      if (!this.hasPayFormTarget) {
-        return;
-      }
-      if (this.hasOccurrenceInputTarget) {
-        this.occurrenceInputTarget.value = trigger.dataset.occurrenceId || "";
-      }
-      if (this.hasSubscriptionInputTarget) {
-        this.subscriptionInputTarget.value = trigger.dataset.subscriptionId || "";
-      }
-      if (this.hasDueDateInputTarget) {
-        this.dueDateInputTarget.value = trigger.dataset.dueDate || "";
-      }
-      if (this.hasNameInputTarget) {
-        this.nameInputTarget.value = trigger.dataset.subscriptionName || "";
-      }
-      if (this.hasDateInputTarget) {
-        this.dateInputTarget.value = trigger.dataset.dueDate || "";
-      }
-      if (this.hasAmountInputTarget) {
-        this.amountInputTarget.value = trigger.dataset.amount || "";
-      }
-      if (window.UIkit && this.modalElement) {
-        window.UIkit.modal(this.modalElement).show();
-      }
+      const modal = this._modalEl();
+      if (!modal) return;
+
+      const set = (sel, val) => { const el = modal.querySelector(sel); if (el) el.value = val; };
+      set('[name="occurrence_id"]',   trigger.dataset.occurrenceId   || "");
+      set('[name="subscription_id"]', trigger.dataset.subscriptionId || "");
+      set('[name="due_date"]',        trigger.dataset.dueDate        || "");
+      set('[data-subs-dashboard-target="nameInput"]',   trigger.dataset.subscriptionName || "");
+      set('[data-subs-dashboard-target="dateInput"]',   trigger.dataset.dueDate          || "");
+      set('[data-subs-dashboard-target="amountInput"]', trigger.dataset.amount           || "");
+
+      if (window.UIkit) window.UIkit.modal(modal).show();
     }
 
     resetForm() {
-      if (this.hasPayFormTarget) {
-        this.payFormTarget.reset();
-      }
-      if (this.hasOccurrenceInputTarget) {
-        this.occurrenceInputTarget.value = "";
-      }
-      if (this.hasSubscriptionInputTarget) {
-        this.subscriptionInputTarget.value = "";
-      }
-      if (this.hasDueDateInputTarget) {
-        this.dueDateInputTarget.value = "";
-      }
+      const modal = this._modalEl();
+      if (!modal) return;
+      const form = modal.querySelector("form");
+      if (form) form.reset();
+      ['[name="occurrence_id"]', '[name="subscription_id"]', '[name="due_date"]'].forEach(sel => {
+        const el = modal.querySelector(sel);
+        if (el) el.value = "";
+      });
     }
 
     hideModal() {

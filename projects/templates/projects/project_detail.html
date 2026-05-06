@@ -261,7 +261,7 @@
           <h2 class="uk-margin-remove">Abbonamenti collegati</h2>
           <a
             class="uk-button uk-button-primary uk-button-small"
-            href="/subs/api/add?project={{ project.id }}&next=/projects/view?id={{ project.id }}"
+            href="{% url 'subs-add' %}?project={{ project.id }}&next=/projects/view?id={{ project.id }}"
           >
             Aggiungi abbonamento
           </a>
@@ -293,7 +293,7 @@
                         <button class="uk-button uk-button-primary uk-button-small" type="submit">Riattiva</button>
                       {% endif %}
                     </form>
-                    <a class="uk-button uk-button-default uk-button-small" href="/subs/api/update?id={{ sub.id }}">Modifica</a>
+                    <a class="uk-button uk-button-default uk-button-small" href="{% url 'subs-update' %}?id={{ sub.id }}">Modifica</a>
                   </div>
                 </div>
               </li>
