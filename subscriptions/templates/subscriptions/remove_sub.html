@@ -22,7 +22,7 @@
           {% for item in subs %}
             <li>
               <span>{{ item.name }}</span>
-              <a class="btn" href="/subs/api/remove?id={{ item.id }}">Rimuovi</a>
+              <a class="btn" href="{% url 'subs-remove' %}?id={{ item.id }}">Rimuovi</a>
             </li>
           {% endfor %}
         </ul>

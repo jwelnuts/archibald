@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from core import views as core_views
+from finance_hub import views as finance_hub_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
@@ -24,6 +25,7 @@ urlpatterns = [
 
     path('', include('spa_dashboard.urls')),
     path('', include('core.urls')),
+    path('subs/', finance_hub_views.subscriptions_dashboard),
     path('subs/', include('finance_hub.urls')),
     path('projects/', include('projects.urls')),
     path('todo/', include('todo.urls')),

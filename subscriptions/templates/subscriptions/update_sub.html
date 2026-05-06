@@ -140,7 +140,7 @@
           {% for item in subs %}
             <li>
               <span>{{ item.name }}</span>
-              <a class="btn" href="/subs/api/update?id={{ item.id }}">Modifica</a>
+              <a class="btn" href="{% url 'subs-update' %}?id={{ item.id }}">Modifica</a>
             </li>
           {% endfor %}
         </ul>
