@@ -33,13 +33,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Healthcheck disabilitato temporaneamente - il container funziona ma la healthcheck fallisce
-    # healthcheck:
-    #   test: ["CMD-SHELL", "curl -f http://localhost:8000/ || exit 1"]
-    #   interval: 30s
-    #   timeout: 15s
-    #   retries: 20
-    #   start_period: 180s
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket; s=socket.create_connection(('localhost',8000),5); s.close()\""]
+      interval: 15s
+      timeout: 10s
+      retries: 15
+      start_period: 120s
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media

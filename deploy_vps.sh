@@ -10,6 +10,7 @@ Opzioni:
   --autostash       Se il working tree e sporco, crea stash temporaneo e lo ripristina
   --force-sync      Allinea forzatamente il repo a origin/<branch> e pulisce file untracked (tranne .env)
   --skip-checks     Salta i check post-deploy (manage.py check + sync_radicale_users)
+  --reset-layout    Resetta il layout SPA salvato nel DB (utile dopo aggiornamenti ai widget)
   -h, --help        Mostra questo aiuto
 EOF
 }
@@ -17,6 +18,7 @@ EOF
 AUTOSTASH=0
 FORCE_SYNC=0
 SKIP_CHECKS=0
+RESET_LAYOUT=0
 BRANCH=""
 while [[ "$#" -gt 0 ]]; do
   case "$1" in
@@ -36,6 +38,9 @@ while [[ "$#" -gt 0 ]]; do
       ;;
     --skip-checks)
       SKIP_CHECKS=1
+      ;;
+    --reset-layout)
+      RESET_LAYOUT=1
       ;;
     -h|--help)
       usage
@@ -168,6 +173,20 @@ if [[ "${SKIP_CHECKS}" -eq 0 ]]; then
 
   echo "==> Sync utenti Radicale"
   docker compose exec -T web python manage.py sync_radicale_users
+fi
+
+if [[ "${RESET_LAYOUT}" -eq 1 ]]; then
+  echo "==> Reset layout SPA nel DB"
+  docker compose exec -T web python manage.py shell -c "
+from core.models import UserNavConfig
+updated = 0
+for nc in UserNavConfig.objects.all():
+    if isinstance(nc.config, dict) and 'spa_layout' in nc.config:
+        del nc.config['spa_layout']
+        nc.save(update_fields=['config'])
+        updated += 1
+print(f'Layout SPA resettato per {updated} utenti')
+"
 fi
 
 echo "==> Log recenti web"
