@@ -13,7 +13,7 @@ from .widget_data import fetch_widget_data
 
 DEFAULT_LAYOUT = [
     {"id": "w1", "type": "subscriptions", "col_span": 4, "row_span": 2},
-    {"id": "w2", "type": "placeholder", "col_span": 4, "row_span": 1},
+    {"id": "w2", "type": "projects", "col_span": 4, "row_span": 2},
     {"id": "w3", "type": "placeholder", "col_span": 4, "row_span": 1},
 ]
 

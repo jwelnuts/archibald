@@ -83,9 +83,50 @@ def _fetch_subscriptions(user, slot):
     }
 
 
+def _fetch_projects(user, slot):
+    from projects.models import Project, SubProject
+
+    active_projects = list(
+        Project.objects.filter(owner=user, is_archived=False)
+        .prefetch_related("subprojects")
+        .order_by("name")[:8]
+    )
+
+    projects_serialized = []
+    for project in active_projects:
+        subs = project.subprojects.filter(is_archived=False)
+        counts = {
+            "total": subs.count(),
+            "in_progress": subs.filter(status=SubProject.Status.IN_PROGRESS).count(),
+            "blocked": subs.filter(status=SubProject.Status.BLOCKED).count(),
+            "done": subs.filter(status=SubProject.Status.DONE).count(),
+            "planned": subs.filter(status=SubProject.Status.PLANNED).count(),
+        }
+        next_due = (
+            subs.exclude(due_date=None)
+            .exclude(status=SubProject.Status.DONE)
+            .order_by("due_date")
+            .values_list("due_date", flat=True)
+            .first()
+        )
+        projects_serialized.append({
+            "id": project.id,
+            "name": project.name,
+            "counts": counts,
+            "next_due": next_due.strftime("%d/%m/%Y") if next_due else None,
+            "url": f"/projects/view?id={project.id}",
+        })
+
+    return {
+        "total": len(active_projects),
+        "projects": projects_serialized,
+    }
+
+
 WIDGET_FETCHERS = {
     "placeholder": lambda user, slot: {},
     "subscriptions": _fetch_subscriptions,
+    "projects": _fetch_projects,
 }
 
 

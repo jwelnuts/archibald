@@ -2,10 +2,12 @@
   import { widgetData, widgetStatus } from '../lib/store.svelte.js'
   import WidgetPlaceholder from './WidgetPlaceholder.svelte'
   import SubscriptionsWidget from './SubscriptionsWidget.svelte'
+  import ProjectsWidget from './ProjectsWidget.svelte'
 
   const WIDGET_COMPONENTS = {
     placeholder: WidgetPlaceholder,
     subscriptions: SubscriptionsWidget,
+    projects: ProjectsWidget,
   }
 
   let { slot } = $props()
