@@ -34,178 +34,187 @@
 
   <section class="uk-margin storyboard-layout">
     <div class="uk-grid-large" uk-grid>
-      <div class="uk-width-2-5@l uk-width-1-3@xl">
+      <div class="uk-width-1-3@l">
         <article class="uk-card uk-card-default uk-card-small uk-card-body storyboard-panel storyboard-panel-forms">
           <div class="storyboard-panel-head">
             <h2 class="uk-margin-remove">Nuove voci</h2>
-            <p class="uk-text-meta uk-margin-small-top">Inserimento rapido in modalità operativa.</p>
+            <p class="uk-text-meta uk-margin-small-top">Inserimento rapido direttamente nel progetto.</p>
           </div>
 
-          <ul class="uk-accordion storyboard-accordion" uk-accordion="active: false; collapsible: true">
-            <li class="{% if active_form == "command" %}uk-open{% endif %}">
-              <a class="uk-accordion-title" href="#">Comando rapido</a>
-              <div class="uk-accordion-content">
-                <form class="uk-form-stacked storyboard-form" method="post" action="" novalidate>
-                  {% csrf_token %}
-                  <input type="hidden" name="form_kind" value="command">
-                  {% if command_error %}
-                    <div class="uk-alert-danger">{{ command_error }}</div>
-                  {% endif %}
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="id_command">Testo comando</label>
-                    <textarea class="uk-textarea" id="id_command" name="command" rows="3" placeholder="!Task urgente @domani #high&#10;?Reminder meeting&#10;/note Appunto libero">{{ command_text|default:"" }}</textarea>
+          <ul class="storyboard-tabs" uk-tab="connect: #storyboard-forms; animation: uk-animation-fade" data-projects-storyboard-target="tabNav">
+            <li class="storyboard-tab-item"><a href="#">Appunto</a></li>
+            <li class="storyboard-tab-item"><a href="#">Task</a></li>
+            <li class="storyboard-tab-item"><a href="#">Planner</a></li>
+            <li class="storyboard-tab-item"><a href="#">Comando</a></li>
+          </ul>
+
+          <ul id="storyboard-forms" class="uk-switcher storyboard-switcher">
+            <li>
+              <form
+                class="uk-form-stacked storyboard-form"
+                method="post"
+                action="/projects/storyboard?id={{ project.id }}"
+                enctype="multipart/form-data"
+                novalidate
+                hx-post="/projects/storyboard?id={{ project.id }}"
+                hx-target="#storyboard-content"
+                hx-swap="outerHTML"
+                hx-encoding="multipart/form-data"
+                data-projects-storyboard-target="noteForm"
+              >
+                {% csrf_token %}
+                <input type="hidden" name="form_kind" value="note">
+                <input type="hidden" name="kind" value="{{ activity_filters.kind }}">
+                <input type="hidden" name="q" value="{{ activity_filters.q }}">
+                <input type="hidden" name="date_from" value="{{ activity_filters.date_from_raw }}">
+                <input type="hidden" name="date_to" value="{{ activity_filters.date_to_raw }}">
+                {% if note_form.errors and active_form == "note" %}
+                  <div class="uk-alert-danger">
+                    Correggi i campi del form appunto.
+                    {{ note_form.non_field_errors }}
+                    {{ note_form.content.errors }}
+                    {{ note_form.attachment.errors }}
                   </div>
-                  <div class="uk-text-meta uk-margin-small">
-                    <strong>!title</strong> o <strong>/task</strong> = task · <strong>?title</strong> o <strong>/planner</strong> = reminder · <strong>/note</strong> o testo = appunto. Usa <strong>@data</strong> (oggi/domani/YYYY-MM-DD) e <strong>#priorita</strong> (low/medium/high/critical).</div>
-                  <div class="uk-margin-small-top">
-                    <button class="uk-button uk-button-primary uk-button-small" type="submit">Esegui comando</button>
+                {% endif %}
+                <div class="uk-margin-small">
+                  <div id="note-editor-toolbar">
+                    <span class="ql-formats">
+                      <button class="ql-bold"></button>
+                      <button class="ql-italic"></button>
+                      <button class="ql-underline"></button>
+                    </span>
+                    <span class="ql-formats">
+                      <button class="ql-list" value="ordered"></button>
+                      <button class="ql-list" value="bullet"></button>
+                    </span>
+                    <span class="ql-formats">
+                      <button class="ql-link"></button>
+                    </span>
                   </div>
-                </form>
-              </div>
-            </li>
-            <li class="{% if active_form == "note" %}uk-open{% endif %}">
-              <a class="uk-accordion-title" href="#">Nuovo appunto progetto</a>
-              <div class="uk-accordion-content">
-                <form
-                  class="uk-form-stacked storyboard-form"
-                  method="post"
-                  action="/projects/storyboard?id={{ project.id }}"
-                  enctype="multipart/form-data"
-                  novalidate
-                  hx-post="/projects/storyboard?id={{ project.id }}"
-                  hx-target="#storyboard-content"
-                  hx-swap="outerHTML"
-                  hx-encoding="multipart/form-data"
-                  data-projects-storyboard-target="noteForm"
-                >
-                  {% csrf_token %}
-                  <input type="hidden" name="form_kind" value="note">
-                  <input type="hidden" name="kind" value="{{ activity_filters.kind }}">
-                  <input type="hidden" name="q" value="{{ activity_filters.q }}">
-                  <input type="hidden" name="date_from" value="{{ activity_filters.date_from_raw }}">
-                  <input type="hidden" name="date_to" value="{{ activity_filters.date_to_raw }}">
-                  {% if note_form.errors %}
-                    <div class="uk-alert-danger">
-                      Correggi i campi del form appunto.
-                      {{ note_form.non_field_errors }}
-                      {{ note_form.content.errors }}
-                      {{ note_form.attachment.errors }}
-                    </div>
-                  {% endif %}
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label">Editor</label>
-                    <div id="note-editor-toolbar">
-                      <span class="ql-formats">
-                        <button class="ql-bold"></button>
-                        <button class="ql-italic"></button>
-                        <button class="ql-underline"></button>
-                      </span>
-                      <span class="ql-formats">
-                        <button class="ql-list" value="ordered"></button>
-                        <button class="ql-list" value="bullet"></button>
-                      </span>
-                      <span class="ql-formats">
-                        <button class="ql-link"></button>
-                      </span>
-                    </div>
-                    <div id="note-editor" class="rich-editor" data-projects-storyboard-target="noteEditor"></div>
-                  </div>
-                  <div class="uk-margin-small" style="display:none;">
-                    <label class="uk-form-label" for="id_content">Nuovo appunto</label>
-                    {{ note_form.content }}
-                  </div>
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="id_attachment">Allega file</label>
-                    {{ note_form.attachment }}
-                  </div>
-                  <div class="uk-margin-small-top">
-                    <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi appunto</button>
-                  </div>
-                </form>
-              </div>
+                  <div id="note-editor" class="rich-editor" data-projects-storyboard-target="noteEditor"></div>
+                </div>
+                <div style="display:none;">
+                  {{ note_form.content }}
+                </div>
+                <div class="uk-margin-small">
+                  <label class="uk-form-label" for="id_attachment">Allega file</label>
+                  {{ note_form.attachment }}
+                </div>
+                <div class="uk-margin-small-top">
+                  <button class="uk-button uk-button-primary uk-button-small" type="submit">
+                    <span class="htmx-indicator" uk-spinner="ratio: .5"></span>
+                    <span class="btn-text">Aggiungi appunto</span>
+                  </button>
+                </div>
+              </form>
             </li>
 
-            <li class="{% if active_form == "task" %}uk-open{% endif %}">
-              <a class="uk-accordion-title" href="#">Nuovo task collegato al progetto</a>
-              <div class="uk-accordion-content">
-                <form class="uk-form-stacked storyboard-form" method="post" action="" novalidate>
-                  {% csrf_token %}
-                  <input type="hidden" name="form_kind" value="task">
-                  {% if task_form.errors %}
-                    <div class="uk-alert-danger">
-                      Correggi i campi del form task.
-                      {{ task_form.non_field_errors }}
-                      {{ task_form.title.errors }}
-                      {{ task_form.due_date.errors }}
-                      {{ task_form.status.errors }}
-                      {{ task_form.priority.errors }}
-                      {{ task_form.note.errors }}
-                    </div>
-                  {% endif %}
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ task_form.title.id_for_label }}">Titolo</label>
-                    {{ task_form.title }}
+            <li>
+              <form class="uk-form-stacked storyboard-form" method="post" action="" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="form_kind" value="task">
+                {% if task_form.errors and active_form == "task" %}
+                  <div class="uk-alert-danger">
+                    Correggi i campi del form task.
+                    {{ task_form.non_field_errors }}
+                    {{ task_form.title.errors }}
+                    {{ task_form.due_date.errors }}
+                    {{ task_form.status.errors }}
+                    {{ task_form.priority.errors }}
+                    {{ task_form.note.errors }}
                   </div>
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ task_form.due_date.id_for_label }}">Scadenza</label>
-                    {{ task_form.due_date }}
-                  </div>
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ task_form.status.id_for_label }}">Status</label>
-                    {{ task_form.status }}
-                  </div>
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ task_form.priority.id_for_label }}">Priorita</label>
-                    {{ task_form.priority }}
-                  </div>
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ task_form.note.id_for_label }}">Note</label>
-                    {{ task_form.note }}
-                  </div>
-                  <div class="uk-margin-small-top">
-                    <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi task</button>
-                  </div>
-                </form>
-              </div>
+                {% endif %}
+                <div class="uk-margin-small">
+                  <label class="uk-form-label" for="{{ task_form.title.id_for_label }}">Titolo</label>
+                  {{ task_form.title }}
+                </div>
+                <div class="uk-margin-small">
+                  <label class="uk-form-label" for="{{ task_form.due_date.id_for_label }}">Scadenza</label>
+                  {{ task_form.due_date }}
+                </div>
+                <div class="uk-margin-small">
+                  <label class="uk-form-label" for="{{ task_form.status.id_for_label }}">Status</label>
+                  {{ task_form.status }}
+                </div>
+                <div class="uk-margin-small">
+                  <label class="uk-form-label" for="{{ task_form.priority.id_for_label }}">Priorita</label>
+                  {{ task_form.priority }}
+                </div>
+                <div class="uk-margin-small">
+                  <label class="uk-form-label" for="{{ task_form.note.id_for_label }}">Note</label>
+                  {{ task_form.note }}
+                </div>
+                <div class="uk-margin-small-top">
+                  <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi task</button>
+                </div>
+              </form>
             </li>
 
-            <li class="{% if active_form == "planner" %}uk-open{% endif %}">
-              <a class="uk-accordion-title" href="#">Nuovo reminder planner</a>
-              <div class="uk-accordion-content">
-                <form class="uk-form-stacked storyboard-form" method="post" action="" novalidate>
-                  {% csrf_token %}
-                  <input type="hidden" name="form_kind" value="planner">
-                  {% if planner_form.errors %}
-                    <div class="uk-alert-danger">
-                      Correggi i campi del form planner.
-                      {{ planner_form.non_field_errors }}
-                      {{ planner_form.title.errors }}
-                      {{ planner_form.due_date.errors }}
-                      {{ planner_form.status.errors }}
-                      {{ planner_form.note.errors }}
-                    </div>
-                  {% endif %}
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ planner_form.title.id_for_label }}">Titolo</label>
-                    {{ planner_form.title }}
+            <li>
+              <form class="uk-form-stacked storyboard-form" method="post" action="" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="form_kind" value="planner">
+                {% if planner_form.errors and active_form == "planner" %}
+                  <div class="uk-alert-danger">
+                    Correggi i campi del form planner.
+                    {{ planner_form.non_field_errors }}
+                    {{ planner_form.title.errors }}
+                    {{ planner_form.due_date.errors }}
+                    {{ planner_form.status.errors }}
+                    {{ planner_form.note.errors }}
                   </div>
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ planner_form.due_date.id_for_label }}">Scadenza</label>
-                    {{ planner_form.due_date }}
-                  </div>
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ planner_form.status.id_for_label }}">Status</label>
-                    {{ planner_form.status }}
-                  </div>
-                  <div class="uk-margin-small">
-                    <label class="uk-form-label" for="{{ planner_form.note.id_for_label }}">Note</label>
-                    {{ planner_form.note }}
-                  </div>
-                  <div class="uk-margin-small-top">
-                    <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi planner</button>
-                  </div>
-                </form>
-              </div>
+                {% endif %}
+                <div class="uk-margin-small">
+                  <label class="uk-form-label" for="{{ planner_form.title.id_for_label }}">Titolo</label>
+                  {{ planner_form.title }}
+                </div>
+                <div class="uk-margin-small">
+                  <label class="uk-form-label" for="{{ planner_form.due_date.id_for_label }}">Scadenza</label>
+                  {{ planner_form.due_date }}
+                </div>
+                <div class="uk-margin-small">
+                  <label class="uk-form-label" for="{{ planner_form.status.id_for_label }}">Status</label>
+                  {{ planner_form.status }}
+                </div>
+                <div class="uk-margin-small">
+                  <label class="uk-form-label" for="{{ planner_form.note.id_for_label }}">Note</label>
+                  {{ planner_form.note }}
+                </div>
+                <div class="uk-margin-small-top">
+                  <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi planner</button>
+                </div>
+              </form>
+            </li>
+
+            <li>
+              <form class="uk-form-stacked storyboard-form" method="post" action="" novalidate>
+                {% csrf_token %}
+                <input type="hidden" name="form_kind" value="command">
+                {% if command_error %}
+                  <div class="uk-alert-danger">{{ command_error }}</div>
+                {% endif %}
+                <div class="uk-margin-small">
+                  <textarea
+                    class="uk-textarea storyboard-command-input"
+                    id="id_command"
+                    name="command"
+                    rows="4"
+                    placeholder="Scrivi qui...&#10;&#10;!titolo @domani #high → task&#10;?titolo @2026-12-31 → planner&#10;testo libero → appunto"
+                    data-projects-storyboard-target="commandInput"
+                    data-action="keydown.meta+enter->projects-storyboard#submitCommand"
+                  >{{ command_text|default:"" }}</textarea>
+                </div>
+                <div class="uk-text-meta storyboard-command-help">
+                  <strong>!title</strong> o <strong>/task</strong> = task ·
+                  <strong>?title</strong> o <strong>/planner</strong> = planner ·
+                  <strong>@data</strong> (oggi/domani/lunedi/YYYY-MM-DD) ·
+                  <strong>#priorita</strong> (low/medium/high/critical)
+                </div>
+                <div class="uk-margin-small-top">
+                  <button class="uk-button uk-button-primary uk-button-small" type="submit">Esegui comando</button>
+                  <span class="uk-text-meta uk-margin-small-left">Ctrl+Invio</span>
+                </div>
+              </form>
             </li>
           </ul>
         </article>

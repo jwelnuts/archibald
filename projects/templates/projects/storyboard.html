@@ -1,7 +1,7 @@
 {% extends "projects/base.html" %}
 {% load static %}
 
-{% block title %}MIO - Storyboard{% endblock %}
+{% block title %}MIO - Storyboard · {{ project.name }}{% endblock %}
 
 {% block extra_head %}
   <link rel="stylesheet" href="{% static 'core/vendor/quill/quill.snow.css' %}">
@@ -14,50 +14,36 @@
         <p class="uk-text-meta storyboard-kicker uk-margin-remove">Project storyboard</p>
         <h1 class="uk-margin-small-top uk-margin-remove-bottom">Storyboard · {{ project.name }}</h1>
         <p class="uk-text-meta uk-margin-small-top">
-          Hub operativo per appunti, task e reminder collegati al progetto.
+          Hub operativo: appunti, task e planner collegati al progetto.
         </p>
-        <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top">
-          {% if project.is_archived %}
-            <span class="uk-label uk-label-warning">Archiviato</span>
-          {% else %}
-            <span class="uk-label uk-label-success">Attivo</span>
-          {% endif %}
-          <span class="uk-label">Cliente: {% if project.customer %}{{ project.customer.name }}{% else %}-{% endif %}</span>
-          <span class="uk-label">Categoria: {% if project.category %}{{ project.category.name }}{% else %}-{% endif %}</span>
-        </div>
       </div>
 
-      <div class="uk-flex uk-flex-wrap uk-gap-small">
-        {% if "back" in allowed_actions %}
-          <a class="uk-button uk-button-default uk-button-small" href="/projects/view?id={{ project.id }}" data-action="back">
-            <span uk-icon="icon: arrow-left"></span>
-            <span class="uk-margin-small-left">Torna al progetto</span>
-          </a>
+      <div class="uk-flex uk-flex-wrap uk-gap-small uk-flex-middle">
+        {% if project.is_archived %}
+          <span class="uk-label uk-label-warning">Archiviato</span>
+        {% else %}
+          <span class="uk-label uk-label-success">Attivo</span>
         {% endif %}
-        {% if "edit" in allowed_actions %}
-          <a class="uk-button uk-button-primary uk-button-small" href="/projects/api/update?id={{ project.id }}" data-action="edit">
-            <span uk-icon="icon: file-edit"></span>
-            <span class="uk-margin-small-left">Modifica progetto</span>
-          </a>
-        {% endif %}
-        {% if hidden_actions %}
-          <div class="uk-inline">
-            <button class="uk-button uk-button-default uk-button-small" type="button">
-              Azioni nascoste ({{ hidden_actions|length }})
-            </button>
-            <div uk-dropdown="mode: click; pos: bottom-right">
-              <ul class="uk-nav uk-dropdown-nav">
-                {% for action in hidden_actions %}
-                  {% if action.key == "back" %}
-                    <li><a href="/projects/view?id={{ project.id }}">{{ action.label }}</a></li>
-                  {% elif action.key == "edit" %}
-                    <li><a href="/projects/api/update?id={{ project.id }}">{{ action.label }}</a></li>
-                  {% endif %}
-                {% endfor %}
-              </ul>
-            </div>
-          </div>
-        {% endif %}
+
+        <div class="storyboard-health-pill {% if project_health == 'danger' %}storyboard-health-danger{% elif project_health == 'warning' %}storyboard-health-warning{% else %}storyboard-health-good{% endif %}" title="Health score: {{ project_progress }}% progresso, {{ overdue_tasks }} task in ritardo">
+          <span uk-icon="icon: {% if project_health == 'danger' %}warning{% elif project_health == 'warning' %}info{% else %}check{% endif %}; ratio: .8"></span>
+          <span>{{ project_progress }}%</span>
+        </div>
+
+        <div class="uk-flex uk-flex-wrap uk-gap-small">
+          {% if "back" in allowed_actions %}
+            <a class="uk-button uk-button-default uk-button-small" href="/projects/view?id={{ project.id }}" data-action="back">
+              <span uk-icon="icon: arrow-left"></span>
+              <span class="uk-margin-small-left">Progetto</span>
+            </a>
+          {% endif %}
+          {% if "edit" in allowed_actions %}
+            <a class="uk-button uk-button-primary uk-button-small" href="/projects/api/update?id={{ project.id }}" data-action="edit">
+              <span uk-icon="icon: file-edit"></span>
+              <span class="uk-margin-small-left">Modifica</span>
+            </a>
+          {% endif %}
+        </div>
       </div>
     </div>
 

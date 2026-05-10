@@ -2,11 +2,12 @@ import { registerStimulusController, withStimulusModule } from "./stimulus.js";
 
 withStimulusModule(({ Controller }) => {
   class ProjectsStoryboardController extends Controller {
-    static targets = ["filterForm", "kindSelect", "noteEditor", "noteForm"];
+    static targets = ["filterForm", "noteEditor", "noteForm", "commandInput", "tabNav"];
 
     connect() {
       this.searchTimer = null;
       this.initializeNoteEditor();
+      this.initializeTabs();
     }
 
     disconnect() {
@@ -15,6 +16,21 @@ withStimulusModule(({ Controller }) => {
       }
       if (this.noteFormHandler && this.hasNoteFormTarget) {
         this.noteFormTarget.removeEventListener("submit", this.noteFormHandler);
+      }
+    }
+
+    initializeTabs() {
+      if (!this.hasTabNavTarget) return;
+
+      const activeFromServer = this.tabNavTarget.dataset.activeForm;
+      if (activeFromServer) {
+        const idxMap = { note: 0, task: 1, planner: 2, command: 3 };
+        const idx = idxMap[activeFromServer] || 0;
+
+        if (window.UIkit && window.UIkit.tab) {
+          const tabEl = this.tabNavTarget.closest("[uk-tab]") || this.tabNavTarget;
+          window.UIkit.tab(tabEl).show(idx);
+        }
       }
     }
 
@@ -42,22 +58,34 @@ withStimulusModule(({ Controller }) => {
 
     setKind(event) {
       event.preventDefault();
-      if (!this.hasKindSelectTarget) {
+      if (!this.hasFilterFormTarget) {
         return;
       }
       const kind = event.currentTarget?.dataset?.kind || "all";
-      this.kindSelectTarget.value = kind;
+      const kindInput = this.filterFormTarget.querySelector("input[name='kind']");
+      if (kindInput) {
+        kindInput.value = kind;
+      }
       this.submitFilters();
     }
 
     resetFilters(event) {
       event.preventDefault();
-      if (!this.hasFilterFormTarget || !this.hasKindSelectTarget) {
+      if (!this.hasFilterFormTarget) {
         return;
       }
       this.filterFormTarget.reset();
-      this.kindSelectTarget.value = "all";
       this.submitFilters();
+    }
+
+    submitCommand(event) {
+      if (event && event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        const form = this.hasCommandInputTarget ? this.commandInputTarget.closest("form") : null;
+        if (form) {
+          form.submit();
+        }
+      }
     }
 
     initializeNoteEditor() {
@@ -88,7 +116,6 @@ withStimulusModule(({ Controller }) => {
         if (!text) {
           event.preventDefault();
           this.noteEditorTarget.focus();
-          window.alert("Inserisci un appunto prima di salvare.");
           return;
         }
         textarea.value = html;
