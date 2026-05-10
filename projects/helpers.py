@@ -402,3 +402,50 @@ def _project_quote_price_lists(user, customer):
             }
         )
     return contact, payload
+
+
+HERO_ACTIONS_MODULES = {
+    "generali": [
+        {"key": "back", "label": "Torna ai progetti", "default": True},
+        {"key": "edit", "label": "Modifica progetto", "default": True},
+        {"key": "config", "label": "Configura tasti", "default": False},
+    ],
+    "operativi": [
+        {"key": "expense", "label": "Inserisci spesa", "default": True},
+        {"key": "income", "label": "Inserisci guadagno", "default": True},
+        {"key": "quote", "label": "Nuovo preventivo", "default": True},
+        {"key": "planner", "label": "Aggiungi promemoria", "default": True},
+        {"key": "routine_item", "label": "Aggiungi routine", "default": False},
+        {"key": "storyboard", "label": "Storyboard", "default": True},
+    ],
+}
+
+
+def _hero_actions_for_project(user, project):
+    from .models import ProjectHeroActionsConfig
+
+    config_obj = ProjectHeroActionsConfig.objects.filter(user=user, project=project).first()
+    selected = {}
+    if config_obj and config_obj.config:
+        selected = config_obj.config
+
+    allowed = []
+    hidden = []
+    for module, actions in HERO_ACTIONS_MODULES.items():
+        enabled_keys = selected.get(module)
+        for action in actions:
+            is_enabled = False
+            if enabled_keys is not None:
+                is_enabled = action["key"] in enabled_keys
+            else:
+                is_enabled = action.get("default", False)
+            if is_enabled:
+                allowed.append(action["key"])
+            else:
+                hidden.append({**action, "module": module})
+
+    return {
+        "allowed_actions": allowed,
+        "hidden_actions": hidden,
+        "hero_actions_override": selected if config_obj else None,
+    }

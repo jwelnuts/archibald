@@ -42,6 +42,27 @@
           </div>
 
           <ul class="uk-accordion storyboard-accordion" uk-accordion="active: false; collapsible: true">
+            <li class="{% if active_form == "command" %}uk-open{% endif %}">
+              <a class="uk-accordion-title" href="#">Comando rapido</a>
+              <div class="uk-accordion-content">
+                <form class="uk-form-stacked storyboard-form" method="post" action="" novalidate>
+                  {% csrf_token %}
+                  <input type="hidden" name="form_kind" value="command">
+                  {% if command_error %}
+                    <div class="uk-alert-danger">{{ command_error }}</div>
+                  {% endif %}
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="id_command">Testo comando</label>
+                    <textarea class="uk-textarea" id="id_command" name="command" rows="3" placeholder="!Task urgente @domani #high&#10;?Reminder meeting&#10;/note Appunto libero">{{ command_text|default:"" }}</textarea>
+                  </div>
+                  <div class="uk-text-meta uk-margin-small">
+                    <strong>!title</strong> o <strong>/task</strong> = task · <strong>?title</strong> o <strong>/planner</strong> = reminder · <strong>/note</strong> o testo = appunto. Usa <strong>@data</strong> (oggi/domani/YYYY-MM-DD) e <strong>#priorita</strong> (low/medium/high/critical).</div>
+                  <div class="uk-margin-small-top">
+                    <button class="uk-button uk-button-primary uk-button-small" type="submit">Esegui comando</button>
+                  </div>
+                </form>
+              </div>
+            </li>
             <li class="{% if active_form == "note" %}uk-open{% endif %}">
               <a class="uk-accordion-title" href="#">Nuovo appunto progetto</a>
               <div class="uk-accordion-content">

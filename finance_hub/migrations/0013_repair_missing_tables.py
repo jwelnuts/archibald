@@ -3,8 +3,10 @@ Repair migration: creates finance_hub_tag, finance_hub_subscription,
 finance_hub_subscriptionoccurrence, and finance_hub_subscription_tags tables
 that were skipped via --fake in migrations 0010-0012.
 Also migrates data from subscriptions_* tables and fixes FK references.
+
+NOTE: This migration is PostgreSQL-specific. On other backends it is a no-op.
 """
-from django.db import migrations
+from django.db import migrations, connection
 
 
 FORWARD_SQL = """
@@ -278,7 +280,16 @@ SELECT setval(
 );
 """
 
-REVERSE_SQL = migrations.RunSQL.noop
+
+def _run_repair_sql(apps, schema_editor):
+    if connection.vendor != "postgresql":
+        return
+    with connection.cursor() as cursor:
+        cursor.execute(FORWARD_SQL)
+
+
+def _reverse_repair_sql(apps, schema_editor):
+    pass
 
 
 class Migration(migrations.Migration):
@@ -288,5 +299,5 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RunSQL(FORWARD_SQL, REVERSE_SQL),
+        migrations.RunPython(_run_repair_sql, _reverse_repair_sql),
     ]

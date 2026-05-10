@@ -48,21 +48,19 @@ class StoryboardCommandParser:
 
     def _handle_task(self, content):
         # Pattern: title [@ date] [# priority] [notes]
-        # Priority: low, medium, high, critical
+        # Priority: low, medium, high
         priority_map = {
             "low": Task.Priority.LOW,
             "medium": Task.Priority.MEDIUM,
             "high": Task.Priority.HIGH,
-            "critical": Task.Priority.CRITICAL,
             "1": Task.Priority.LOW,
             "2": Task.Priority.MEDIUM,
             "3": Task.Priority.HIGH,
-            "4": Task.Priority.CRITICAL,
         }
-        
+
         due_date, content = self._extract_date(content)
         priority, content = self._extract_priority(content, priority_map, Task.Priority.MEDIUM)
-        
+
         # Split title and notes by newline or double space
         parts = re.split(r'\n|\s\s+', content, 1)
         title = parts[0].strip()
@@ -75,7 +73,7 @@ class StoryboardCommandParser:
             due_date=due_date,
             priority=priority,
             note=note,
-            status=Task.Status.TODO
+            status=Task.Status.OPEN,
         )
 
     def _handle_planner(self, content):

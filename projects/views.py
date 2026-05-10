@@ -26,6 +26,8 @@ from .models import (
     SubProjectActivity,
 )
 from .storyboard_forms import StoryboardPlannerForm, StoryboardTaskForm
+from .storyboard_commands import StoryboardCommandParser
+from .helpers import HERO_ACTIONS_MODULES, _hero_actions_for_project
 
 
 STORYBOARD_ACTIVITY_KINDS = {
@@ -782,6 +784,7 @@ def project_detail(request):
         "planner_quick_form": planner_quick_form,
         "planner_modal_open": planner_modal_open,
     }
+    context.update(_hero_actions_for_project(request.user, project))
     return render(request, "projects/project_detail.html", context)
 
 
@@ -880,6 +883,16 @@ def subproject_detail(request):
             if status in allowed_status and activity.status != status:
                 activity.status = status
                 activity.save(update_fields=["status", "updated_at"])
+            if _is_htmx_request(request):
+                return render(
+                    request,
+                    "projects/partials/subproject_activity_row.html",
+                    {
+                        "activity": activity,
+                        "subproject": subproject,
+                        "activity_status_choices": SubProjectActivity.Status.choices,
+                    },
+                )
             return redirect(f"/projects/subprojects/view?id={subproject.id}")
         elif action == "remove_activity":
             activity_id = request.POST.get("activity_id")
@@ -890,6 +903,9 @@ def subproject_detail(request):
                 subproject=subproject,
             )
             activity.delete()
+            if _is_htmx_request(request):
+                from django.http import HttpResponse
+                return HttpResponse("")
             return redirect(f"/projects/subprojects/view?id={subproject.id}")
 
     activities_qs = SubProjectActivity.objects.filter(owner=request.user, subproject=subproject).order_by("ordering", "id")
@@ -913,9 +929,11 @@ def project_storyboard(request):
     project = get_object_or_404(Project, id=project_id, owner=request.user)
 
     active_form = "note"
+    command_error = None
+    command_text = ""
     if request.method == "POST":
         form_kind = (request.POST.get("form_kind") or "note").strip().lower()
-        active_form = form_kind if form_kind in {"note", "task", "planner"} else "note"
+        active_form = form_kind if form_kind in {"note", "task", "planner", "command"} else "note"
 
         if active_form == "task":
             note_form = ProjectNoteForm()
@@ -937,6 +955,19 @@ def project_storyboard(request):
                 planner_item.project = project
                 planner_item.save()
                 return redirect(f"/projects/storyboard?id={project.id}")
+        elif active_form == "command":
+            note_form = ProjectNoteForm()
+            task_form = StoryboardTaskForm(prefix="task")
+            planner_form = StoryboardPlannerForm(prefix="planner")
+            command_text = (request.POST.get("command") or "").strip()
+            if command_text:
+                parser = StoryboardCommandParser(request.user, project)
+                result = parser.parse_and_create(command_text)
+                if result is not None:
+                    return redirect(f"/projects/storyboard?id={project.id}")
+                command_error = "Comando non riconosciuto o impossibile da eseguire."
+            else:
+                command_error = "Inserisci un testo di comando."
         else:
             task_form = StoryboardTaskForm(prefix="task")
             planner_form = StoryboardPlannerForm(prefix="planner")
@@ -969,6 +1000,9 @@ def project_storyboard(request):
         planner_form=planner_form,
         active_form=active_form,
     )
+    context.update(_hero_actions_for_project(request.user, project))
+    context["command_error"] = command_error
+    context["command_text"] = command_text
     return render(request, "projects/storyboard.html", context)
 
 
@@ -1013,11 +1047,39 @@ def project_storyboard_delete_note(request):
 
 @login_required
 def project_hero_actions(request):
+    from .models import ProjectHeroActionsConfig
+
     project_id = request.GET.get("id")
     if not project_id:
         return redirect("/projects/")
     project = get_object_or_404(Project, id=project_id, owner=request.user)
-    return redirect(f"/projects/view?id={project.id}")
+
+    if request.method == "POST":
+        selected = {}
+        for module in HERO_ACTIONS_MODULES:
+            selected[module] = []
+            for action in HERO_ACTIONS_MODULES[module]:
+                key = f"{module}:{action['key']}"
+                if request.POST.get(key):
+                    selected[module].append(action["key"])
+        config_obj, _ = ProjectHeroActionsConfig.objects.get_or_create(
+            user=request.user, project=project
+        )
+        config_obj.config = selected
+        config_obj.save(update_fields=["config"])
+        return redirect(f"/projects/view?id={project.id}")
+
+    config_obj = ProjectHeroActionsConfig.objects.filter(user=request.user, project=project).first()
+    selected = config_obj.config if config_obj else {}
+    return render(
+        request,
+        "projects/hero_actions.html",
+        {
+            "project": project,
+            "actions": HERO_ACTIONS_MODULES,
+            "selected": selected,
+        },
+    )
 
 
 @login_required

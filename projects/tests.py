@@ -704,3 +704,145 @@ class ProjectQuoteBuilderTests(TestCase):
         self.assertContains(response, "Preventivi collegati")
         self.assertContains(response, quote.code)
         self.assertContains(response, f"/finance/quotes/update?id={quote.id}")
+
+
+class ProjectHeroActionsTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="hero_user", password="test1234")
+        self.client.login(username="hero_user", password="test1234")
+        self.project = Project.objects.create(owner=self.user, name="Hero Project")
+
+    def test_project_detail_includes_default_hero_actions(self):
+        response = self.client.get(f"/projects/view?id={self.project.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("allowed_actions", response.context)
+        self.assertIn("edit", response.context["allowed_actions"])
+        self.assertIn("storyboard", response.context["allowed_actions"])
+        self.assertContains(response, "Modifica")
+        self.assertContains(response, "Storyboard")
+
+    def test_project_storyboard_includes_default_hero_actions(self):
+        response = self.client.get(f"/projects/storyboard?id={self.project.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("allowed_actions", response.context)
+        self.assertIn("edit", response.context["allowed_actions"])
+
+    def test_hero_actions_page_loads_form(self):
+        response = self.client.get(f"/projects/hero-actions?id={self.project.id}")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Hero actions")
+        self.assertContains(response, "Modifica progetto")
+
+    def test_hero_actions_post_saves_config(self):
+        response = self.client.post(
+            f"/projects/hero-actions?id={self.project.id}",
+            {
+                "generali:back": "on",
+                "generali:edit": "on",
+                "operativi:expense": "on",
+                "operativi:storyboard": "on",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, f"/projects/view?id={self.project.id}")
+
+        detail_response = self.client.get(f"/projects/view?id={self.project.id}")
+        self.assertNotIn("quote", detail_response.context["allowed_actions"])
+        self.assertIn("storyboard", detail_response.context["allowed_actions"])
+
+
+class ProjectStoryboardCommandTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="cmd_user", password="test1234")
+        self.client.login(username="cmd_user", password="test1234")
+        self.project = Project.objects.create(owner=self.user, name="Command Project")
+
+    def test_storyboard_command_creates_task(self):
+        response = self.client.post(
+            f"/projects/storyboard?id={self.project.id}",
+            {
+                "form_kind": "command",
+                "command": "!Task di prova @domani #high",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        task = Task.objects.get(owner=self.user, title="Task di prova")
+        self.assertEqual(task.project_id, self.project.id)
+        self.assertEqual(task.priority, Task.Priority.HIGH)
+
+    def test_storyboard_command_creates_planner(self):
+        response = self.client.post(
+            f"/projects/storyboard?id={self.project.id}",
+            {
+                "form_kind": "command",
+                "command": "?Reminder di prova",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        item = PlannerItem.objects.get(owner=self.user, title="Reminder di prova")
+        self.assertEqual(item.project_id, self.project.id)
+
+    def test_storyboard_command_creates_note(self):
+        response = self.client.post(
+            f"/projects/storyboard?id={self.project.id}",
+            {
+                "form_kind": "command",
+                "command": "/note Nota di prova",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(ProjectNote.objects.filter(owner=self.user, project=self.project).count(), 1)
+
+    def test_storyboard_command_shows_error_on_invalid(self):
+        response = self.client.post(
+            f"/projects/storyboard?id={self.project.id}",
+            {
+                "form_kind": "command",
+                "command": "",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Inserisci un testo di comando")
+
+
+class SubProjectActivityHtmxTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_user(username="htmx_user", password="test1234")
+        self.client.login(username="htmx_user", password="test1234")
+        self.project = Project.objects.create(owner=self.user, name="HTMX Project")
+        self.subproject = SubProject.objects.create(
+            owner=self.user, project=self.project, title="HTMX Sub"
+        )
+        self.activity = SubProjectActivity.objects.create(
+            owner=self.user,
+            subproject=self.subproject,
+            title="Activity HTMX",
+            status=SubProjectActivity.Status.TODO,
+        )
+
+    def test_update_activity_status_via_htmx_returns_partial(self):
+        response = self.client.post(
+            f"/projects/subprojects/view?id={self.subproject.id}",
+            {
+                "action": "update_activity_status",
+                "activity_id": str(self.activity.id),
+                "status": SubProjectActivity.Status.DONE,
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "activity-row-" + str(self.activity.id))
+        self.activity.refresh_from_db()
+        self.assertEqual(self.activity.status, SubProjectActivity.Status.DONE)
+
+    def test_remove_activity_via_htmx_returns_empty(self):
+        response = self.client.post(
+            f"/projects/subprojects/view?id={self.subproject.id}",
+            {
+                "action": "remove_activity",
+                "activity_id": str(self.activity.id),
+            },
+            HTTP_HX_REQUEST="true",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(SubProjectActivity.objects.filter(id=self.activity.id).exists())

@@ -1,6 +1,7 @@
 from django.urls import path
 
 from . import views
+from . import timeline_views
 
 urlpatterns = [
     path('', views.dashboard, name='projects-dashboard'),
@@ -21,4 +22,7 @@ urlpatterns = [
     path('categories/add', views.add_category, name='projects-categories-add'),
     path('categories/remove', views.remove_category, name='projects-categories-remove'),
     path('categories/update', views.update_category, name='projects-categories-update'),
+
+    path('timeline', timeline_views.timeline_dashboard, name='projects-timeline'),
+    path('timeline/data', timeline_views.timeline_data, name='projects-timeline-data'),
 ]

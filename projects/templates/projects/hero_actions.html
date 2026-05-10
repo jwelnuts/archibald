@@ -4,30 +4,38 @@
 {% block title %}MIO - Hero Actions{% endblock %}
 
 {% block content %}
-  <section class="panel">
-    <h1>Hero actions · {{ project.name }}</h1>
-    <p class="muted">Seleziona i tasti visibili per questo progetto.</p>
+  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
+    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
+      <div>
+        <p class="uk-text-meta uk-margin-remove">Project actions</p>
+        <h1 class="uk-margin-small-top uk-margin-remove-bottom">Hero actions · {{ project.name }}</h1>
+        <p class="uk-text-meta uk-margin-small-top">Seleziona i tasti visibili per questo progetto.</p>
+      </div>
+      <a class="uk-button uk-button-default uk-button-small" href="/projects/view?id={{ project.id }}">Torna al progetto</a>
+    </div>
 
-    <form class="form" method="post" action="">
+    <form class="uk-form-stacked uk-margin-top" method="post" action="">
       {% csrf_token %}
       {% for module, actions_list in actions.items %}
-        <div class="form-section">
-          <div class="stat-label">{{ module|title }}</div>
-          <div class="form-row">
+        <div class="uk-margin">
+          <h3 class="uk-h5 uk-text-bold uk-margin-small-bottom">{{ module|title }}</h3>
+          <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-3@m" uk-grid>
             {% for action in actions_list %}
               {% with enabled_list=selected|dict_get:module %}
-                <label class="toggle">
-                  <input type="checkbox" name="{{ module }}:{{ action.key }}" {% if enabled_list %}{% if action.key in enabled_list %}checked{% endif %}{% else %}{% if action.default %}checked{% endif %}{% endif %}>
-                  <span>{{ action.label }}</span>
-                </label>
+                <div>
+                  <label class="uk-flex uk-flex-middle uk-gap-small">
+                    <input class="uk-checkbox" type="checkbox" name="{{ module }}:{{ action.key }}" {% if enabled_list %}{% if action.key in enabled_list %}checked{% endif %}{% else %}{% if action.default %}checked{% endif %}{% endif %}>
+                    <span>{{ action.label }}</span>
+                  </label>
+                </div>
               {% endwith %}
             {% endfor %}
           </div>
         </div>
       {% endfor %}
-      <div class="actions">
-        <button class="btn primary" type="submit">Salva</button>
-        <a class="btn" href="/projects/view?id={{ project.id }}">Annulla</a>
+      <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-top">
+        <button class="uk-button uk-button-primary uk-button-small" type="submit">Salva</button>
+        <a class="uk-button uk-button-default uk-button-small" href="/projects/view?id={{ project.id }}">Annulla</a>
       </div>
     </form>
   </section>

@@ -10,13 +10,18 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameIndex(
-            model_name='account',
-            new_name='core_accoun_owner_i_94d652_idx',
-            old_name='subscriptio_owner_i_cdb99f_idx',
-        ),
-        migrations.AlterModelTable(
-            name='account',
-            table='core_accounts',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.RenameIndex(
+                    model_name='account',
+                    new_name='core_accoun_owner_i_94d652_idx',
+                    old_name='subscriptio_owner_i_cdb99f_idx',
+                ),
+                migrations.AlterModelTable(
+                    name='account',
+                    table='core_accounts',
+                ),
+            ],
+            database_operations=[],
         ),
     ]

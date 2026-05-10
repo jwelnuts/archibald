@@ -10,8 +10,13 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterModelTable(
-            name='currency',
-            table='common_currency',
+        migrations.SeparateDatabaseAndState(
+            state_operations=[
+                migrations.AlterModelTable(
+                    name='currency',
+                    table='common_currency',
+                ),
+            ],
+            database_operations=[],
         ),
     ]

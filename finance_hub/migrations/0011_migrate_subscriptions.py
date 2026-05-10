@@ -2,17 +2,22 @@ from django.db import migrations
 
 
 def migrate_subscriptions_data(apps, schema_editor):
-    CurrencyOld = apps.get_model("subscriptions", "Currency")
-    TagOld = apps.get_model("subscriptions", "Tag")
-    AccountOld = apps.get_model("subscriptions", "Account")
-    SubscriptionOld = apps.get_model("subscriptions", "Subscription")
-    SubscriptionOccurrenceOld = apps.get_model("subscriptions", "SubscriptionOccurrence")
+    try:
+        CurrencyOld = apps.get_model("subscriptions", "Currency")
+        TagOld = apps.get_model("subscriptions", "Tag")
+        AccountOld = apps.get_model("subscriptions", "Account")
+        SubscriptionOld = apps.get_model("subscriptions", "Subscription")
+        SubscriptionOccurrenceOld = apps.get_model("subscriptions", "SubscriptionOccurrence")
 
-    CurrencyNew = apps.get_model("finance_hub", "Currency")
-    TagNew = apps.get_model("finance_hub", "Tag")
-    AccountNew = apps.get_model("finance_hub", "Account")
-    SubscriptionNew = apps.get_model("finance_hub", "Subscription")
-    SubscriptionOccurrenceNew = apps.get_model("finance_hub", "SubscriptionOccurrence")
+        CurrencyNew = apps.get_model("finance_hub", "Currency")
+        TagNew = apps.get_model("finance_hub", "Tag")
+        AccountNew = apps.get_model("finance_hub", "Account")
+        SubscriptionNew = apps.get_model("finance_hub", "Subscription")
+        SubscriptionOccurrenceNew = apps.get_model("finance_hub", "SubscriptionOccurrence")
+    except LookupError:
+        # Models not yet available in finance_hub (fresh database);
+        # nothing to migrate.
+        return
 
     for old in CurrencyOld.objects.all():
         CurrencyNew.objects.get_or_create(

@@ -25,6 +25,7 @@ export default defineConfig({
         todo: resolvePath("core/static/core/todo.js"),
         routines: resolvePath("core/static/core/routines.js"),
         projects_storyboard: resolvePath("core/static/core/projects_storyboard.js"),
+        projects_timeline: resolvePath("core/static/core/projects_timeline.js"),
         agenda: resolvePath("agenda/static/agenda/agenda.js"),
         subscriptions_dashboard: resolvePath("subscriptions/static/subscriptions/dashboard.js"),
         spa_dashboard: resolvePath("spa_dashboard/static/spa_dashboard/main.js"),

@@ -1269,3 +1269,120 @@
     flex-wrap: wrap;
   }
 }
+
+.timeline-shell {
+  border-top: 4px solid rgba(139, 92, 246, 0.45);
+}
+
+.timeline-head {
+  gap: 12px;
+}
+
+.timeline-kicker {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.timeline-kpi-card {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(155deg, #ffffff, #f6f9ff);
+}
+
+.timeline-kpi-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #5a6473;
+}
+
+.timeline-kpi-value {
+  margin-top: 4px;
+  font-size: 1.6rem;
+  line-height: 1.1;
+  font-weight: 700;
+  color: #111827;
+}
+
+.timeline-gantt {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 14px;
+  background: #020617;
+  overflow: hidden;
+}
+
+.timeline-gantt-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+}
+
+.timeline-gantt-canvas {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 70vh;
+  background: #020617;
+}
+
+.timeline-gantt-canvas::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.timeline-gantt-canvas::-webkit-scrollbar-track {
+  background: #0f172a;
+}
+
+.timeline-gantt-canvas::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 4px;
+}
+
+.timeline-gantt-canvas::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+.timeline-svg {
+  display: block;
+  min-width: 100%;
+}
+
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px 12px;
+  background: #0f172a;
+  border-top: 1px solid #1e293b;
+}
+
+.timeline-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.timeline-legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+@media (max-width: 960px) {
+  .timeline-kpi-value {
+    font-size: 1.35rem;
+  }
+
+  .timeline-gantt-canvas {
+    max-height: 55vh;
+  }
+}

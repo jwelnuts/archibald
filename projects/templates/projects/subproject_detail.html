@@ -54,37 +54,7 @@
         {% if activities %}
           <ul class="uk-list uk-list-divider uk-margin-top">
             {% for activity in activities %}
-              <li class="subproject-activity-row">
-                <div>
-                  <div class="project-row-title">{{ activity.title }}</div>
-                  <div class="uk-text-meta">
-                    {% if activity.due_date %}Scadenza {{ activity.due_date|date:"d/m/Y" }} · {% endif %}
-                    Ordine {{ activity.ordering }}
-                  </div>
-                  {% if activity.description %}
-                    <div class="uk-text-small uk-margin-small-top">{{ activity.description }}</div>
-                  {% endif %}
-                </div>
-                <div>
-                  <form method="post" class="subproject-status-form">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="update_activity_status">
-                    <input type="hidden" name="activity_id" value="{{ activity.id }}">
-                    <select name="status" class="uk-select uk-form-small">
-                      {% for key, label in activity_status_choices %}
-                        <option value="{{ key }}" {% if activity.status == key %}selected{% endif %}>{{ label }}</option>
-                      {% endfor %}
-                    </select>
-                    <button class="uk-button uk-button-default uk-button-small" type="submit">Aggiorna</button>
-                  </form>
-                  <form method="post" class="uk-margin-small-top">
-                    {% csrf_token %}
-                    <input type="hidden" name="action" value="remove_activity">
-                    <input type="hidden" name="activity_id" value="{{ activity.id }}">
-                    <button class="uk-button uk-button-danger uk-button-small" type="submit">Rimuovi</button>
-                  </form>
-                </div>
-              </li>
+              {% include "projects/partials/subproject_activity_row.html" with activity=activity subproject=subproject activity_status_choices=activity_status_choices %}
             {% endfor %}
           </ul>
         {% else %}
