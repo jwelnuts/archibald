@@ -3,6 +3,10 @@ from django.db import models
 from common.models import OwnedModel, TimeStampedModel
 
 
+def social_post_media_upload_to(instance, filename):
+    return f"social_media/{instance.owner_id}/{instance.project_id}/{filename}"
+
+
 class SocialChannel(OwnedModel, TimeStampedModel):
     class Platform(models.TextChoices):
         INSTAGRAM = "instagram", "Instagram"
@@ -61,6 +65,7 @@ class SocialPost(OwnedModel, TimeStampedModel):
     scheduled_at = models.DateTimeField(null=True, blank=True)
     published_at = models.DateTimeField(null=True, blank=True)
     media_urls = models.JSONField(default=list, blank=True)
+    media_file = models.FileField(upload_to=social_post_media_upload_to, blank=True, null=True)
     engagement_data = models.JSONField(default=dict, blank=True)
     notes = models.TextField(blank=True)
 

@@ -195,7 +195,7 @@ def post_create(request, project_id):
         return redirect("/projects/")
 
     if request.method == "POST":
-        form = SocialPostForm(request.POST, owner=user, project=project)
+        form = SocialPostForm(request.POST, request.FILES, owner=user, project=project)
         if form.is_valid():
             post = form.save()
             return redirect("social-media-dashboard", project_id=project.id)
@@ -217,7 +217,7 @@ def post_edit(request, project_id, post_id):
     post = get_object_or_404(SocialPost, id=post_id, owner=user, project=project)
 
     if request.method == "POST":
-        form = SocialPostForm(request.POST, instance=post, owner=user, project=project)
+        form = SocialPostForm(request.POST, request.FILES, instance=post, owner=user, project=project)
         if form.is_valid():
             form.save()
             return redirect("social-media-dashboard", project_id=project.id)

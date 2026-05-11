@@ -17,17 +17,51 @@
   <div class="content">
     <section class="hero-card">
       <h2 class="card-title">{{ title }}</h2>
-      <form method="post" class="form" style="max-width:700px;">
+      <form method="post" enctype="multipart/form-data" class="form" style="max-width:700px;">
         {% csrf_token %}
-        {% for field in form %}
-          <div class="field">
-            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-            {{ field }}
-            {% if field.errors %}
-              <div class="form-errors">{{ field.errors }}</div>
-            {% endif %}
-          </div>
-        {% endfor %}
+
+        <div class="field">
+          <label for="{{ form.channel.id_for_label }}">{{ form.channel.label }}</label>
+          {{ form.channel }}
+          {% if form.channel.errors %}<div class="form-errors">{{ form.channel.errors }}</div>{% endif %}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.status.id_for_label }}">{{ form.status.label }}</label>
+          {{ form.status }}
+          {% if form.status.errors %}<div class="form-errors">{{ form.status.errors }}</div>{% endif %}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.content.id_for_label }}">{{ form.content.label }}</label>
+          {{ form.content }}
+          {% if form.content.errors %}<div class="form-errors">{{ form.content.errors }}</div>{% endif %}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.scheduled_at.id_for_label }}">{{ form.scheduled_at.label }}</label>
+          {{ form.scheduled_at }}
+          {% if form.scheduled_at.errors %}<div class="form-errors">{{ form.scheduled_at.errors }}</div>{% endif %}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.media_file.id_for_label }}">File media</label>
+          {{ form.media_file }}
+          {% if form.media_file.errors %}<div class="form-errors">{{ form.media_file.errors }}</div>{% endif %}
+          {% if post and post.media_file %}
+            <div style="margin-top:8px; padding:8px; background:#f9fafb; border-radius:6px; border:1px solid #e5e7eb;">
+              <span style="font-size:0.8rem; color:#374151;">File attuale:</span>
+              <a href="{{ post.media_file.url }}" target="_blank" style="font-size:0.8rem; font-weight:600;">{{ post.media_file.name }}</a>
+            </div>
+          {% endif %}
+        </div>
+
+        <div class="field">
+          <label for="{{ form.notes.id_for_label }}">{{ form.notes.label }}</label>
+          {{ form.notes }}
+          {% if form.notes.errors %}<div class="form-errors">{{ form.notes.errors }}</div>{% endif %}
+        </div>
+
         <div class="actions">
           <button class="btn primary" type="submit">Salva</button>
           <a class="btn" href="{% url 'social-media-dashboard' project.id %}">Annulla</a>

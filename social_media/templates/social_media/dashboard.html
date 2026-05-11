@@ -155,7 +155,7 @@
             <div class="sm-post-body">
               <span class="sm-post-channel" style="background:#dbeafe; color:#1e40af;">{{ p.channel.get_platform_display }}</span>
               <div class="sm-post-text">{{ p.content|truncatewords:20 }}</div>
-              <div class="sm-post-date">{{ p.scheduled_at|date:"d/m/Y H:i" }} · {{ p.get_status_display }}</div>
+              <div class="sm-post-date">{{ p.scheduled_at|date:"d/m/Y H:i" }} · {{ p.get_status_display }}{% if p.media_file %}<span style="margin-left:6px; font-size:0.7rem; background:#dbeafe; color:#1e40af; padding:1px 5px; border-radius:3px; font-weight:600;">&#128206; File</span>{% endif %}</div>
             </div>
             <div class="sm-actions">
               <a class="sm-btn" href="{% url 'social-media-post-edit' project.id p.id %}">Mod</a>
@@ -184,6 +184,7 @@
               <div class="sm-post-text">{{ p.content|truncatewords:25 }}</div>
               <div class="sm-post-date">
                 {% if p.published_at %}Pubblicato {{ p.published_at|date:"d/m/Y H:i" }}{% elif p.scheduled_at %}Programmato {{ p.scheduled_at|date:"d/m/Y H:i" }}{% else %}Creato {{ p.created_at|date:"d/m/Y H:i" }}{% endif %}
+                {% if p.media_file %}<span style="margin-left:6px; font-size:0.7rem; background:#dbeafe; color:#1e40af; padding:1px 5px; border-radius:3px; font-weight:600;">&#128206; File</span>{% endif %}
               </div>
             </div>
             <div class="sm-actions">

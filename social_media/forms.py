@@ -34,7 +34,7 @@ class SocialChannelForm(forms.ModelForm):
 class SocialPostForm(forms.ModelForm):
     class Meta:
         model = SocialPost
-        fields = ["channel", "status", "content", "scheduled_at", "media_urls", "notes"]
+        fields = ["channel", "status", "content", "scheduled_at", "media_file", "notes"]
         widgets = {
             "channel": forms.Select(attrs={"class": "uk-select"}),
             "status": forms.Select(attrs={"class": "uk-select"}),
@@ -43,6 +43,7 @@ class SocialPostForm(forms.ModelForm):
                 attrs={"class": "uk-input", "type": "datetime-local"},
                 format="%Y-%m-%dT%H:%M",
             ),
+            "media_file": forms.ClearableFileInput(attrs={"class": "uk-input"}),
             "notes": forms.Textarea(attrs={"class": "uk-textarea", "rows": 2}),
         }
 
