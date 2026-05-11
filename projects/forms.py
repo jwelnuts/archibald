@@ -12,6 +12,7 @@ class ProjectForm(forms.ModelForm):
     customer_choice = forms.ChoiceField(label="Cliente", required=False)
     category_choice = forms.ChoiceField(label="Categoria", required=False)
     category_name = forms.CharField(label="Categoria", max_length=80, required=False)
+    enable_social_media = forms.BooleanField(label="Abilita modulo Social Media", required=False)
 
     class Meta:
         model = Project
@@ -58,6 +59,8 @@ class ProjectForm(forms.ModelForm):
         if self.instance and self.instance.pk and self.instance.category:
             self.fields["category_choice"].initial = str(self.instance.category.id)
             self.fields["category_name"].initial = self.instance.category.name
+        if self.instance and self.instance.pk:
+            self.fields["enable_social_media"].initial = self.instance.is_module_enabled("social_media")
 
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -85,6 +88,9 @@ class ProjectForm(forms.ModelForm):
             instance.category = create_quick_category(self._owner, category_name)
         else:
             instance.category = None
+        enabled_modules = dict(instance.enabled_modules or {})
+        enabled_modules["social_media"] = bool(self.cleaned_data.get("enable_social_media"))
+        instance.enabled_modules = enabled_modules
         if commit:
             instance.save()
         return instance
