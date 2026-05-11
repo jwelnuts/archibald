@@ -68,8 +68,6 @@
                           <span uk-icon="icon: check; ratio: 0.72"></span>
                         {% elif chip.kind == "planner" %}
                           <span uk-icon="icon: calendar; ratio: 0.72"></span>
-                        {% elif chip.kind == "routine" %}
-                          <span uk-icon="icon: refresh; ratio: 0.72"></span>
                         {% elif chip.kind == "worklog" %}
                           <span uk-icon="icon: clock; ratio: 0.72"></span>
                         {% else %}
@@ -102,7 +100,6 @@
           <button class="uk-button uk-button-default uk-button-small" type="button" data-agenda-filter="agenda" data-action="agenda#filterPanelEvents">Agenda</button>
           <button class="uk-button uk-button-default uk-button-small" type="button" data-agenda-filter="todo" data-action="agenda#filterPanelEvents">Todo</button>
           <button class="uk-button uk-button-default uk-button-small" type="button" data-agenda-filter="planner" data-action="agenda#filterPanelEvents">Planner</button>
-          <button class="uk-button uk-button-default uk-button-small" type="button" data-agenda-filter="routine" data-action="agenda#filterPanelEvents">Routine</button>
         </div>
       </div>
 

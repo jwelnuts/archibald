@@ -81,7 +81,7 @@
               <input type="hidden" name="action" value="add_todo_item">
               <input type="hidden" name="month" value="{{ month_param }}" data-agenda-target="monthField">
               <input type="hidden" name="selected" value="{{ selected_param }}" data-agenda-target="selectedField">
-              {% include "todo/partials/task_form_fields.html" with form=todo_form %}
+              {% include "todos/partials/todo_item_form_fields.html" with form=todo_form %}
               <div class="uk-margin-small-top">
                 <button class="uk-button uk-button-primary uk-button-small" type="submit">Salva voce Todo</button>
               </div>
@@ -245,9 +245,9 @@
           </div>
 
           <div class="agenda-quick-grid uk-margin-small-top">
-            <a class="agenda-quick-card" href="/todo/api/add" data-agenda-target="quickCard" data-agenda-search="nuovo todo task">Nuovo task</a>
+            <a class="agenda-quick-card" href="/todos/api/task/add" data-agenda-target="quickCard" data-agenda-search="nuovo todo task">Nuovo task</a>
             <a class="agenda-quick-card" href="/planner/add" data-agenda-target="quickCard" data-agenda-search="nuovo planner">Nuovo planner</a>
-            <a class="agenda-quick-card" href="/todos/" data-agenda-target="quickCard" data-agenda-search="routines">Apri routines</a>
+            <a class="agenda-quick-card" href="/todos/" data-agenda-target="quickCard" data-agenda-search="todos">Apri Todos</a>
             <a class="agenda-quick-card" href="/transactions/" data-agenda-target="quickCard" data-agenda-search="transazioni">Apri transazioni</a>
             <a class="agenda-quick-card" href="/profile/" data-agenda-target="quickCard" data-agenda-search="profilo">Profilo</a>
           </div>

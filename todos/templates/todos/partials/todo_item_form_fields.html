@@ -1,0 +1,54 @@
+<div class="uk-grid-small uk-child-width-1-2@s" uk-grid>
+  <div class="field">
+    <label class="uk-form-label" for="{{ form.title.id_for_label }}">Titolo</label>
+    <div class="uk-form-controls">{{ form.title }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="{{ form.item_type.id_for_label }}">Tipo voce</label>
+    <div class="uk-form-controls">{{ form.item_type }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="{{ form.due_date.id_for_label }}">Scadenza</label>
+    <div class="uk-form-controls">{{ form.due_date }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="{{ form.due_time.id_for_label }}">Orario (opzionale)</label>
+    <div class="uk-form-controls">{{ form.due_time }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="{{ form.status.id_for_label }}">Status</label>
+    <div class="uk-form-controls">{{ form.status }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="{{ form.priority.id_for_label }}">Priorita</label>
+    <div class="uk-form-controls">{{ form.priority }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="{{ form.todo_list_choice.id_for_label }}">Lista (opzionale)</label>
+    <div class="uk-form-controls">{{ form.todo_list_choice }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="{{ form.project_choice.id_for_label }}">Progetto</label>
+    <div class="uk-form-controls">{{ form.project_choice }}</div>
+  </div>
+  <div class="field" data-project-name-row>
+    <label class="uk-form-label" for="{{ form.project_name.id_for_label }}">Nuovo progetto</label>
+    <div class="uk-form-controls">{{ form.project_name }}</div>
+  </div>
+  <div class="field">
+    <label class="uk-form-label" for="{{ form.category_choice.id_for_label }}">Categoria</label>
+    <div class="uk-form-controls">{{ form.category_choice }}</div>
+  </div>
+  <div class="field" data-category-name-row>
+    <label class="uk-form-label" for="{{ form.category_name.id_for_label }}">Nuova categoria</label>
+    <div class="uk-form-controls">{{ form.category_name }}</div>
+  </div>
+  <div class="field uk-width-1-1">
+    <label class="uk-form-label" for="{{ form.note.id_for_label }}">Note</label>
+    <div class="uk-form-controls">{{ form.note }}</div>
+  </div>
+  <div class="field uk-hidden">
+    {{ form.is_standalone }}
+    {{ form.weekday }}
+  </div>
+</div>
