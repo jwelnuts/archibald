@@ -48,6 +48,148 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 24px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.sh-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.sh-logo-dot {
+  color: var(--accent);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.sh-logo-text {
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.sh-sep {
+  color: var(--muted);
+  font-weight: 400;
+  opacity: 0.5;
+}
+
+.sh-module {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.sh-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sh-link {
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: all 160ms ease;
+}
+
+.sh-link:hover {
+  color: var(--ink);
+  background: #fff;
+  border-color: var(--border);
+}
+
+.sh-app-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.sh-app-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.sh-chevron {
+  opacity: 0.5;
+  transition: transform 160ms ease;
+}
+
+.uk-open .sh-chevron {
+  transform: rotate(180deg);
+}
+
+.sh-dropdown {
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  min-width: 260px;
+}
+
+.sh-app-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.sh-app-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 10px;
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 160ms ease;
+}
+
+.sh-app-card:hover {
+  background: #f8fafc;
+  color: var(--ink);
+}
+
+.sh-app-card.is-active {
+  background: #eff6ff;
+  color: var(--accent);
+}
+
+.sh-logout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: all 160ms ease;
+}
+
+.sh-logout:hover {
+  background: #fff0ef;
+  color: var(--danger);
 }
 
 .brand {
