@@ -62,32 +62,54 @@ def _week_start(d):
     return d - timedelta(days=d.weekday())
 
 
-def _get_agenda_preferences(user):
-    nav_config, _ = UserNavConfig.objects.get_or_create(user=user)
-    raw = nav_config.config or {}
-    prefs = raw.get("agenda_preferences", {})
+def _redirect_agenda(month_value, selected_value):
+    params = {}
+    if month_value:
+        params["month"] = month_value
+    if selected_value:
+        params["selected"] = selected_value
+    query = urlencode(params)
+    return redirect(f"/agenda/{'?' + query if query else ''}")
+
+
+def _normalize_agenda_preferences(raw_config):
+    if not isinstance(raw_config, dict):
+        raw_config = {}
+
+    density = (raw_config.get("density") or DEFAULT_AGENDA_PREFERENCES["density"]).strip().lower()
+    if density not in ALLOWED_AGENDA_DENSITIES:
+        density = DEFAULT_AGENDA_PREFERENCES["density"]
+
+    accent = (raw_config.get("accent") or DEFAULT_AGENDA_PREFERENCES["accent"]).strip().lower()
+    if accent not in ALLOWED_AGENDA_ACCENTS:
+        accent = DEFAULT_AGENDA_PREFERENCES["accent"]
+
+    sections_raw = raw_config.get("sections", [])
+    sections = []
+    if isinstance(sections_raw, list):
+        for row in sections_raw:
+            key = (str(row) or "").strip().lower()
+            if key in ALLOWED_AGENDA_SECTIONS and key not in sections:
+                sections.append(key)
+
+    if not sections:
+        sections = list(DEFAULT_AGENDA_PREFERENCES["sections"])
+
     return {
-        "density": prefs.get("density", DEFAULT_AGENDA_PREFERENCES["density"]),
-        "accent": prefs.get("accent", DEFAULT_AGENDA_PREFERENCES["accent"]),
-        "sections": prefs.get("sections", DEFAULT_AGENDA_PREFERENCES["sections"]),
+        "density": density,
+        "accent": accent,
+        "sections": sections,
     }
 
 
-def _save_agenda_preferences(user, prefs):
+def _agenda_preferences_for_user(user):
     nav_config, _ = UserNavConfig.objects.get_or_create(user=user)
-    config = nav_config.config or {}
-    config["agenda_preferences"] = prefs
-    nav_config.config = config
-    nav_config.save(update_fields=["config"])
+    raw = nav_config.config or {}
+    return _normalize_agenda_preferences(raw.get("agenda_preferences", {}))
 
 
-@login_required
-def dashboard(request):
-    user = request.user
+def _build_agenda_context(user, month_raw, selected_raw, todo_form=None, work_form=None, planner_form=None):
     today = date.today()
-
-    month_raw = request.GET.get("month")
-    selected_raw = request.GET.get("selected")
 
     if month_raw:
         try:
@@ -107,38 +129,6 @@ def dashboard(request):
     if not (month_start <= selected_date <= month_end):
         selected_date = selected_default
     selected_param = selected_date.isoformat()
-
-    todo_form = None
-    work_form = None
-    planner_form = None
-
-    if request.method == "POST":
-        action = request.POST.get("action")
-        if action == "add_todo_item":
-            todo_form = TodoItemForm(request.POST, owner=request.user)
-            if todo_form.is_valid():
-                item = todo_form.save(commit=False)
-                item.owner = request.user
-                item.save()
-                if item.due_date:
-                    return _redirect_agenda(item.due_date.strftime("%Y-%m"), item.due_date.isoformat())
-                return _redirect_agenda(month_param, selected_param)
-        elif action == "log_hours":
-            work_form = WorkLogForm(request.POST)
-            if work_form.is_valid():
-                log = work_form.save(commit=False)
-                log.owner = request.user
-                log.save()
-                return _redirect_agenda(log.work_date.strftime("%Y-%m"), log.work_date.isoformat())
-        elif action == "add_planner":
-            planner_form = PlannerItemForm(request.POST, owner=request.user, prefix="planner")
-            if planner_form.is_valid():
-                item = planner_form.save(commit=False)
-                item.owner = request.user
-                item.save()
-                if item.due_date:
-                    return _redirect_agenda(item.due_date.strftime("%Y-%m"), item.due_date.isoformat())
-                return _redirect_agenda(month_param, selected_param)
 
     if todo_form is None:
         todo_form = TodoItemForm(
@@ -334,7 +324,6 @@ def dashboard(request):
             }
         )
 
-    # Context construction
     month_total_hours = sum(log.hours for log in work_logs)
     month_logged_days = work_logs.count()
     agenda_counts = {
@@ -380,7 +369,7 @@ def dashboard(request):
     selected_events = events_map.get(selected_date, [])
     selected_events_total = len(selected_events)
 
-    context = {
+    return {
         "today": today,
         "selected_date": selected_date,
         "selected_param": selected_param,
@@ -403,9 +392,76 @@ def dashboard(request):
         "todo_form": todo_form,
         "work_form": work_form,
         "planner_form": planner_form,
-        "prefs": _get_agenda_preferences(user),
+        "agenda_preferences": _agenda_preferences_for_user(user),
     }
 
+
+@login_required
+def dashboard(request):
+    user = request.user
+    month_raw = request.GET.get("month")
+    selected_raw = request.GET.get("selected")
+
+    today = date.today()
+    if month_raw:
+        try:
+            month_start = date.fromisoformat(f"{month_raw}-01")
+        except (ValueError, TypeError):
+            month_start = today.replace(day=1)
+    else:
+        month_start = today.replace(day=1)
+
+    month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
+    month_param = month_start.strftime("%Y-%m")
+
+    selected_default = month_start
+    if month_start <= today <= month_end:
+        selected_default = today
+    selected_date = _safe_date(selected_raw, selected_default)
+    if not (month_start <= selected_date <= month_end):
+        selected_date = selected_default
+    selected_param = selected_date.isoformat()
+
+    todo_form = None
+    work_form = None
+    planner_form = None
+
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "add_todo_item":
+            todo_form = TodoItemForm(request.POST, owner=request.user)
+            if todo_form.is_valid():
+                item = todo_form.save(commit=False)
+                item.owner = request.user
+                item.save()
+                if item.due_date:
+                    return _redirect_agenda(item.due_date.strftime("%Y-%m"), item.due_date.isoformat())
+                return _redirect_agenda(month_param, selected_param)
+        elif action == "log_hours":
+            work_form = WorkLogForm(request.POST)
+            if work_form.is_valid():
+                log = work_form.save(commit=False)
+                log.owner = request.user
+                log.save()
+                return _redirect_agenda(log.work_date.strftime("%Y-%m"), log.work_date.isoformat())
+        elif action == "add_planner":
+            planner_form = PlannerItemForm(request.POST, owner=request.user, prefix="planner")
+            if planner_form.is_valid():
+                item = planner_form.save(commit=False)
+                item.owner = request.user
+                item.save()
+                if item.due_date:
+                    return _redirect_agenda(item.due_date.strftime("%Y-%m"), item.due_date.isoformat())
+                return _redirect_agenda(month_param, selected_param)
+
+    context = _build_agenda_context(
+        user=user,
+        month_raw=month_raw,
+        selected_raw=selected_raw,
+        todo_form=todo_form,
+        work_form=work_form,
+        planner_form=planner_form,
+    )
     return render(request, "agenda/dashboard.html", context)
 
 
@@ -430,42 +486,52 @@ def agenda_item_action(request):
         item.delete()
 
     if request.headers.get("HX-Request") == "true":
-        return panel(request)
+        context = _build_agenda_context(
+            user=request.user,
+            month_raw=month_param,
+            selected_raw=selected_param,
+        )
+        response = render(request, "agenda/partials/panel.html", context)
+        response["HX-Trigger"] = "agenda:refresh-snapshot"
+        return response
 
     return _redirect_agenda(month_param, selected_param)
 
 
 @login_required
 def panel(request):
-    # This is a helper to return only the panel partial for HTMX requests
-    # We can reuse the logic from dashboard or extract it.
-    # For now, let's just call dashboard but render a different template if it's a sub-request.
-    # Actually, the panel.html needs all the context from dashboard.
-    # So we call dashboard(request) but we need to intercept the render.
-    # A better way is to move common logic to a function.
-    # But for a quick fix, let's just make panel() do what it needs.
-    return dashboard(request)
+    context = _build_agenda_context(
+        user=request.user,
+        month_raw=request.GET.get("month"),
+        selected_raw=request.GET.get("selected"),
+    )
+    return render(request, "agenda/partials/panel.html", context)
 
 
-def _redirect_agenda(month, selected):
-    return redirect(f"/agenda/?month={month}&selected={selected}")
+@login_required
+def snapshot(request):
+    context = _build_agenda_context(
+        user=request.user,
+        month_raw=request.GET.get("month"),
+        selected_raw=request.GET.get("selected"),
+    )
+    return render(request, "agenda/partials/snapshot.html", context)
 
 
 @login_required
 @require_http_methods(["POST"])
-def update_preferences(request):
-    user = request.user
-    density = request.POST.get("density")
-    accent = request.POST.get("accent")
-    sections = request.POST.getlist("sections")
+def preferences(request):
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
 
-    prefs = _get_agenda_preferences(user)
-    if density in ALLOWED_AGENDA_DENSITIES:
-        prefs["density"] = density
-    if accent in ALLOWED_AGENDA_ACCENTS:
-        prefs["accent"] = accent
-    if sections:
-        prefs["sections"] = [s for s in sections if s in ALLOWED_AGENDA_SECTIONS]
+    normalized = _normalize_agenda_preferences(payload)
 
-    _save_agenda_preferences(user, prefs)
-    return _redirect_agenda(request.POST.get("month"), request.POST.get("selected"))
+    nav_config, _ = UserNavConfig.objects.get_or_create(user=request.user)
+    config = nav_config.config if isinstance(nav_config.config, dict) else {}
+    config["agenda_preferences"] = normalized
+    nav_config.config = config
+    nav_config.save(update_fields=["config"])
+
+    return JsonResponse({"ok": True, "agenda_preferences": normalized})
