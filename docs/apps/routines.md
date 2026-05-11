@@ -31,15 +31,15 @@ Weekly routines and habit tracking with check-off system.
 
 | Route | Name | Description |
 |-------|------|-------------|
-| `/` | routines-dashboard | Routines dashboard |
-| `/stats` | routines-stats | Routines statistics |
-| `/check` | routines-check | Check routine item |
-| `/api/add` | routines-add | Add routine |
-| `/api/update` | routines-update | Update routine |
-| `/api/remove` | routines-remove | Remove routine |
-| `/items/add` | routines-items-add | Add routine item |
-| `/items/update` | routines-items-update | Update routine item |
-| `/items/remove` | routines-items-remove | Remove routine item |
+| `/` | todos-dashboard | Routines dashboard |
+| `/stats` | todos-stats | Routines statistics |
+| `/check` | todos-check | Check routine item |
+| `/api/add` | todos-add | Add routine |
+| `/api/update` | todos-update | Update routine |
+| `/api/remove` | todos-remove | Remove routine |
+| `/items/add` | todos-items-add | Add routine item |
+| `/items/update` | todos-items-update | Update routine item |
+| `/items/remove` | todos-items-remove | Remove routine item |
 
 ## Related Apps
 

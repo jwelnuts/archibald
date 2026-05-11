@@ -1,0 +1,60 @@
+{% load static %}
+
+<!-- Partial: Dashboard content (for HTMX swaps) -->
+<!-- Stats row -->
+<div class="planner-stats-row">
+  <div class="planner-stat-card">
+    <div class="planner-stat-label">Pianificati</div>
+    <div class="planner-stat-value is-planned">{{ counts.planned }}</div>
+  </div>
+  <div class="planner-stat-card">
+    <div class="planner-stat-label">Completati</div>
+    <div class="planner-stat-value is-done">{{ counts.done }}</div>
+  </div>
+  <div class="planner-stat-card">
+    <div class="planner-stat-label">Saltati</div>
+    <div class="planner-stat-value is-skipped">{{ counts.skipped }}</div>
+  </div>
+</div>
+
+<!-- Upcoming items -->
+<div class="planner-section">
+  <div class="planner-section-head">
+    <h3 class="planner-section-title">Prossime voci pianificate</h3>
+    <span class="planner-section-count">{{ upcoming|length }} prossime</span>
+  </div>
+  {% if upcoming %}
+  <ul class="planner-list">
+    {% for item in upcoming %}
+    <li class="planner-list-item" id="planner-item-{{ item.id }}">
+      <span class="planner-list-dot {% if item.status == 'PLANNED' %}planned{% elif item.status == 'DONE' %}done{% else %}skipped{% endif %}"></span>
+      <div class="planner-list-content">
+        <div class="planner-list-title">{{ item.title }}</div>
+        <div class="planner-list-meta">
+          {% if item.due_date %}
+          <span>{{ item.due_date|date:"d/m/Y" }}</span>
+          {% endif %}
+          <span class="status-pill {{ item.status|lower }}">{{ item.get_status_display }}</span>
+          {% if item.project %}
+          <span class="muted">· {{ item.project.name|truncatechars:20 }}</span>
+          {% endif %}
+        </div>
+      </div>
+      <div class="planner-list-actions">
+        <a class="btn" href="/planner/update?id={{ item.id }}">Aggiorna</a>
+        <button class="btn danger" data-action="planner#deleteItem" data-planner-id="{{ item.id }}">Rimuovi</button>
+        {% if item.status == 'PLANNED' %}
+        <button class="btn" data-action="planner#toggleStatus" data-planner-id="{{ item.id }}" data-status="DONE">Completa</button>
+        {% elif item.status == 'DONE' %}
+        <button class="btn" data-action="planner#toggleStatus" data-planner-id="{{ item.id }}" data-status="PLANNED">Ripristina</button>
+        {% endif %}
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <div class="timeline-weekly-empty">
+    Nessuna voce pianificata.
+  </div>
+  {% endif %}
+</div>

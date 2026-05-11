@@ -1,0 +1,35 @@
+{% extends "todos/base.html" %}
+
+{% block title %}MIO - Remove Contenitore{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Rimuovi contenitore</h1>
+    <p class="muted">Seleziona un contenitore da eliminare.</p>
+
+    {% if todo %}
+      <div class="warning-box">
+        Stai per rimuovere il contenitore: <strong>{{ todo.name }}</strong>.
+        Questa azione non e reversibile.
+      </div>
+      <form class="actions uk-flex uk-flex-wrap uk-grid-small" method="post" action="">
+        {% csrf_token %}
+        <button class="btn danger" type="submit">Conferma rimozione</button>
+        <a class="btn" href="/todos/">Annulla</a>
+      </form>
+    {% else %}
+      {% if todos %}
+        <ul class="list todo-list">
+          {% for item in todos %}
+            <li class="todo-list-item">
+              <span>{{ item.name }}</span>
+              <a class="btn" href="/todos/api/remove?id={{ item.id }}">Rimuovi</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun contenitore disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

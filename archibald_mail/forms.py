@@ -23,7 +23,7 @@ class ArchibaldMailboxConfigForm(forms.ModelForm):
         "notification_include_reminders",
         "notification_include_planner",
         "notification_include_subscriptions",
-        "notification_include_routines",
+        "notification_include_todos",
     )
 
     class Meta:
@@ -45,7 +45,7 @@ class ArchibaldMailboxConfigForm(forms.ModelForm):
             "notification_include_reminders",
             "notification_include_planner",
             "notification_include_subscriptions",
-            "notification_include_routines",
+            "notification_include_todos",
         )
         widgets = {
             "auto_reply_signature": forms.Textarea(attrs={"rows": 4}),

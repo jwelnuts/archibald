@@ -1,105 +1,131 @@
 {% extends "projects/base.html" %}
 {% load static %}
 
-{% block title %}MIO - Timeline{% endblock %}
-
-{% block extra_head %}{% endblock %}
+{% block title %}MIO - Timeline Settimanale{% endblock %}
 
 {% block content %}
-  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin timeline-shell">
-    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap timeline-head">
-      <div>
-        <p class="uk-text-meta timeline-kicker uk-margin-remove">Gantt timeline</p>
-        <h1 class="uk-margin-small-top uk-margin-remove-bottom">Timeline Progetti</h1>
-        <p class="uk-text-meta uk-margin-small-top">
-          Vista temporale unificata: sub-progetti, task e planner distribuiti su asse cronologico.
-        </p>
-      </div>
-      <div class="uk-flex uk-flex-wrap uk-gap-small">
-        <a class="uk-button uk-button-primary uk-button-small" href="/projects/">Dashboard</a>
-      </div>
+<section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin timeline-shell">
+  <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap timeline-head">
+    <div>
+      <p class="uk-text-meta timeline-kicker uk-margin-remove">Vista settimanale</p>
+      <h1 class="uk-margin-small-top uk-margin-remove-bottom">Timeline Progetti</h1>
+      <p class="uk-text-meta uk-margin-small-top">
+        Sub-progetti, task e planner organizzati per settimana.
+      </p>
     </div>
-
-    <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m uk-margin-top" uk-grid>
-      <div>
-        <article class="timeline-kpi-card">
-          <div class="timeline-kpi-label">Progetti in vista</div>
-          <div class="timeline-kpi-value">{{ project_count }}</div>
-        </article>
-      </div>
-      <div>
-        <article class="timeline-kpi-card">
-          <div class="timeline-kpi-label">Elementi timeline</div>
-          <div class="timeline-kpi-value">{{ bar_count }}</div>
-        </article>
-      </div>
-      <div>
-        <article class="timeline-kpi-card">
-          <div class="timeline-kpi-label">Scope</div>
-          <div class="timeline-kpi-value">{{ scope|title }}</div>
-        </article>
-      </div>
-      <div>
-        <article class="timeline-kpi-card">
-          <div class="timeline-kpi-label">Oggi</div>
-          <div class="timeline-kpi-value">{% now "d/m/Y" %}</div>
-        </article>
-      </div>
+    <div class="uk-flex uk-flex-wrap uk-gap-small">
+      <a class="uk-button uk-button-primary uk-button-small" href="/projects/">Dashboard</a>
     </div>
-  </section>
+  </div>
 
-  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin">
-    <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap">
-      <div>
-        <h2 class="uk-margin-remove">Timeline operativa</h2>
-        <p class="uk-text-meta uk-margin-small-top">
-          Ogni barra rappresenta un elemento con data inizio/fine. Clicca per dettaglio.
-        </p>
-      </div>
-      <ul class="uk-subnav uk-subnav-pill">
-        <li {% if scope == "active" %}class="uk-active"{% endif %}><a href="/projects/timeline?scope=active">Attivi</a></li>
-        <li {% if scope == "archived" %}class="uk-active"{% endif %}><a href="/projects/timeline?scope=archived">Archiviati</a></li>
-        <li {% if scope == "all" %}class="uk-active"{% endif %}><a href="/projects/timeline?scope=all">Tutti</a></li>
-      </ul>
+  <div class="uk-grid-small uk-child-width-1-2@s uk-child-width-1-4@m uk-margin-top" uk-grid>
+    <div>
+      <article class="timeline-kpi-card">
+        <div class="timeline-kpi-label">Progetti in vista</div>
+        <div class="timeline-kpi-value">{{ project_count }}</div>
+      </article>
     </div>
-
-    <div
-      class="timeline-gantt uk-margin-top"
-      data-controller="projects-timeline"
-    >
-      {{ timeline_data|json_script:"timeline-data" }}
-      <div class="timeline-gantt-toolbar">
-        <div class="uk-button-group uk-margin-small-right">
-          <button class="uk-button uk-button-default uk-button-small" data-action="projects-timeline#zoomOut">
-            <span uk-icon="icon: zoom-out"></span>
-          </button>
-          <button class="uk-button uk-button-default uk-button-small" data-action="projects-timeline#zoomIn">
-            <span uk-icon="icon: zoom-in"></span>
-          </button>
+    <div>
+      <article class="timeline-kpi-card">
+        <div class="timeline-kpi-label">Elementi nella settimana</div>
+        <div class="timeline-kpi-value">{{ item_count }}</div>
+      </article>
+    </div>
+    <div>
+      <article class="timeline-kpi-card">
+        <div class="timeline-kpi-label">Scope</div>
+        <div class="timeline-kpi-value">{{ scope|title }}</div>
+      </article>
+    </div>
+    <div>
+      <article class="timeline-kpi-card">
+        <div class="timeline-kpi-label">Settimana</div>
+        <div class="timeline-kpi-value">
+          {{ week_start.day }}/{{ week_start.month }} — {{ week_end.day }}/{{ week_end.month }}
         </div>
-        <button class="uk-button uk-button-default uk-button-small" data-action="projects-timeline#scrollToToday">
-          <span uk-icon="icon: calendar"></span>
-          <span class="uk-margin-small-left">Oggi</span>
-        </button>
-      </div>
-      <div class="timeline-gantt-canvas" data-projects-timeline-target="canvas">
-        <svg class="timeline-svg" data-projects-timeline-target="svg"></svg>
-      </div>
-      <div class="timeline-legend uk-margin-small-top">
-        <span class="timeline-legend-item"><span class="timeline-legend-swatch" style="background:#f59e0b"></span> Pianificato</span>
-        <span class="timeline-legend-item"><span class="timeline-legend-swatch" style="background:#3b82f6"></span> In corso</span>
-        <span class="timeline-legend-item"><span class="timeline-legend-swatch" style="background:#ef4444"></span> Bloccato</span>
-        <span class="timeline-legend-item"><span class="timeline-legend-swatch" style="background:#22c55e"></span> Completato</span>
-        <span class="timeline-legend-item"><span class="timeline-legend-swatch" style="background:#8b5cf6"></span> Planner</span>
-      </div>
+      </article>
     </div>
+  </div>
 
-    {% if project_count == 0 %}
-      <div class="uk-alert-primary uk-margin-top">
-        Nessun progetto ha elementi con date definite. Crea sub-progetti, task o planner con date.
+  <!-- Week selector + scope filter -->
+  <div class="uk-flex uk-flex-between uk-flex-middle uk-margin-top timeline-filters">
+    <ul class="uk-subnav uk-subnav-pill">
+      <li {% if scope == "active" %}class="uk-active"{% endif %}>
+        <a href="?week={{ week_start }}&scope=active">Attivi</a>
+      </li>
+      <li {% if scope == "archived" %}class="uk-active"{% endif %}>
+        <a href="?week={{ week_start }}&scope=archived">Archiviati</a>
+      </li>
+      <li {% if scope == "all" %}class="uk-active"{% endif %}>
+        <a href="?week={{ week_start }}&scope=all">Tutti</a>
+      </li>
+    </ul>
+    <div class="timeline-week-nav">
+      <button class="uk-button uk-button-default uk-button-small" data-action="timeline#prevWeek">
+        <span uk-icon="icon: chevron-left"></span>
+      </button>
+      <select class="uk-select uk-select-small" data-timeline-target="weekSelect" data-action="timeline#weekChanged">
+        {% for opt in week_options %}
+        <option value="{{ opt.value }}" {% if opt.is_current %}selected{% endif %}>{{ opt.label }}</option>
+        {% endfor %}
+      </select>
+      <button class="uk-button uk-button-default uk-button-small" data-action="timeline#nextWeek">
+        <span uk-icon="icon: chevron-right"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Weekly calendar table -->
+  <div class="timeline-weekly uk-margin-top" data-controller="timeline">
+    <div class="timeline-weekly-header">
+      <div class="timeline-weekly-corner"></div>
+      {% for day_label in week_days %}
+      <div class="timeline-weekly-day-header">
+        <div class="timeline-weekly-day-name">{{ day_label.name }}</div>
+        <div class="timeline-weekly-day-date">{{ day_label.date }}</div>
       </div>
-    {% endif %}
-  </section>
+      {% endfor %}
+    </div>
+    <div class="timeline-weekly-body">
+      {% for proj in week_data.projects %}
+      <div class="timeline-weekly-row">
+        <div class="timeline-weekly-project-label">
+          <div class="timeline-weekly-project-name">{{ proj.title }}</div>
+          <div class="timeline-weekly-project-count">{{ proj.items_count }} elementi</div>
+        </div>
+        <div class="timeline-weekly-cells">
+          {% for day in week_days %}
+          <div class="timeline-weekly-cell" data-date="{{ day.iso }}">
+            {% for item in proj.items %}
+              {% if item.start == day.iso or item.end == day.iso %}
+              <a href="{{ item.url }}" class="timeline-weekly-item" style="background: {{ item.color }};" title="{{ item.title }} ({{ item.status }})">
+                <span class="timeline-weekly-item-dot" style="background: {{ item.color }};"></span>
+                <span class="timeline-weekly-item-text">{{ item.title }}</span>
+                <span class="timeline-weekly-item-status">{{ item.kind_label }}</span>
+              </a>
+              {% endif %}
+            {% endfor %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% empty %}
+      <div class="timeline-weekly-empty">
+        Nessun progetto con elementi in questa settimana.
+      </div>
+      {% endfor %}
+    </div>
+  </div>
 
-  <script type="module" src="{% static 'core/dist/projects_timeline.js' %}"></script>
+  <!-- Legend -->
+  <div class="timeline-legend">
+    <span class="timeline-legend-item"><span class="timeline-legend-swatch" style="background:#f59e0b"></span> Pianificato</span>
+    <span class="timeline-legend-item"><span class="timeline-legend-swatch" style="background:#3b82f6"></span> In corso</span>
+    <span class="timeline-legend-item"><span class="timeline-legend-swatch" style="background:#ef4444"></span> Bloccato</span>
+    <span class="timeline-legend-item"><span class="timeline-legend-swatch" style="background:#22c55e"></span> Completato</span>
+    <span class="timeline-legend-item"><span class="timeline-legend-swatch" style="background:#8b5cf6"></span> Planner</span>
+  </div>
+</section>
+
+<script type="module" src="{% static 'core/dist/projects_timeline.js' %}"></script>
 {% endblock %}

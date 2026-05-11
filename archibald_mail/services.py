@@ -19,9 +19,9 @@ from django.utils import timezone
 
 from memory_stock.models import MemoryStockItem
 from planner.models import PlannerItem
-from routines.models import RoutineCheck, RoutineItem
+from todos.models import TodoRecurrence, TodoItem
 from finance_hub.models import SubscriptionOccurrence
-from todo.models import Task
+from todos.models import TodoItem
 
 from .actions import WORKLOG_TOKEN_AM, WORKLOG_TOKEN_PM, execute_action_from_email
 from .models import ArchibaldEmailMessage, ArchibaldMailboxConfig
@@ -195,7 +195,7 @@ def _build_email_operational_context(owner) -> str:
     horizon = today + timedelta(days=7)
     week_start = today - timedelta(days=today.weekday())
 
-    open_tasks = Task.objects.filter(owner=owner).exclude(status=Task.Status.DONE)
+    open_tasks = TodoItem.objects.filter(owner=owner).exclude(status=TodoItem.Status.DONE)
     open_tasks_count = open_tasks.count()
     tasks_due_today = open_tasks.filter(due_date=today).count()
     tasks_due_week = open_tasks.filter(due_date__gte=today, due_date__lte=horizon).count()
@@ -214,52 +214,52 @@ def _build_email_operational_context(owner) -> str:
         due_date__lte=horizon,
     ).count()
 
-    routine_rows = list(
-        RoutineItem.objects.filter(
+    todo_rows = list(
+        TodoItem.objects.filter(
             owner=owner,
             is_active=True,
-            routine__is_active=True,
+            todo__is_active=True,
             weekday=today.weekday(),
         )
-        .select_related("routine")
-        .order_by("time_start", "routine__name", "title")[:12]
+        .select_related("todo")
+        .order_by("time_start", "todo__name", "title")[:12]
     )
-    routine_done = 0
-    routine_skipped = 0
-    routine_planned = 0
-    routine_lines = []
-    if routine_rows:
-        checks = RoutineCheck.objects.filter(
+    todo_done = 0
+    todo_skipped = 0
+    todo_planned = 0
+    todo_lines = []
+    if todo_rows:
+        checks = TodoRecurrence.objects.filter(
             owner=owner,
-            item_id__in=[row.id for row in routine_rows],
+            item_id__in=[row.id for row in todo_rows],
             week_start=week_start,
         )
         status_map = {row.item_id: row.status for row in checks}
-        for row in routine_rows:
-            status = status_map.get(row.id, RoutineCheck.Status.PLANNED)
-            if status == RoutineCheck.Status.DONE:
-                routine_done += 1
-            elif status == RoutineCheck.Status.SKIPPED:
-                routine_skipped += 1
+        for row in todo_rows:
+            status = status_map.get(row.id, TodoRecurrence.Status.PLANNED)
+            if status == TodoRecurrence.Status.DONE:
+                todo_done += 1
+            elif status == TodoRecurrence.Status.SKIPPED:
+                todo_skipped += 1
             else:
-                routine_planned += 1
+                todo_planned += 1
             slot = row.time_start.strftime("%H:%M") if row.time_start else "--:--"
-            routine_lines.append(f"- {slot} | {row.title} ({row.routine.name}) -> {status}")
+            todo_lines.append(f"- {slot} | {row.title} ({row.todo.name}) -> {status}")
 
     lines = [
         "Contesto operativo reale (snapshot DB):",
         f"- Data locale: {today.isoformat()}",
-        f"- Task aperti: {open_tasks_count} (oggi: {tasks_due_today}, prossimi 7 giorni: {tasks_due_week})",
+        f"- TodoItem aperti: {open_tasks_count} (oggi: {tasks_due_today}, prossimi 7 giorni: {tasks_due_week})",
         f"- Planner pianificato prossimi 7 giorni: {planner_due_week}",
         f"- Subscription in scadenza prossimi 7 giorni: {subscriptions_due_week}",
         (
-            "- Routine oggi: "
-            f"{len(routine_rows)} (DONE: {routine_done}, SKIPPED: {routine_skipped}, PLANNED: {routine_planned})"
+            "- TodoList oggi: "
+            f"{len(todo_rows)} (DONE: {todo_done}, SKIPPED: {todo_skipped}, PLANNED: {todo_planned})"
         ),
     ]
-    if routine_lines:
-        lines.append("- Prime routine di oggi:")
-        lines.extend(routine_lines[:8])
+    if todo_lines:
+        lines.append("- Prime todo di oggi:")
+        lines.extend(todo_lines[:8])
     return "\n".join(lines)
 
 
@@ -569,13 +569,13 @@ def build_notification_digest(config: ArchibaldMailboxConfig) -> tuple[str, bool
 
     if config.notification_include_tasks:
         tasks = list(
-            Task.objects.filter(owner=config.owner, due_date__range=(today, horizon))
-            .exclude(status=Task.Status.DONE)
+            TodoItem.objects.filter(owner=config.owner, due_date__range=(today, horizon))
+            .exclude(status=TodoItem.Status.DONE)
             .order_by("due_date", "priority", "title")[:8]
         )
         if tasks:
             has_items = True
-            lines.append("Task aperti in scadenza:")
+            lines.append("TodoItem aperti in scadenza:")
             for task in tasks:
                 lines.append(f"- {task.title} ({task.due_date}, {task.get_priority_display()})")
             lines.append("")
@@ -649,28 +649,28 @@ def build_notification_digest(config: ArchibaldMailboxConfig) -> tuple[str, bool
                 lines.append(f"- {occ.subscription.name}: {occ.amount} {occ.currency.code} ({occ.due_date})")
             lines.append("")
 
-    if config.notification_include_routines:
+    if config.notification_include_todos:
         weekday = today.weekday()
         items = list(
-            RoutineItem.objects.filter(
+            TodoItem.objects.filter(
                 owner=config.owner,
                 is_active=True,
                 weekday=weekday,
             )
-            .select_related("routine")
-            .order_by("routine__name", "time_start", "title")[:20]
+            .select_related("todo")
+            .order_by("todo__name", "time_start", "title")[:20]
         )
         if items:
             has_items = True
-            checks = RoutineCheck.objects.filter(
+            checks = TodoRecurrence.objects.filter(
                 owner=config.owner,
                 item__in=items,
                 week_start=_week_start(today),
             )
             status_map = {check.item_id: check.status for check in checks}
-            lines.append("Routine di oggi:")
+            lines.append("TodoList di oggi:")
             for item in items:
-                status = status_map.get(item.id, RoutineCheck.Status.PLANNED)
+                status = status_map.get(item.id, TodoRecurrence.Status.PLANNED)
                 lines.append(f"- {item.title} [{status}]")
             lines.append("")
 

@@ -42,7 +42,7 @@ var MultiSelectCalendar = dojo.declare(
 		value: {},
 
 		// datePackage: String
-		//		JavaScript namespace to find Calendar routines.  Uses Gregorian Calendar routines
+		//		JavaScript namespace to find Calendar todos.  Uses Gregorian Calendar routines
 		//		at dojo/date by default.
 		datePackage: "dojo.date",
 

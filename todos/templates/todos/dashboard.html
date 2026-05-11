@@ -1,0 +1,562 @@
+{% extends "todos/base.html" %}
+{% load todos_extras %}
+
+{% block title %}MIO - Todos{% endblock %}
+
+{% block content %}
+  <div class="todos-dashboard uk-grid-small uk-child-width-1-1" uk-grid data-controller="todos">
+    <div class="todos-tab-switcher uk-margin-small-bottom">
+      <a class="uk-button uk-button-small {% if tab == 'todos' %}uk-button-primary{% else %}uk-button-default{% endif %}" href="/todos/?tab=todos&week={{ week_start|date:'Y-m-d' }}">Todo</a>
+      <a class="uk-button uk-button-small {% if tab == 'tasks' %}uk-button-primary{% else %}uk-button-default{% endif %}" href="/todos/?tab=tasks&week={{ week_start|date:'Y-m-d' }}">
+        Attivita
+        {% if task_counts.open %}<span class="uk-badge uk-margin-small-left">{{ task_counts.open }}</span>{% endif %}
+        {% if task_counts.overdue %}<span class="uk-badge uk-badge-danger uk-margin-small-left">{{ task_counts.overdue }}</span>{% endif %}
+      </a>
+    </div>
+    {% if tab == 'tasks' %}
+    <section class="todos-tasks-panel">
+      <div class="todos-card uk-card-default uk-card-body">
+        <div class="todos-panel-head">
+          <div>
+            <div class="todos-panel-kicker">Tasks</div>
+            <h2 class="todos-panel-title">Attivita da fare</h2>
+          </div>
+          <div class="todos-task-stats">
+            <span class="uk-label">{{ task_counts.total }} tot</span>
+            <span class="uk-label uk-label-warning">{{ task_counts.open }} da fare</span>
+            {% if task_counts.overdue %}<span class="uk-label uk-label-danger">{{ task_counts.overdue }} in ritardo</span>{% endif %}
+            {% if task_counts.today %}<span class="uk-label uk-label-success">{{ task_counts.today }} oggi</span>{% endif %}
+          </div>
+        </div>
+        <div class="todos-task-actions uk-margin-small-top">
+          <button class="uk-button uk-button-primary uk-button-small" type="button" data-action="tasks#showAddModal">+ Nuova attivita</button>
+        </div>
+        <div class="todos-task-list uk-margin-small-top" data-tasks-target="list">
+          {% for entry in standalone_entries %}
+            <div class="todos-task-item {% if entry.is_overdue %}is-overdue{% endif %} {% if entry.is_today_item %}is-today{% endif %}" data-task-id="{{ entry.item.id }}">
+              <div class="todos-task-item-main">
+                <div class="todos-task-item-title">{{ entry.item.title }}</div>
+                <div class="uk-text-meta">
+                  {% if entry.item.due_date %}{{ entry.item.due_date|date:"d/m/Y" }}{% endif %}
+                  {% if entry.item.due_time %} · {{ entry.item.due_time|time:"H:i" }}{% endif %}
+                  {% if entry.item.priority != 'MEDIUM' %} · {{ entry.item.priority }}{% endif %}
+                </div>
+              </div>
+              <div class="todos-task-item-actions">
+                <select class="uk-select uk-form-small task-status-select" data-task-status data-task-id="{{ entry.item.id }}">
+                  <option value="OPEN" {% if entry.status == 'OPEN' %}selected{% endif %}>Da fare</option>
+                  <option value="IN_PROGRESS" {% if entry.status == 'IN_PROGRESS' %}selected{% endif %}>In corso</option>
+                  <option value="DONE" {% if entry.status == 'DONE' %}selected{% endif %}>Fatto</option>
+                </select>
+                <a class="uk-button uk-button-text uk-text-small" href="/todos/items/update?id={{ entry.item.id }}">Modifica</a>
+                <button class="uk-button uk-button-text uk-text-small uk-text-danger" type="button" data-action="tasks#deleteTask" data-task-id="{{ entry.item.id }}">Elimina</button>
+              </div>
+            </div>
+          {% empty %}
+            <div class="uk-alert-primary uk-padding-small">Nessuna attivita. Clicca "+ Nuova attivita" per aggiungerne una.</div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    {% else %}
+    {% with week_total=stats.planned|add:stats.done|add:stats.skipped %}
+      <div class="todos-hero-main uk-grid-small" uk-grid>
+        <div class="todos-hero-copy uk-width-1-1 uk-width-3-5@l">
+          <div class="todos-kicker">Todos</div>
+          <h1 class="todos-hero-title">Settimana in movimento</h1>
+          <p class="todos-hero-text">Organizza le todo per categoria, aggiungi attivita con meno passaggi e salva i valori durante il completamento.</p>
+        </div>
+        <div class="todos-hero-progress uk-width-1-1 uk-width-2-5@l">
+          <div class="todos-progress-label">
+            <span>Completamento</span>
+            {% if week_total %}
+              <strong>{% widthratio stats.done week_total 100 %}%</strong>
+            {% else %}
+              <strong>0%</strong>
+            {% endif %}
+          </div>
+          <div class="todos-progress-track" aria-hidden="true">
+            {% if week_total %}
+              <span class="todos-progress-value" style="width:{% widthratio stats.done week_total 100 %}%"></span>
+            {% else %}
+              <span class="todos-progress-value" style="width:0%"></span>
+            {% endif %}
+          </div>
+          <div class="todos-hero-meta">
+            <span>{{ stats.done }} fatti</span>
+            <span>{{ stats.planned }} da fare</span>
+            <span>{{ todos|length }} contenitori</span>
+          </div>
+        </div>
+      </div>
+      <div class="todos-hero-actions uk-grid-small uk-child-width-1-1 uk-child-width-1-3@s" uk-grid id="app-actions" data-module="todos">
+        <a class="uk-button uk-button-primary uk-button-small" href="/todos/api/add" data-action="add_todo">Nuovo contenitore</a>
+        <a class="uk-button uk-button-default uk-button-small" href="/todos/items/add" data-action="add_item">Nuova attivita (task)</a>
+        <a class="uk-button uk-button-default uk-button-small" href="/todos/stats">Statistiche</a>
+      </div>
+    </section>
+
+    <section class="todos-overview-grid uk-grid-small" uk-grid>
+      <article class="todos-card todos-panel uk-width-expand@l" id="todos-week-panel">
+        <div class="todos-panel-head">
+          <div>
+            <div class="todos-panel-kicker">Timeline</div>
+            <h2 class="todos-panel-title">Settimana {{ week_start|date:"d/m" }} - {{ week_end|date:"d/m" }}</h2>
+          </div>
+          <div class="todos-week-range">
+            <span>{{ week_start|date:"d M" }}</span>
+            <span>{{ week_end|date:"d M" }}</span>
+          </div>
+        </div>
+        <div class="todos-week-nav">
+          <a class="uk-button uk-button-default uk-button-small" href="/todos/?week={{ prev_week }}{{ category_query }}">Settimana prima</a>
+          <a class="uk-button uk-button-default uk-button-small" href="/todos/?week={{ next_week }}{{ category_query }}">Settimana dopo</a>
+        </div>
+        <div class="todo-category-filter">
+          <a class="uk-button uk-button-default uk-button-small {% if not selected_category %}is-active{% endif %}" href="/todos/?week={{ week_start|date:'Y-m-d' }}">Tutte le categorie</a>
+          {% for category in categories %}
+            <a class="uk-button uk-button-default uk-button-small {% if selected_category and selected_category.id == category.id %}is-active{% endif %}" href="/todos/?week={{ week_start|date:'Y-m-d' }}&category={{ category.id }}">{{ category.name }}</a>
+          {% endfor %}
+        </div>
+        <div class="todos-day-strip" aria-label="Navigazione giorni">
+          {% for day in week_days %}
+            {% with items=grouped|get_item:day.index %}
+              <button
+                class="todos-day-pill{% if day.date == today %} is-today{% endif %}"
+                type="button"
+                data-todo-day-jump
+                data-day-index="{{ day.index }}"
+                data-day-date="{{ day.date|date:'Y-m-d' }}"
+              >
+                <span class="todos-day-pill-top">{{ day.label }}</span>
+                <span class="todos-day-pill-date">{{ day.date|date:"d/m" }}</span>
+                <span class="todos-day-pill-count">{{ items|length }} task</span>
+              </button>
+            {% endwith %}
+          {% endfor %}
+        </div>
+      </article>
+
+      <article class="todos-card todos-panel uk-width-2-5@l">
+        <div class="todos-panel-head">
+          <div>
+            <div class="todos-panel-kicker">Oggi</div>
+            <h2 class="todos-panel-title">Focus rapido</h2>
+          </div>
+          <div class="todos-panel-chip">{{ today|date:"D d M" }}</div>
+        </div>
+        <div class="todos-today-stats" data-today-date="{{ today|date:"Y-m-d" }}">
+          <div class="todos-metric-grid">
+            <div class="todos-metric-card">
+              <div class="todos-metric-label">Totale</div>
+              <div id="todo-today-total" class="todos-metric-value">{{ today_stats.total }}</div>
+            </div>
+            <div class="todos-metric-card">
+              <div class="todos-metric-label">Da fare</div>
+              <div id="todo-today-planned" class="todos-metric-value">{{ today_stats.planned }}</div>
+            </div>
+            <div class="todos-metric-card is-done">
+              <div class="todos-metric-label">Fatti</div>
+              <div id="todo-today-done" class="todos-metric-value">{{ today_stats.done }}</div>
+            </div>
+            <div class="todos-metric-card is-skipped">
+              <div class="todos-metric-label">Saltati</div>
+              <div id="todo-today-skipped" class="todos-metric-value">{{ today_stats.skipped }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="todo-filter-group" data-todo-filters>
+          <button class="uk-button uk-button-default uk-button-small is-active" type="button" data-todo-filter="all">Tutte</button>
+          <button class="uk-button uk-button-default uk-button-small" type="button" data-todo-filter="today">Solo oggi</button>
+          <button class="uk-button uk-button-default uk-button-small" type="button" data-todo-filter="pending">Solo da fare</button>
+        </div>
+
+        <div class="todos-quick-block">
+          <div class="todos-quick-title">Inserimento veloce</div>
+          <ul class="uk-accordion todos-quick-accordion" uk-accordion="active: false; collapsible: true">
+            <li class="{% if active_quick_form == "todo" %}uk-open{% endif %}">
+              <a class="uk-accordion-title" href="#">1) Crea contenitore</a>
+              <div class="uk-accordion-content">
+                <form method="post" class="uk-form-stacked todos-quick-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="quick_action" value="add_todo">
+                  <input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
+                  {% if selected_category %}
+                    <input type="hidden" name="category" value="{{ selected_category.id }}">
+                  {% endif %}
+                  {% if quick_todo_form.errors %}
+                    <div class="uk-alert-danger uk-padding-small uk-margin-small-bottom">
+                      Correggi i campi del form contenitore.
+                    </div>
+                  {% endif %}
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_todo_form.name.id_for_label }}">Nome contenitore</label>
+                    {{ quick_todo_form.name }}
+                    {{ quick_todo_form.name.errors }}
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_todo_form.description.id_for_label }}">Descrizione</label>
+                    {{ quick_todo_form.description }}
+                    {{ quick_todo_form.description.errors }}
+                  </div>
+                  <div class="uk-text-meta uk-margin-small-bottom">Il contenitore e il gruppo principale (es. salute, hobby, doveri).</div>
+                  <div class="uk-margin-small-top">
+                    <button class="uk-button uk-button-default uk-button-small" type="submit">Aggiungi contenitore</button>
+                  </div>
+                  {{ quick_todo_form.non_field_errors }}
+                </form>
+              </div>
+            </li>
+            <li class="{% if active_quick_form == "item" %}uk-open{% endif %}">
+              <a class="uk-accordion-title" href="#">2) Crea attivita (task)</a>
+              <div class="uk-accordion-content">
+                <form method="post" class="uk-form-stacked todos-quick-form">
+                  {% csrf_token %}
+                  <input type="hidden" name="quick_action" value="add_item">
+                  <input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
+                  {% if selected_category %}
+                    <input type="hidden" name="category" value="{{ selected_category.id }}">
+                  {% endif %}
+                  {% if quick_item_form.errors %}
+                    <div class="uk-alert-danger uk-padding-small uk-margin-small-bottom">
+                      Correggi i campi del form attivita.
+                    </div>
+                  {% endif %}
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_item_form.todo_choice.id_for_label }}">Contenitore</label>
+                    {{ quick_item_form.todo_choice }}
+                    {{ quick_item_form.todo_choice.errors }}
+                    {% if not todos %}
+                      <div class="uk-text-meta uk-margin-small-top">Prima crea almeno un contenitore.</div>
+                    {% endif %}
+                  </div>
+                  <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+                    <div class="uk-margin-small">
+                      <label class="uk-form-label" for="{{ quick_item_form.category_choice.id_for_label }}">Categoria</label>
+                      {{ quick_item_form.category_choice }}
+                      {{ quick_item_form.category_choice.errors }}
+                    </div>
+                    <div class="uk-margin-small">
+                      <label class="uk-form-label" for="{{ quick_item_form.category_name.id_for_label }}">Nuova categoria</label>
+                      {{ quick_item_form.category_name }}
+                      {{ quick_item_form.category_name.errors }}
+                    </div>
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_item_form.title.id_for_label }}">Attivita</label>
+                    {{ quick_item_form.title }}
+                    {{ quick_item_form.title.errors }}
+                  </div>
+                  <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+                    <div class="uk-margin-small">
+                      <label class="uk-form-label" for="{{ quick_item_form.weekday.id_for_label }}">Giorno</label>
+                      {{ quick_item_form.weekday }}
+                      {{ quick_item_form.weekday.errors }}
+                    </div>
+                    <div class="uk-margin-small">
+                      <label class="uk-form-label" for="{{ quick_item_form.time_start.id_for_label }}">Orario</label>
+                      {{ quick_item_form.time_start }}
+                      {{ quick_item_form.time_start.errors }}
+                    </div>
+                  </div>
+                  <div class="uk-margin-small">
+                    <label class="uk-form-label" for="{{ quick_item_form.note.id_for_label }}">Nota</label>
+                    {{ quick_item_form.note }}
+                  </div>
+                  <div class="uk-text-meta uk-margin-small-bottom">L'attivita e un singolo task ripetibile dentro un contenitore.</div>
+                  <div class="uk-margin-small-top">
+                    <button class="uk-button uk-button-primary uk-button-small" type="submit">Aggiungi attivita</button>
+                  </div>
+                  {{ quick_item_form.non_field_errors }}
+                </form>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </article>
+    </section>
+
+    <section class="todos-main-grid uk-grid-small" uk-grid>
+      <div class="todos-stream uk-width-expand@l" id="todos-grid">
+      <ul class="uk-accordion uk-margin-remove todos-accordion-list" uk-accordion="multiple: true">
+        {% for day in week_days %}
+          {% with items=grouped|get_item:day.index %}
+          <li id="todo-day-{{ day.index }}" {% if day.date == today %}class="uk-open"{% endif %} data-todo-day data-day-index="{{ day.index }}" data-day-date="{{ day.date|date:"Y-m-d" }}">
+            <a class="uk-accordion-title todos-accordion-title" href="#">
+              <span class="todos-accordion-main">
+                <span>{{ day.label }} · {{ day.date|date:"d/m" }}</span>
+                <span class="todos-day-badge">{{ items|length }} task</span>
+              </span>
+              <span class="todos-accordion-side">
+                {% if day.date == today %}
+                  <span class="uk-label todos-today-label">Oggi</span>
+                {% endif %}
+              </span>
+            </a>
+            <div class="uk-accordion-content uk-margin-small-top">
+              {% if items %}
+                <div class="uk-grid-small todo-day-list" uk-grid>
+                  {% for entry in items %}
+                    <article class="uk-width-1-1 uk-width-1-2@l" data-todo-card data-day-date="{{ day.date|date:"Y-m-d" }}">
+                      <div class="uk-card uk-card-default uk-card-small uk-card-body todo-entry-card" data-todo-item-id="{{ entry.item.id }}">
+                          <div class="todo-entry-head">
+                            <div>
+                              <div class="todo-entry-title">{{ entry.item.title }}</div>
+                              <div class="uk-text-meta todo-day-entry-meta">
+                                Contenitore: {{ entry.item.todo.name }}{% if entry.item.category %} · Categoria: {{ entry.item.category.name }}{% endif %}{% if entry.item.project %} · Progetto: {{ entry.item.project.name }}{% endif %}
+                              </div>
+                            </div>
+                            <div id="todo-status-{{ entry.item.id }}" class="todo-entry-status" data-todo-status data-todo-status-value="{{ entry.status }}">{{ entry.status }}</div>
+                          </div>
+                          <div class="todo-entry-time">
+                            {% if entry.item.time_start %}<span>{{ entry.item.time_start|time:"H:i" }}</span>{% endif %}
+                            {% if entry.item.time_end %}<span>- {{ entry.item.time_end|time:"H:i" }}</span>{% endif %}
+                            {% if not entry.item.time_start and not entry.item.time_end %}<span>Orario libero</span>{% endif %}
+                          </div>
+                          {% if entry.item.note %}
+                            <div class="todo-entry-note">{{ entry.item.note|truncatechars:120 }}</div>
+                          {% endif %}
+
+                          <form
+                            method="post"
+                            action="/todos/check"
+                            class="todo-check-form uk-form-stacked uk-margin-small-top"
+                            hx-post="/todos/check"
+                            hx-swap="none"
+                          >
+                            {% csrf_token %}
+                            <input type="hidden" name="item_id" value="{{ entry.item.id }}">
+                            <input type="hidden" name="week" value="{{ week_start|date:"Y-m-d" }}">
+                            <div class="todo-action-grid">
+                              <div>
+                                {% if entry.schema_fields %}
+                                  <button
+                                    class="uk-button uk-button-primary uk-button-small uk-width-1-1 todo-done-btn"
+                                    type="button"
+                                    data-item-id="{{ entry.item.id }}"
+                                    data-week="{{ week_start|date:"Y-m-d" }}"
+                                    data-title="{{ entry.item.title }}"
+                                    data-schema-id="todo-schema-{{ entry.item.id }}"
+                                    data-data-id="todo-data-{{ entry.item.id }}"
+                                  >
+                                    Fatto
+                                  </button>
+                                {% else %}
+                                  <button class="uk-button uk-button-primary uk-button-small uk-width-1-1" name="status" value="DONE" type="submit">Fatto</button>
+                                {% endif %}
+                              </div>
+                              <div>
+                                <button class="uk-button uk-button-danger uk-button-small uk-width-1-1" name="status" value="SKIPPED" type="submit">Saltato</button>
+                              </div>
+                              <div>
+                                <button class="uk-button uk-button-default uk-button-small uk-width-1-1" name="status" value="PLANNED" type="submit">Riapri</button>
+                              </div>
+                            </div>
+                          </form>
+
+                          {% with item_id=entry.item.id|stringformat:"s" %}
+                            {% with schema_id="todo-schema-"|add:item_id data_id="todo-data-"|add:item_id data_container_id="todo-data-container-"|add:item_id %}
+                              {{ entry.schema_fields|default:""|json_script:schema_id }}
+                              <div id="{{ data_container_id }}" hidden>
+                                {{ entry.data|default:""|json_script:data_id }}
+                              </div>
+                            {% endwith %}
+                          {% endwith %}
+
+                          <div id="todo-values-{{ entry.item.id }}" class="todo-entry-values">
+                            {% if entry.data_rows %}
+                              <div class="todo-entry-values-title">Valori salvati (settimana corrente)</div>
+                              <ul class="todo-entry-values-list">
+                                {% for row in entry.data_rows %}
+                                  <li><strong>{{ row.label }}:</strong> {{ row.value }}</li>
+                                {% endfor %}
+                              </ul>
+                            {% endif %}
+                          </div>
+
+                          <div class="todo-entry-links">
+                            <a class="uk-button uk-button-text uk-text-small" href="/todos/items/update?id={{ entry.item.id }}">Modifica</a>
+                            <a class="uk-button uk-button-text uk-text-small uk-text-danger" href="/todos/items/remove?id={{ entry.item.id }}">Elimina</a>
+                          </div>
+                      </div>
+                    </article>
+                  {% endfor %}
+                </div>
+              {% else %}
+                <div class="uk-alert-primary uk-padding-small uk-margin-remove" data-todo-empty>Nessuna attivita in questo giorno.</div>
+              {% endif %}
+            </div>
+          </li>
+          {% endwith %}
+        {% endfor %}
+      </ul>
+      </div>
+
+      <aside class="todos-sidebar uk-width-1-3@l">
+        <section class="todos-card todos-panel">
+          <div class="todos-panel-head">
+            <div>
+              <div class="todos-panel-kicker">Settimana</div>
+              <h2 class="todos-panel-title">Stato generale</h2>
+            </div>
+          </div>
+          <div class="todos-metric-stack">
+            <div class="todos-metric-line">
+              <span>Pianificati</span>
+              <strong id="todo-stat-planned" data-todo-stat="PLANNED">{{ stats.planned }}</strong>
+            </div>
+            <div class="todos-metric-line">
+              <span>Completati</span>
+              <strong id="todo-stat-done" data-todo-stat="DONE">{{ stats.done }}</strong>
+            </div>
+            <div class="todos-metric-line">
+              <span>Saltati</span>
+              <strong id="todo-stat-skipped" data-todo-stat="SKIPPED">{{ stats.skipped }}</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="todos-card todos-panel">
+          <div class="todos-panel-head">
+            <div>
+              <div class="todos-panel-kicker">Library</div>
+              <h2 class="todos-panel-title">Contenitori attivi</h2>
+            </div>
+          </div>
+          {% if todos %}
+            <ul class="uk-list uk-list-divider uk-margin-remove todo-list">
+              {% for todo in todos %}
+                <li class="todo-list-item">
+                  <div class="todo-list-head">
+                    <div>
+                      <div class="todo-entry-title">{{ todo.name }}</div>
+                      <div class="uk-text-meta">{{ todo.description|default:"-" }}</div>
+                    </div>
+                    <div class="uk-flex uk-flex-wrap todos-gap-small">
+                      <a class="uk-button uk-button-default uk-button-small" href="/todos/api/update?id={{ todo.id }}">Modifica</a>
+                      <a class="uk-button uk-button-danger uk-button-small" href="/todos/api/remove?id={{ todo.id }}">Elimina</a>
+                    </div>
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="uk-alert-primary uk-padding-small uk-margin-remove">Nessun contenitore attivo.</div>
+          {% endif %}
+        </section>
+      </aside>
+    </section>
+    {% endwith %}
+    {% endif %}
+
+    <nav class="todos-mobile-dock" aria-label="Azioni rapide todos">
+      <a class="todos-mobile-dock__action is-primary" href="/todos/api/add">+ Contenitore</a>
+      <a class="todos-mobile-dock__action" href="/todos/items/add">+ Attivita</a>
+      <a class="todos-mobile-dock__action" href="/todos/stats">Statistiche</a>
+    </nav>
+  </div>
+
+  <div class="modal" id="task-add-modal" hidden data-tasks-target="modal">
+    <div class="modal-backdrop" data-modal-close></div>
+    <div class="modal-card uk-card uk-card-default uk-card-small" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
+      <div class="modal-head">
+        <h3 id="task-modal-title">Nuova attivita</h3>
+        <button class="modal-close" type="button" data-modal-close aria-label="Chiudi">×</button>
+      </div>
+      <form
+        method="post"
+        id="task-add-form"
+        class="uk-form-stacked"
+        hx-post="/todos/api/task/add"
+        hx-swap="none"
+      >
+        {% csrf_token %}
+        <div class="uk-margin-small">
+          <label class="uk-form-label" for="task-title">Titolo</label>
+          <input class="uk-input uk-form-small" type="text" name="title" id="task-title" required>
+        </div>
+        <div class="uk-grid-small uk-child-width-1-2" uk-grid>
+          <div class="uk-margin-small">
+            <label class="uk-form-label" for="task-due_date">Data</label>
+            <input class="uk-input uk-form-small" type="date" name="due_date" id="task-due_date">
+          </div>
+          <div class="uk-margin-small">
+            <label class="uk-form-label" for="task-due_time">Orario</label>
+            <input class="uk-input uk-form-small" type="time" name="due_time" id="task-due_time" step="900">
+          </div>
+        </div>
+        <div class="uk-margin-small">
+          <label class="uk-form-label" for="task-priority">Priorita</label>
+          <select class="uk-select uk-form-small" name="priority" id="task-priority">
+            <option value="LOW">Bassa</option>
+            <option value="MEDIUM" selected>Media</option>
+            <option value="HIGH">Alta</option>
+          </select>
+        </div>
+        <div class="uk-margin-small">
+          <label class="uk-form-label" for="task-note">Nota</label>
+          <textarea class="uk-textarea uk-form-small" name="note" id="task-note" rows="2"></textarea>
+        </div>
+        <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
+          <div>
+            <button class="uk-button uk-button-default uk-button-small uk-width-1-1" type="button" data-modal-close>Annulla</button>
+          </div>
+          <div>
+            <button class="uk-button uk-button-primary uk-button-small uk-width-1-1" type="submit">Salva</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var select = document.getElementById("{{ quick_item_form.category_choice.id_for_label }}");
+      var input = document.getElementById("{{ quick_item_form.category_name.id_for_label }}");
+      function toggleCategory() {
+        if (!select || !input) return;
+        var isNew = select.value === "__new__";
+        input.style.display = isNew ? "block" : "none";
+        if (!isNew) {
+          input.value = "";
+        }
+      }
+      if (select && input) {
+        select.addEventListener("change", toggleCategory);
+        toggleCategory();
+      }
+    })();
+  </script>
+
+  <div class="modal" id="todo-modal" hidden>
+    <div class="modal-backdrop" data-modal-close></div>
+    <div class="modal-card uk-card uk-card-default uk-card-small" role="dialog" aria-modal="true" aria-labelledby="todo-modal-title">
+      <div class="modal-head">
+        <h3 id="todo-modal-title">Completa attivita</h3>
+        <button class="modal-close" type="button" data-modal-close aria-label="Chiudi">×</button>
+      </div>
+      <form
+        method="post"
+        action="/todos/check"
+        id="todo-modal-form"
+        class="todo-check-form form-compact uk-form-stacked"
+        hx-post="/todos/check"
+        hx-swap="none"
+      >
+        {% csrf_token %}
+        <input type="hidden" name="item_id" id="todo-modal-item">
+        <input type="hidden" name="week" id="todo-modal-week">
+        <input type="hidden" name="status" value="DONE">
+        <div class="todo-form-grid" id="todo-modal-fields"></div>
+        <div class="uk-grid-small uk-child-width-1-2 uk-margin-small-top" uk-grid>
+          <div>
+            <button class="uk-button uk-button-default uk-button-small uk-width-1-1" type="button" data-modal-close>Annulla</button>
+          </div>
+          <div>
+            <button class="uk-button uk-button-primary uk-button-small uk-width-1-1" type="submit">Conferma</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+{% endblock %}

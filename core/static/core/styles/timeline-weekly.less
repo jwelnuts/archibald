@@ -1,0 +1,250 @@
+// ============================================================
+// Weekly Timeline — Light themed project schedule view
+// ============================================================
+
+.timeline-filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.timeline-week-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.timeline-week-nav .uk-select {
+  width: auto;
+  min-width: 200px;
+  font-size: 0.85rem;
+}
+
+// Weekly calendar table
+.timeline-weekly {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #fff;
+  overflow: hidden;
+}
+
+.timeline-weekly-header {
+  display: grid;
+  grid-template-columns: 180px repeat(7, 1fr);
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+}
+
+.timeline-weekly-corner {
+  padding: 12px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  border-right: 1px solid var(--border);
+}
+
+.timeline-weekly-day-header {
+  padding: 12px 8px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+
+.timeline-weekly-day-header:last-child {
+  border-right: none;
+}
+
+.timeline-weekly-day-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.timeline-weekly-day-date {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin-top: 2px;
+}
+
+.timeline-weekly-body {
+  // nothing extra needed
+}
+
+.timeline-weekly-row {
+  display: grid;
+  grid-template-columns: 180px repeat(7, 1fr);
+  border-bottom: 1px solid var(--border);
+}
+
+.timeline-weekly-row:last-child {
+  border-bottom: none;
+}
+
+.timeline-weekly-project-label {
+  padding: 10px 12px;
+  border-right: 1px solid var(--border);
+  background: #fafbfc;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.timeline-weekly-project-name {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.timeline-weekly-project-count {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.timeline-weekly-cells {
+  display: contents;
+}
+
+.timeline-weekly-cell {
+  padding: 6px 8px;
+  border-right: 1px solid #f0f1f3;
+  min-height: 52px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.timeline-weekly-cell:last-child {
+  border-right: none;
+}
+
+// Today highlight
+.timeline-weekly-cell.is-today {
+  background: rgba(34, 197, 94, 0.06);
+  outline: 2px solid rgba(34, 197, 94, 0.25);
+  outline-offset: -2px;
+}
+
+// Items inside cells
+.timeline-weekly-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  color: #fff;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 120ms ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.timeline-weekly-item:hover {
+  opacity: 0.85;
+}
+
+.timeline-weekly-item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  background: inherit;
+}
+
+.timeline-weekly-item-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+}
+
+.timeline-weekly-item-status {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  opacity: 0.85;
+}
+
+// Empty state
+.timeline-weekly-empty {
+  grid-column: 1 / -1;
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+// Legend (reuse existing)
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border-top: 1px solid var(--border);
+}
+
+.timeline-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.timeline-legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+// Responsive
+@media (max-width: 960px) {
+  .timeline-weekly-header,
+  .timeline-weekly-row {
+    grid-template-columns: 120px repeat(7, 1fr);
+  }
+
+  .timeline-week-nav .uk-select {
+    min-width: 160px;
+  }
+}
+
+@media (max-width: 640px) {
+  .timeline-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .timeline-week-nav {
+    justify-content: center;
+  }
+
+  .timeline-weekly-header,
+  .timeline-weekly-row {
+    grid-template-columns: 80px repeat(7, 1fr);
+  }
+
+  .timeline-weekly-project-label {
+    padding: 6px 8px;
+  }
+
+  .timeline-weekly-project-name {
+    font-size: 0.78rem;
+  }
+}

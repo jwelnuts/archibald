@@ -14,9 +14,9 @@ from core.models import UserNavConfig
 from planner.models import PlannerItem
 from planner.forms import PlannerItemForm
 from projects.models import ProjectNote
-from routines.models import RoutineCheck, RoutineItem
-from todo.forms import TaskForm
-from todo.models import Task
+from todos.models import TodoRecurrence, TodoItem
+from todos.forms import TodoItemForm
+from todos.models import TodoItem
 
 from .forms import WorkLogForm
 from .models import AgendaItem, WorkLog
@@ -37,7 +37,7 @@ MONTH_NAMES_IT = [
 ]
 
 ROUTINE_STATUS_LABELS = {
-    choice: label for choice, label in RoutineCheck.Status.choices
+    choice: label for choice, label in TodoRecurrence.Status.choices
 }
 
 DEFAULT_AGENDA_PREFERENCES = {
@@ -154,12 +154,12 @@ def _build_agenda_context(
     selected_param = selected_date.isoformat()
 
     if todo_form is None:
-        todo_form = TaskForm(
+        todo_form = TodoItemForm(
             owner=user,
             initial={
                 "due_date": selected_date,
-                "item_type": Task.ItemType.REMINDER,
-                "status": Task.Status.OPEN,
+                "item_type": TodoItem.ItemType.REMINDER,
+                "status": TodoItem.Status.OPEN,
             },
         )
 
@@ -186,8 +186,8 @@ def _build_agenda_context(
         .order_by("due_date", "due_time", "created_at")
     )
     todo_items = (
-        Task.objects.filter(owner=user, due_date__range=(month_start, month_end))
-        .exclude(status=Task.Status.DONE)
+        TodoItem.objects.filter(owner=user, due_date__range=(month_start, month_end))
+        .exclude(status=TodoItem.Status.DONE)
         .select_related("project")
         .order_by("due_date", "due_time", "created_at")
     )
@@ -213,7 +213,7 @@ def _build_agenda_context(
                 "agenda_reminder": 0,
                 "todo": 0,
                 "planner": 0,
-                "routine": 0,
+                "todo": 0,
                 "hours": Decimal("0"),
             }
 
@@ -278,22 +278,22 @@ def _build_agenda_context(
             }
         )
 
-    routine_items = (
-        RoutineItem.objects.filter(owner=user, is_active=True, routine__is_active=True)
-        .select_related("routine", "project")
+    todo_items = (
+        TodoItem.objects.filter(owner=user, is_active=True, todo__is_active=True)
+        .select_related("todo", "project")
         .order_by("time_start", "title")
     )
-    if routine_items:
+    if todo_items:
         week_start_min = _week_start(month_start)
         week_start_max = _week_start(month_end)
-        checks = RoutineCheck.objects.filter(
+        checks = TodoRecurrence.objects.filter(
             owner=user,
-            item__in=routine_items,
+            item__in=todo_items,
             week_start__range=(week_start_min, week_start_max),
         )
         check_map = {(check.item_id, check.week_start): check for check in checks}
         by_weekday = {idx: [] for idx in range(7)}
-        for item in routine_items:
+        for item in todo_items:
             by_weekday.setdefault(item.weekday, []).append(item)
 
         cursor = month_start
@@ -304,9 +304,9 @@ def _build_agenda_context(
                 week_start = _week_start(cursor)
                 for item in day_items:
                     check = check_map.get((item.id, week_start))
-                    status = check.status if check else RoutineCheck.Status.PLANNED
+                    status = check.status if check else TodoRecurrence.Status.PLANNED
                     status_label = ROUTINE_STATUS_LABELS.get(status, status)
-                    summary_map[cursor]["routine"] += 1
+                    summary_map[cursor]["todo"] += 1
                     time_parts = []
                     if item.time_start:
                         time_parts.append(item.time_start.strftime("%H:%M"))
@@ -317,13 +317,13 @@ def _build_agenda_context(
                         time_text = f"{time_parts[0]}-{time_parts[1]}"
                     elif len(time_parts) == 1:
                         time_text = time_parts[0]
-                    meta_parts = [item.routine.name, status_label]
+                    meta_parts = [item.todo.name, status_label]
                     if item.project_id:
                         meta_parts.append(item.project.name)
                     events_map[cursor].append(
                         {
-                            "kind": "routine",
-                            "label": "Routine",
+                            "kind": "todo",
+                            "label": "TodoList",
                             "title": item.title,
                             "time": "" if time_text == "-" else time_text,
                             "meta": " · ".join(meta_parts),
@@ -357,7 +357,7 @@ def _build_agenda_context(
 
     month_total_hours = work_logs.aggregate(total=Sum("hours")).get("total") or Decimal("0")
     month_logged_days = work_logs.count()
-    routine_month_total = sum(summary["routine"] for summary in summary_map.values())
+    todo_month_total = sum(summary["todo"] for summary in summary_map.values())
 
     weeks = []
     calendar = Calendar(firstweekday=0)
@@ -374,7 +374,7 @@ def _build_agenda_context(
                     "agenda_reminder": 0,
                     "todo": 0,
                     "planner": 0,
-                    "routine": 0,
+                    "todo": 0,
                     "hours": Decimal("0"),
                 },
             )
@@ -387,8 +387,8 @@ def _build_agenda_context(
                 chips.append({"kind": "todo", "label": "Todo", "value": summary["todo"]})
             if summary["planner"]:
                 chips.append({"kind": "planner", "label": "Planner", "value": summary["planner"]})
-            if summary["routine"]:
-                chips.append({"kind": "routine", "label": "Routine", "value": summary["routine"]})
+            if summary["todo"]:
+                chips.append({"kind": "todo", "label": "TodoList", "value": summary["todo"]})
             if summary["hours"] > 0:
                 chips.append({"kind": "worklog", "label": "Ore", "value": f"{_hours_label(summary['hours'])}h"})
             week_cells.append(
@@ -435,7 +435,7 @@ def _build_agenda_context(
         },
         "todo_open_month": todo_items.count(),
         "planner_open_month": planner_items.count(),
-        "routine_month_total": routine_month_total,
+        "todo_month_total": todo_month_total,
         "selected_events_total": len(selected_events),
         "todo_form": todo_form,
         "work_form": work_form,
@@ -458,7 +458,7 @@ def dashboard(request):
         posted_selected = request.POST.get("selected") or selected_raw
 
         if action == "add_todo_item":
-            todo_form = TaskForm(request.POST, owner=request.user)
+            todo_form = TodoItemForm(request.POST, owner=request.user)
             if todo_form.is_valid():
                 task = todo_form.save(commit=False)
                 task.owner = request.user

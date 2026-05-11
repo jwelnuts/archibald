@@ -1,7 +1,7 @@
 import re
 from datetime import date, timedelta
 from django.utils import timezone
-from todo.models import Task
+from todos.models import TodoItem
 from planner.models import PlannerItem
 from projects.models import ProjectNote
 
@@ -50,30 +50,30 @@ class StoryboardCommandParser:
         # Pattern: title [@ date] [# priority] [notes]
         # Priority: low, medium, high
         priority_map = {
-            "low": Task.Priority.LOW,
-            "medium": Task.Priority.MEDIUM,
-            "high": Task.Priority.HIGH,
-            "1": Task.Priority.LOW,
-            "2": Task.Priority.MEDIUM,
-            "3": Task.Priority.HIGH,
+            "low": TodoItem.Priority.LOW,
+            "medium": TodoItem.Priority.MEDIUM,
+            "high": TodoItem.Priority.HIGH,
+            "1": TodoItem.Priority.LOW,
+            "2": TodoItem.Priority.MEDIUM,
+            "3": TodoItem.Priority.HIGH,
         }
 
         due_date, content = self._extract_date(content)
-        priority, content = self._extract_priority(content, priority_map, Task.Priority.MEDIUM)
+        priority, content = self._extract_priority(content, priority_map, TodoItem.Priority.MEDIUM)
 
         # Split title and notes by newline or double space
         parts = re.split(r'\n|\s\s+', content, 1)
         title = parts[0].strip()
         note = parts[1].strip() if len(parts) > 1 else ""
 
-        return Task.objects.create(
+        return TodoItem.objects.create(
             owner=self.user,
             project=self.project,
             title=title,
             due_date=due_date,
             priority=priority,
             note=note,
-            status=Task.Status.OPEN,
+            status=TodoItem.Status.OPEN,
         )
 
     def _handle_planner(self, content):

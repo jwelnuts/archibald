@@ -6,7 +6,10 @@ withStimulusModule(({ Controller }) => {
 
     connect() {
       this.searchTimer = null;
-      this.initializeNoteEditor();
+      this._quill = null;
+      requestAnimationFrame(() => {
+        this.initializeNoteEditor();
+      });
       this.initializeTabs();
     }
 
@@ -16,6 +19,17 @@ withStimulusModule(({ Controller }) => {
       }
       if (this.noteFormHandler && this.hasNoteFormTarget) {
         this.noteFormTarget.removeEventListener("submit", this.noteFormHandler);
+        this.noteFormHandler = null;
+      }
+      if (this._quill) {
+        try {
+          const el = this._quill.container?.parentNode;
+          if (el) el.innerHTML = "";
+        } catch (e) { /* ignore */ }
+        this._quill = null;
+      }
+      if (this.hasNoteEditorTarget) {
+        this.noteEditorTarget.dataset.quillReady = "false";
       }
     }
 
@@ -92,33 +106,50 @@ withStimulusModule(({ Controller }) => {
       if (!this.hasNoteEditorTarget || !this.hasNoteFormTarget || !window.Quill) {
         return;
       }
-      const textarea = this.noteFormTarget.querySelector("#id_content");
+
+      if (this.noteEditorTarget.dataset.quillReady === "true") {
+        return;
+      }
+
+      const textarea = this.noteFormTarget.querySelector("textarea[name='content']");
       const toolbar = this.noteFormTarget.querySelector("#note-editor-toolbar");
-      if (!textarea || !toolbar || this.noteEditorTarget.dataset.quillReady === "true") {
+      if (!textarea || !toolbar) {
         return;
       }
 
       textarea.required = false;
-      const quill = new window.Quill(this.noteEditorTarget, {
-        theme: "snow",
-        modules: {
-          toolbar,
-        },
-      });
 
-      if (textarea.value) {
-        quill.clipboard.dangerouslyPasteHTML(textarea.value);
+      try {
+        this._quill = new window.Quill(this.noteEditorTarget, {
+          theme: "snow",
+          modules: {
+            toolbar,
+          },
+        });
+      } catch (e) {
+        return;
       }
 
-      this.noteFormHandler = (event) => {
-        const html = quill.root.innerHTML.trim();
-        const text = quill.getText().trim();
-        if (!text) {
-          event.preventDefault();
-          this.noteEditorTarget.focus();
-          return;
+      if (textarea.value) {
+        try {
+          this._quill.clipboard.dangerouslyPasteHTML(textarea.value);
+        } catch (e) {
+          this._quill.setText(textarea.value);
         }
-        textarea.value = html;
+      }
+
+      if (this.noteFormHandler) {
+        this.noteFormTarget.removeEventListener("submit", this.noteFormHandler);
+      }
+
+      this.noteFormHandler = () => {
+        const html = this._quill.root.innerHTML.trim();
+        const text = this._quill.getText().trim();
+        if (!text && textarea.hasAttribute("required")) {
+          textarea.value = "";
+        } else {
+          textarea.value = html || " ";
+        }
       };
 
       this.noteFormTarget.addEventListener("submit", this.noteFormHandler);

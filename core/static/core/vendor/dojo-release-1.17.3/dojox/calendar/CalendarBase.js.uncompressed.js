@@ -170,7 +170,7 @@ _nls){
 		baseClass: "dojoxCalendar",
 
 		// datePackage: Object
-		//		JavaScript namespace to find Calendar routines. Uses Gregorian Calendar routines at dojo.date by default.
+		//		JavaScript namespace to find Calendar todos. Uses Gregorian Calendar routines at dojo.date by default.
 		datePackage: date,
 
 		// startDate: Date

@@ -18,7 +18,7 @@ from projects.models import (
     SubProject,
     SubProjectActivity,
 )
-from todo.models import Task
+from todos.models import TodoItem
 from transactions.models import Transaction
 
 
@@ -101,7 +101,7 @@ def _storyboard_page_context(request, project, note_form=None, task_form=None, p
     if subprojects.exists():
         total_progress = sum(sp.completion_percent for sp in subprojects) // subprojects.count()
 
-    overdue_tasks = Task.objects.filter(owner=request.user, project=project, status=Task.Status.TODO, due_date__lt=timezone.now().date()).count()
+    overdue_tasks = TodoItem.objects.filter(owner=request.user, project=project, status=TodoItem.Status.TODO, due_date__lt=timezone.now().date()).count()
 
     health = "good"
     if overdue_tasks > 0:
@@ -137,7 +137,7 @@ def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80
     if date_to:
         notes_qs = notes_qs.filter(created_at__date__lte=date_to)
 
-    tasks_qs = Task.objects.filter(owner=user, project=project)
+    tasks_qs = TodoItem.objects.filter(owner=user, project=project)
     if query:
         tasks_qs = tasks_qs.filter(Q(title__icontains=query) | Q(note__icontains=query))
     if date_from:
@@ -415,7 +415,7 @@ HERO_ACTIONS_MODULES = {
         {"key": "income", "label": "Inserisci guadagno", "default": True},
         {"key": "quote", "label": "Nuovo preventivo", "default": True},
         {"key": "planner", "label": "Aggiungi promemoria", "default": True},
-        {"key": "routine_item", "label": "Aggiungi routine", "default": False},
+        {"key": "todo_item", "label": "Aggiungi todo", "default": False},
         {"key": "storyboard", "label": "Storyboard", "default": True},
     ],
 }

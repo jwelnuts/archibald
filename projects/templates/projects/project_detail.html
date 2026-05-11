@@ -72,7 +72,7 @@
         </button>
       {% endif %}
       {% if "routine_item" in allowed_actions %}
-        <a class="uk-button uk-button-default uk-button-small" href="/routines/items/add?project={{ project.id }}" data-action="routine_item">
+        <a class="uk-button uk-button-default uk-button-small" href="/todos/items/add?project={{ project.id }}" data-action="routine_item">
           Aggiungi routine
         </a>
       {% endif %}
@@ -107,7 +107,7 @@
                 {% elif action.key == "planner" %}
                   <li><a href="#project-planner-modal" uk-toggle>{{ action.label }}</a></li>
                 {% elif action.key == "routine_item" %}
-                  <li><a href="/routines/items/add?project={{ project.id }}">{{ action.label }}</a></li>
+                  <li><a href="/todos/items/add?project={{ project.id }}">{{ action.label }}</a></li>
                 {% elif action.key == "storyboard" %}
                   <li><a href="/projects/storyboard?id={{ project.id }}">{{ action.label }}</a></li>
                 {% elif action.key == "config" %}
@@ -399,7 +399,7 @@
                     {{ item.get_weekday_display }}{% if item.time_start %}<br>{{ item.time_start|time:"H:i" }}{% if item.time_end %}-{{ item.time_end|time:"H:i" }}{% endif %}{% endif %}
                   </div>
                   <div class="uk-flex uk-flex-wrap uk-gap-small uk-margin-small-top uk-flex-right">
-                    <a class="uk-button uk-button-default uk-button-small" href="/routines/items/update?id={{ item.id }}">Modifica</a>
+                    <a class="uk-button uk-button-default uk-button-small" href="/todos/items/update?id={{ item.id }}">Modifica</a>
                   </div>
                 </div>
               </li>

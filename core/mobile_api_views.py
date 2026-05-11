@@ -22,11 +22,11 @@ from core.helpers import (
     _mobile_bearer_token,
     _mobile_authenticate_request,
     _dashboard_snapshot_context,
-    _routines_response_for_user,
-    _routines_check_for_user,
-    _routines_item_create_for_user,
-    _routines_item_update_for_user,
-    _routines_item_delete_for_user,
+    _todos_response_for_user,
+    _todos_check_for_user,
+    _todos_item_create_for_user,
+    _todos_item_update_for_user,
+    _todos_item_delete_for_user,
     _projects_response_for_user,
     _agenda_response_for_user,
 )
@@ -199,59 +199,59 @@ def mobile_dashboard(request):
 
 
 @require_http_methods(["GET"])
-def mobile_routines(request):
+def mobile_todos(request):
     session, error = _mobile_authenticate_request(request)
     if error:
         return error
-    return _routines_response_for_user(session.user, request.GET.get("week"))
+    return _todos_response_for_user(session.user, request.GET.get("week"))
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def mobile_routines_check(request):
+def mobile_todos_check(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _mobile_authenticate_request(request)
     if error:
         return error
-    return _routines_check_for_user(session.user, payload)
+    return _todos_check_for_user(session.user, payload)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def mobile_routines_item_create(request):
+def mobile_todos_item_create(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _mobile_authenticate_request(request)
     if error:
         return error
-    return _routines_item_create_for_user(session.user, payload)
+    return _todos_item_create_for_user(session.user, payload)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def mobile_routines_item_update(request):
+def mobile_todos_item_update(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _mobile_authenticate_request(request)
     if error:
         return error
-    return _routines_item_update_for_user(session.user, payload)
+    return _todos_item_update_for_user(session.user, payload)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def mobile_routines_item_delete(request):
+def mobile_todos_item_delete(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _mobile_authenticate_request(request)
     if error:
         return error
-    return _routines_item_delete_for_user(session.user, payload)
+    return _todos_item_delete_for_user(session.user, payload)
 
 
 @require_http_methods(["GET"])

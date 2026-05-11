@@ -1,0 +1,44 @@
+from django.db import models
+
+from common.models import OwnedModel, TimeStampedModel
+
+
+class TodoItem(OwnedModel, TimeStampedModel):
+    class ItemType(models.TextChoices):
+        TASK = "TASK", "TodoItem da completare"
+        REMINDER = "REMINDER", "Reminder"
+        APPOINTMENT = "APPOINTMENT", "Appuntamento"
+
+    class Status(models.TextChoices):
+        OPEN = "OPEN", "Open"
+        IN_PROGRESS = "IN_PROGRESS", "In progress"
+        DONE = "DONE", "Done"
+
+    class Priority(models.TextChoices):
+        LOW = "LOW", "Low"
+        MEDIUM = "MEDIUM", "Medium"
+        HIGH = "HIGH", "High"
+
+    title = models.CharField(max_length=160)
+    project = models.ForeignKey(
+        "projects.Project", null=True, blank=True, on_delete=models.SET_NULL, related_name="todo_tasks"
+    )
+    category = models.ForeignKey(
+        "projects.Category", null=True, blank=True, on_delete=models.SET_NULL, related_name="todo_tasks"
+    )
+    item_type = models.CharField(max_length=12, choices=ItemType.choices, default=ItemType.TASK)
+    due_date = models.DateField(null=True, blank=True)
+    due_time = models.TimeField(null=True, blank=True)
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.OPEN)
+    priority = models.CharField(max_length=8, choices=Priority.choices, default=Priority.MEDIUM)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["owner", "status"]),
+            models.Index(fields=["owner", "due_date"]),
+            models.Index(fields=["owner", "category"]),
+        ]
+
+    def __str__(self):
+        return self.title

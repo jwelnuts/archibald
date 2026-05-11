@@ -166,3 +166,78 @@ def api_subscription_pay(request):
             subscription.save(update_fields=["next_due_date"])
 
     return JsonResponse({"ok": True, "message": "Pagamento registrato."})
+
+
+@login_required
+@require_http_methods(["POST"])
+def api_transaction_quick(request):
+    from transactions.models import Transaction
+    from finance_hub.models import Account, Currency
+    from projects.models import Category, Project
+
+    user = request.user
+    try:
+        payload = json.loads((request.body or b"{}").decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JsonResponse({"ok": False, "error": "invalid_json"}, status=400)
+
+    amount_raw = payload.get("amount")
+    tx_type = (payload.get("tx_type") or "OUT").strip().upper()
+    account_id = payload.get("account_id")
+    note = (payload.get("note") or "").strip()
+    date_raw = (payload.get("date") or "").strip()
+    project_id = payload.get("project_id")
+    category_id = payload.get("category_id")
+    currency_id = payload.get("currency_id")
+
+    if tx_type not in {"IN", "OUT", "XFER"}:
+        return JsonResponse({"ok": False, "error": "invalid_tx_type"}, status=400)
+
+    try:
+        amount = abs(float(amount_raw)) if amount_raw else 0
+    except (ValueError, TypeError):
+        return JsonResponse({"ok": False, "error": "invalid_amount"}, status=400)
+
+    if amount <= 0:
+        return JsonResponse({"ok": False, "error": "amount_required"}, status=400)
+
+    try:
+        tx_date = date_lib.fromisoformat(date_raw) if date_raw else timezone.now().date()
+    except ValueError:
+        tx_date = timezone.now().date()
+
+    account = get_object_or_404(Account, id=account_id, owner=user, is_active=True) if account_id else None
+    if not account:
+        return JsonResponse({"ok": False, "error": "account_required"}, status=400)
+
+    currency = None
+    if currency_id:
+        currency = Currency.objects.filter(id=currency_id).first()
+    if not currency:
+        currency = account.currency
+
+    project = Project.objects.filter(id=project_id, owner=user).first() if project_id else None
+    category = Category.objects.filter(id=category_id, owner=user).first() if category_id else None
+
+    tx = Transaction.objects.create(
+        owner=user,
+        tx_type=tx_type,
+        date=tx_date,
+        amount=amount,
+        currency=currency,
+        account=account,
+        project=project,
+        category=category,
+        note=note or f"Transazione rapida {tx_type}",
+    )
+
+    return JsonResponse({
+        "ok": True,
+        "message": "Transazione registrata.",
+        "transaction": {
+            "id": tx.id,
+            "amount": str(tx.amount),
+            "currency": tx.currency.code if tx.currency else "EUR",
+            "type": tx.tx_type,
+        },
+    })

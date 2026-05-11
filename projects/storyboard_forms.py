@@ -1,12 +1,12 @@
 from django import forms
 
 from planner.models import PlannerItem
-from todo.models import Task
+from todos.models import TodoItem
 
 
-class StoryboardTaskForm(forms.ModelForm):
+class StoryboardTodoItemForm(forms.ModelForm):
     class Meta:
-        model = Task
+        model = TodoItem
         fields = ("title", "due_date", "status", "priority", "note")
         widgets = {
             "due_date": forms.DateInput(attrs={"type": "date", "placeholder": "YYYY-MM-DD"}),

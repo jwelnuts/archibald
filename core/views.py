@@ -49,19 +49,18 @@ from .models import (
 from .navigation import DEFAULT_APP_OPTIONS, app_options_for_user, normalize_nav_config, parse_widgets_json
 from planner.models import PlannerItem
 from projects.models import Project, SubProject
-from routines.models import Routine, RoutineCategory, RoutineCheck, RoutineItem
-from routines.services import (
-    RoutineCrudError,
-    create_routine_item,
-    delete_routine_item,
+from todos.models import TodoList, TodoCategory, TodoRecurrence, TodoItem
+from todos.services import (
+    TodoListCrudError,
+    create_todo_item,
+    delete_todo_item,
     get_category_for_owner,
-    get_routine_for_owner,
+    get_todo_for_owner,
     parse_weekday,
-    update_routine_item,
+    update_todo_item,
 )
 from finance_hub.models import Account
 from finance_hub.models import SubscriptionOccurrence
-from todo.models import Task
 from transactions.models import Transaction
 
 logger = logging.getLogger(__name__)
@@ -114,7 +113,7 @@ DEFAULT_DASHBOARD_WIDGETS = [
     {
         "id": "todo",
         "title": "Todo",
-        "description": "Task giornalieri e backlog.",
+        "description": "TodoItem giornalieri e backlog.",
         "url": "/todo/",
         "group": "planning",
     },
@@ -133,10 +132,10 @@ DEFAULT_DASHBOARD_WIDGETS = [
         "group": "planning",
     },
     {
-        "id": "routines",
-        "title": "Routines",
-        "description": "Routine e statistiche disciplina.",
-        "url": "/routines/",
+        "id": "todos",
+        "title": "TodoLists",
+        "description": "TodoList e statistiche disciplina.",
+        "url": "/todos/",
         "group": "planning",
     },
     {
@@ -318,7 +317,7 @@ def _dashboard_snapshot_context(user):
     month_start = today.replace(day=1)
     month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
-    open_tasks_qs = Task.objects.filter(owner=user).exclude(status=Task.Status.DONE)
+    open_tasks_qs = TodoItem.objects.filter(owner=user).exclude(status=TodoItem.Status.DONE)
     planned_planner_qs = PlannerItem.objects.filter(owner=user, status=PlannerItem.Status.PLANNED)
     due_subs_qs = SubscriptionOccurrence.objects.filter(
         owner=user,
@@ -342,7 +341,7 @@ def _dashboard_snapshot_context(user):
                 "kind": "Task",
                 "title": task.title,
                 "due_date": task.due_date,
-                "url": "/todo/",
+                "url": "/todos/",
             }
         )
 
@@ -398,8 +397,8 @@ def _calendar_events_for_range(user, start: date, end: date):
         events.setdefault(key, []).append(payload)
 
     tasks = (
-        Task.objects.filter(owner=user, due_date__range=(start, end))
-        .exclude(status=Task.Status.DONE)
+        TodoItem.objects.filter(owner=user, due_date__range=(start, end))
+        .exclude(status=TodoItem.Status.DONE)
         .values("due_date")
         .annotate(count=Count("id"))
     )
@@ -465,18 +464,18 @@ def _calendar_events_for_range(user, start: date, end: date):
         if row["total_hours"]:
             add_event(row["work_date"], "worklog", "Ore lavoro", 1)
 
-    routine_counts = (
-        RoutineItem.objects.filter(owner=user, is_active=True)
+    todo_counts = (
+        TodoItem.objects.filter(owner=user, is_active=True)
         .values("weekday")
         .annotate(count=Count("id"))
     )
-    routine_map = {row["weekday"]: row["count"] for row in routine_counts}
-    if routine_map:
+    todo_map = {row["weekday"]: row["count"] for row in todo_counts}
+    if todo_map:
         cursor = start
         while cursor <= end:
-            count = routine_map.get(cursor.weekday())
+            count = todo_map.get(cursor.weekday())
             if count:
-                add_event(cursor, "routine", "Routine", count)
+                add_event(cursor, "todo", "TodoList", count)
             cursor += timedelta(days=1)
 
     return events
@@ -1435,16 +1434,16 @@ def _mobile_week_start_for(value: str | None) -> date:
     return today - timedelta(days=today.weekday())
 
 
-def _mobile_routines_stats_from_items(items, check_map):
+def _mobile_todos_stats_from_items(items, check_map):
     planned = 0
     done = 0
     skipped = 0
     for item in items:
         check = check_map.get(item.id)
-        status = check.status if check else RoutineCheck.Status.PLANNED
-        if status == RoutineCheck.Status.DONE:
+        status = check.status if check else TodoRecurrence.Status.PLANNED
+        if status == TodoRecurrence.Status.DONE:
             done += 1
-        elif status == RoutineCheck.Status.SKIPPED:
+        elif status == TodoRecurrence.Status.SKIPPED:
             skipped += 1
         else:
             planned += 1
@@ -1460,15 +1459,15 @@ def _api_authenticate_request(request):
     return None, _mobile_json_error("authentication_required", status=401)
 
 
-def _routines_response_for_user(user, week_value: str | None):
+def _todos_response_for_user(user, week_value: str | None):
     week_start = _mobile_week_start_for(week_value)
     week_end = week_start + timedelta(days=6)
     items = (
-        RoutineItem.objects.filter(owner=user, is_active=True, routine__is_active=True)
-        .select_related("routine", "category", "project")
+        TodoItem.objects.filter(owner=user, is_active=True, todo__is_active=True)
+        .select_related("todo", "category", "project")
         .order_by("weekday", "time_start", "time_end", "title")
     )
-    checks = RoutineCheck.objects.filter(owner=user, week_start=week_start, item__in=items)
+    checks = TodoRecurrence.objects.filter(owner=user, week_start=week_start, item__in=items)
     check_map = {check.item_id: check for check in checks}
 
     payload_items = []
@@ -1483,16 +1482,16 @@ def _routines_response_for_user(user, week_value: str | None):
                 "time_start": item.time_start.strftime("%H:%M") if item.time_start else "",
                 "time_end": item.time_end.strftime("%H:%M") if item.time_end else "",
                 "note": item.note or "",
-                "routine_id": item.routine_id,
-                "container": item.routine.name,
+                "todo_id": item.todo_id,
+                "container": item.todo.name,
                 "category_id": item.category_id or "",
                 "category": item.category.name if item.category_id else "",
                 "project": item.project.name if item.project_id else "",
-                "status": check.status if check else RoutineCheck.Status.PLANNED,
+                "status": check.status if check else TodoRecurrence.Status.PLANNED,
             }
         )
 
-    stats = _mobile_routines_stats_from_items(items, check_map)
+    stats = _mobile_todos_stats_from_items(items, check_map)
     return JsonResponse(
         {
             "ok": True,
@@ -1502,12 +1501,12 @@ def _routines_response_for_user(user, week_value: str | None):
             "stats": stats,
             "items": payload_items,
             "containers": list(
-                Routine.objects.filter(owner=user, is_active=True)
+                TodoList.objects.filter(owner=user, is_active=True)
                 .order_by("name")
                 .values("id", "name")
             ),
             "categories": list(
-                RoutineCategory.objects.filter(owner=user, is_active=True)
+                TodoCategory.objects.filter(owner=user, is_active=True)
                 .order_by("name")
                 .values("id", "name")
             ),
@@ -1515,34 +1514,34 @@ def _routines_response_for_user(user, week_value: str | None):
     )
 
 
-def _routines_check_for_user(user, payload):
+def _todos_check_for_user(user, payload):
     item_id = payload.get("item_id")
     status = (payload.get("status") or "").strip().upper()
     week_start = _mobile_week_start_for(payload.get("week"))
 
-    allowed_statuses = {RoutineCheck.Status.PLANNED, RoutineCheck.Status.DONE, RoutineCheck.Status.SKIPPED}
+    allowed_statuses = {TodoRecurrence.Status.PLANNED, TodoRecurrence.Status.DONE, TodoRecurrence.Status.SKIPPED}
     if status not in allowed_statuses:
         return _mobile_json_error("invalid_status", status=400)
 
-    item = RoutineItem.objects.filter(owner=user, id=item_id).first()
+    item = TodoItem.objects.filter(owner=user, id=item_id).first()
     if not item:
         return _mobile_json_error("item_not_found", status=404)
 
-    check, _created = RoutineCheck.objects.get_or_create(
+    check, _created = TodoRecurrence.objects.get_or_create(
         owner=user,
         item=item,
         week_start=week_start,
-        defaults={"status": RoutineCheck.Status.PLANNED},
+        defaults={"status": TodoRecurrence.Status.PLANNED},
     )
     check.status = status
     check.save(update_fields=["status", "updated_at"])
 
     active_items = list(
-        RoutineItem.objects.filter(owner=user, is_active=True, routine__is_active=True).only("id")
+        TodoItem.objects.filter(owner=user, is_active=True, todo__is_active=True).only("id")
     )
-    active_checks = RoutineCheck.objects.filter(owner=user, week_start=week_start, item__in=active_items)
+    active_checks = TodoRecurrence.objects.filter(owner=user, week_start=week_start, item__in=active_items)
     active_check_map = {row.item_id: row for row in active_checks}
-    stats = _mobile_routines_stats_from_items(active_items, active_check_map)
+    stats = _mobile_todos_stats_from_items(active_items, active_check_map)
     return JsonResponse(
         {
             "ok": True,
@@ -1554,11 +1553,11 @@ def _routines_check_for_user(user, payload):
     )
 
 
-def _routines_item_create_for_user(user, payload):
+def _todos_item_create_for_user(user, payload):
     try:
-        routine = get_routine_for_owner(
+        todo = get_todo_for_owner(
             owner=user,
-            routine_id=payload.get("routine_id"),
+            todo_id=payload.get("todo_id"),
             active_only=True,
         )
         category = get_category_for_owner(
@@ -1566,9 +1565,9 @@ def _routines_item_create_for_user(user, payload):
             category_id=payload.get("category_id"),
             active_only=True,
         )
-        item = create_routine_item(
+        item = create_todo_item(
             owner=user,
-            routine=routine,
+            todo=todo,
             category=category,
             title=payload.get("title"),
             weekday=parse_weekday(payload.get("weekday")),
@@ -1577,25 +1576,25 @@ def _routines_item_create_for_user(user, payload):
             note=payload.get("note"),
             is_active=True,
         )
-    except RoutineCrudError as error:
+    except TodoListCrudError as error:
         code = error.code
-        if code in {"routine_not_found", "category_not_found"}:
+        if code in {"todo_not_found", "category_not_found"}:
             return _mobile_json_error(code, status=404)
         return _mobile_json_error(code, status=400)
 
     return JsonResponse({"ok": True, "item_id": item.id})
 
 
-def _routines_item_update_for_user(user, payload):
+def _todos_item_update_for_user(user, payload):
     item_id = payload.get("item_id")
-    item = RoutineItem.objects.filter(owner=user, id=item_id).first()
+    item = TodoItem.objects.filter(owner=user, id=item_id).first()
     if not item:
         return _mobile_json_error("item_not_found", status=404)
 
     try:
-        routine = get_routine_for_owner(
+        todo = get_todo_for_owner(
             owner=user,
-            routine_id=payload.get("routine_id"),
+            todo_id=payload.get("todo_id"),
             active_only=True,
         )
         category = get_category_for_owner(
@@ -1603,9 +1602,9 @@ def _routines_item_update_for_user(user, payload):
             category_id=payload.get("category_id"),
             active_only=True,
         )
-        update_routine_item(
+        update_todo_item(
             item=item,
-            routine=routine,
+            todo=todo,
             category=category,
             title=payload.get("title"),
             weekday=parse_weekday(payload.get("weekday")),
@@ -1613,22 +1612,22 @@ def _routines_item_update_for_user(user, payload):
             time_end=payload.get("time_end"),
             note=payload.get("note"),
         )
-    except RoutineCrudError as error:
+    except TodoListCrudError as error:
         code = error.code
-        if code in {"routine_not_found", "category_not_found"}:
+        if code in {"todo_not_found", "category_not_found"}:
             return _mobile_json_error(code, status=404)
         return _mobile_json_error(code, status=400)
 
     return JsonResponse({"ok": True, "item_id": item.id})
 
 
-def _routines_item_delete_for_user(user, payload):
+def _todos_item_delete_for_user(user, payload):
     item_id = payload.get("item_id")
-    item = RoutineItem.objects.filter(owner=user, id=item_id).first()
+    item = TodoItem.objects.filter(owner=user, id=item_id).first()
     if not item:
         return _mobile_json_error("item_not_found", status=404)
 
-    delete_routine_item(item=item)
+    delete_todo_item(item=item)
     return JsonResponse({"ok": True, "item_id": item_id})
 
 
@@ -1760,115 +1759,115 @@ def _agenda_response_for_user(user, start_value: str | None, duration_value):
 
 
 @require_http_methods(["GET"])
-def mobile_routines(request):
+def mobile_todos(request):
     session, error = _mobile_authenticate_request(request)
     if error:
         return error
-    return _routines_response_for_user(session.user, request.GET.get("week"))
+    return _todos_response_for_user(session.user, request.GET.get("week"))
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def mobile_routines_check(request):
+def mobile_todos_check(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _mobile_authenticate_request(request)
     if error:
         return error
-    return _routines_check_for_user(session.user, payload)
+    return _todos_check_for_user(session.user, payload)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def mobile_routines_item_create(request):
+def mobile_todos_item_create(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _mobile_authenticate_request(request)
     if error:
         return error
-    return _routines_item_create_for_user(session.user, payload)
+    return _todos_item_create_for_user(session.user, payload)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def mobile_routines_item_update(request):
+def mobile_todos_item_update(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _mobile_authenticate_request(request)
     if error:
         return error
-    return _routines_item_update_for_user(session.user, payload)
+    return _todos_item_update_for_user(session.user, payload)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def mobile_routines_item_delete(request):
+def mobile_todos_item_delete(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _mobile_authenticate_request(request)
     if error:
         return error
-    return _routines_item_delete_for_user(session.user, payload)
+    return _todos_item_delete_for_user(session.user, payload)
 
 
 @require_http_methods(["GET"])
-def api_routines(request):
+def api_todos(request):
     session, error = _api_authenticate_request(request)
     if error:
         return error
-    return _routines_response_for_user(session.user, request.GET.get("week"))
+    return _todos_response_for_user(session.user, request.GET.get("week"))
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def api_routines_check(request):
+def api_todos_check(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _api_authenticate_request(request)
     if error:
         return error
-    return _routines_check_for_user(session.user, payload)
+    return _todos_check_for_user(session.user, payload)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def api_routines_item_create(request):
+def api_todos_item_create(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _api_authenticate_request(request)
     if error:
         return error
-    return _routines_item_create_for_user(session.user, payload)
+    return _todos_item_create_for_user(session.user, payload)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def api_routines_item_update(request):
+def api_todos_item_update(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _api_authenticate_request(request)
     if error:
         return error
-    return _routines_item_update_for_user(session.user, payload)
+    return _todos_item_update_for_user(session.user, payload)
 
 
 @csrf_exempt
 @require_http_methods(["POST"])
-def api_routines_item_delete(request):
+def api_todos_item_delete(request):
     payload = _mobile_parse_json(request)
     if payload is None:
         return _mobile_json_error("invalid_json", status=400)
     session, error = _api_authenticate_request(request)
     if error:
         return error
-    return _routines_item_delete_for_user(session.user, payload)
+    return _todos_item_delete_for_user(session.user, payload)
 
 
 @require_http_methods(["GET"])

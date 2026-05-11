@@ -28,4 +28,4 @@ Use the same backend endpoints for web and mobile clients, with a single busines
 5. Remove legacy routes only after clients are fully migrated.
 
 ## Implemented example
-- `routines` domain now has canonical endpoints under `/api/routines/...` and compatibility under `/api/mobile/routines/...`.
+- `routines` domain now has canonical endpoints under `/api/todos/...` and compatibility under `/api/mobile/todos/...`.

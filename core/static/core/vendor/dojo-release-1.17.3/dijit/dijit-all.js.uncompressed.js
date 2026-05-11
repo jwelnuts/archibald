@@ -26832,7 +26832,7 @@ var _cachedGregorianBundles = {};
 exports.addCustomFormats = function(/*String*/ packageName, /*String*/ bundleName){
 	// summary:
 	//		Add a reference to a bundle containing localized custom formats to be
-	//		used by date/time formatting and parsing routines.
+	//		used by date/time formatting and parsing todos.
 	//
 	// description:
 	//		The user may add custom localized formats where the bundle has properties following the
@@ -27117,7 +27117,7 @@ define([
 		// TODO: for 2.0 make this a string (ISO format) rather than a Date
 
 		// datePackage: String
-		//		JavaScript namespace to find calendar routines.	 If unspecified, uses Gregorian calendar routines
+		//		JavaScript namespace to find calendar todos.	 If unspecified, uses Gregorian calendar routines
 		//		at dojo/date and dojo/date/locale.
 		datePackage: "",
 		//		TODO: for 2.0, replace datePackage with dateModule and dateLocalModule attributes specifying MIDs,
@@ -27642,7 +27642,7 @@ define([
 		pattern: locale.regexp,
 
 		// datePackage: String
-		//		JavaScript namespace to find calendar routines.	 If unspecified, uses Gregorian calendar routines
+		//		JavaScript namespace to find calendar todos.	 If unspecified, uses Gregorian calendar routines
 		//		at dojo/date and dojo/date/locale.
 		datePackage: "",
 		//		TODO: for 2.0, replace datePackage with dateModule and dateLocalModule attributes specifying MIDs,

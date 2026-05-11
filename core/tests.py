@@ -12,8 +12,8 @@ from django.utils import timezone
 from passlib.hash import bcrypt
 
 from planner.models import PlannerItem
-from routines.models import Routine, RoutineCategory, RoutineItem, RoutineCheck
-from todo.models import Task
+from todos.models import TodoList, TodoCategory, TodoItem, TodoRecurrence
+from todos.models import TodoItem
 from .context_processors import ui_preferences
 from .middleware import DevLessCompileMiddleware
 from .models import DavAccount, DavCalendarGrant, DavExternalAccount, DavManagedCalendar, DavTeam, MobileApiSession, UserNavConfig
@@ -609,10 +609,10 @@ class MobileApiAuthTests(TestCase):
         self.assertEqual(response.json()["error"], "missing_bearer_token")
 
     def test_dashboard_returns_user_snapshot(self):
-        Task.objects.create(
+        TodoItem.objects.create(
             owner=self.user,
-            title="Task mobile",
-            status=Task.Status.OPEN,
+            title="TodoItem mobile",
+            status=TodoItem.Status.OPEN,
             due_date=timezone.localdate() - timedelta(days=1),
         )
         PlannerItem.objects.create(
@@ -679,34 +679,34 @@ class MobileApiAuthTests(TestCase):
 
     def test_api_options_preflight_returns_cors_headers(self):
         response = self.client.options(
-            "/api/routines",
+            "/api/todos",
             HTTP_ORIGIN="http://localhost",
             HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
         )
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response["Access-Control-Allow-Origin"], "http://localhost")
 
-    def test_mobile_routines_returns_week_items(self):
-        routine = Routine.objects.create(owner=self.user, name="Routine Mobile", is_active=True)
-        item = RoutineItem.objects.create(
+    def test_mobile_todos_returns_week_items(self):
+        todo = TodoList.objects.create(owner=self.user, name="TodoList Mobile", is_active=True)
+        item = TodoItem.objects.create(
             owner=self.user,
-            routine=routine,
+            todo=todo,
             title="Stretching",
             weekday=timezone.localdate().weekday(),
             is_active=True,
         )
         week_start = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
-        RoutineCheck.objects.create(
+        TodoRecurrence.objects.create(
             owner=self.user,
             item=item,
             week_start=week_start,
-            status=RoutineCheck.Status.DONE,
+            status=TodoRecurrence.Status.DONE,
         )
 
         payload = self._login()
         access = payload["access_token"]
         response = self.client.get(
-            f"/api/mobile/routines?week={week_start.isoformat()}",
+            f"/api/mobile/todos?week={week_start.isoformat()}",
             HTTP_AUTHORIZATION=f"Bearer {access}",
         )
         self.assertEqual(response.status_code, 200)
@@ -715,16 +715,16 @@ class MobileApiAuthTests(TestCase):
         self.assertEqual(body["week_start"], week_start.isoformat())
         self.assertEqual(len(body["items"]), 1)
         self.assertEqual(body["items"][0]["title"], "Stretching")
-        self.assertEqual(body["items"][0]["status"], RoutineCheck.Status.DONE)
+        self.assertEqual(body["items"][0]["status"], TodoRecurrence.Status.DONE)
         self.assertEqual(body["stats"]["planned"], 0)
         self.assertEqual(body["stats"]["done"], 1)
         self.assertEqual(body["stats"]["skipped"], 0)
 
-    def test_mobile_routines_counts_unchecked_items_as_planned(self):
-        routine = Routine.objects.create(owner=self.user, name="Routine Planned", is_active=True)
-        RoutineItem.objects.create(
+    def test_mobile_todos_counts_unchecked_items_as_planned(self):
+        todo = TodoList.objects.create(owner=self.user, name="TodoList Planned", is_active=True)
+        TodoItem.objects.create(
             owner=self.user,
-            routine=routine,
+            todo=todo,
             title="Morning walk",
             weekday=timezone.localdate().weekday(),
             is_active=True,
@@ -734,7 +734,7 @@ class MobileApiAuthTests(TestCase):
         access = payload["access_token"]
 
         response = self.client.get(
-            f"/api/mobile/routines?week={week_start.isoformat()}",
+            f"/api/mobile/todos?week={week_start.isoformat()}",
             HTTP_AUTHORIZATION=f"Bearer {access}",
         )
         self.assertEqual(response.status_code, 200)
@@ -743,11 +743,11 @@ class MobileApiAuthTests(TestCase):
         self.assertEqual(body["stats"]["done"], 0)
         self.assertEqual(body["stats"]["skipped"], 0)
 
-    def test_mobile_routines_check_updates_status(self):
-        routine = Routine.objects.create(owner=self.user, name="Routine Check", is_active=True)
-        item = RoutineItem.objects.create(
+    def test_mobile_todos_check_updates_status(self):
+        todo = TodoList.objects.create(owner=self.user, name="TodoList Check", is_active=True)
+        item = TodoItem.objects.create(
             owner=self.user,
-            routine=routine,
+            todo=todo,
             title="Hydration",
             weekday=0,
             is_active=True,
@@ -757,11 +757,11 @@ class MobileApiAuthTests(TestCase):
         access = payload["access_token"]
 
         response = self.client.post(
-            "/api/mobile/routines/check",
+            "/api/mobile/todos/check",
             data=json.dumps(
                 {
                     "item_id": item.id,
-                    "status": RoutineCheck.Status.SKIPPED,
+                    "status": TodoRecurrence.Status.SKIPPED,
                     "week": week_start.isoformat(),
                 }
             ),
@@ -771,25 +771,25 @@ class MobileApiAuthTests(TestCase):
         self.assertEqual(response.status_code, 200)
         body = response.json()
         self.assertTrue(body["ok"])
-        self.assertEqual(body["status"], RoutineCheck.Status.SKIPPED)
+        self.assertEqual(body["status"], TodoRecurrence.Status.SKIPPED)
         self.assertEqual(body["stats"]["planned"], 0)
         self.assertEqual(body["stats"]["done"], 0)
         self.assertEqual(body["stats"]["skipped"], 1)
 
-        check = RoutineCheck.objects.get(owner=self.user, item=item, week_start=week_start)
-        self.assertEqual(check.status, RoutineCheck.Status.SKIPPED)
+        check = TodoRecurrence.objects.get(owner=self.user, item=item, week_start=week_start)
+        self.assertEqual(check.status, TodoRecurrence.Status.SKIPPED)
 
-    def test_mobile_routines_item_crud(self):
-        routine = Routine.objects.create(owner=self.user, name="Routine CRUD", is_active=True)
-        category = RoutineCategory.objects.create(owner=self.user, name="Salute", is_active=True)
+    def test_mobile_todos_item_crud(self):
+        todo = TodoList.objects.create(owner=self.user, name="TodoList CRUD", is_active=True)
+        category = TodoCategory.objects.create(owner=self.user, name="Salute", is_active=True)
         payload = self._login()
         access = payload["access_token"]
 
         create_response = self.client.post(
-            "/api/mobile/routines/items/create",
+            "/api/mobile/todos/items/create",
             data=json.dumps(
                 {
-                    "routine_id": routine.id,
+                    "todo_id": todo.id,
                     "title": "Mobilita",
                     "weekday": 2,
                     "time_start": "08:30",
@@ -803,16 +803,16 @@ class MobileApiAuthTests(TestCase):
         )
         self.assertEqual(create_response.status_code, 200)
         created_id = create_response.json()["item_id"]
-        item = RoutineItem.objects.get(id=created_id, owner=self.user)
+        item = TodoItem.objects.get(id=created_id, owner=self.user)
         self.assertEqual(item.title, "Mobilita")
         self.assertEqual(item.category_id, category.id)
 
         update_response = self.client.post(
-            "/api/mobile/routines/items/update",
+            "/api/mobile/todos/items/update",
             data=json.dumps(
                 {
                     "item_id": item.id,
-                    "routine_id": routine.id,
+                    "todo_id": todo.id,
                     "title": "Mobilita mattina",
                     "weekday": 3,
                     "time_start": "08:45",
@@ -832,24 +832,24 @@ class MobileApiAuthTests(TestCase):
         self.assertIsNone(item.category_id)
 
         delete_response = self.client.post(
-            "/api/mobile/routines/items/delete",
+            "/api/mobile/todos/items/delete",
             data=json.dumps({"item_id": item.id}),
             content_type="application/json",
             HTTP_AUTHORIZATION=f"Bearer {access}",
         )
         self.assertEqual(delete_response.status_code, 200)
-        self.assertFalse(RoutineItem.objects.filter(id=item.id).exists())
+        self.assertFalse(TodoItem.objects.filter(id=item.id).exists())
 
-    def test_unified_routines_api_accepts_session_auth(self):
+    def test_unified_todos_api_accepts_session_auth(self):
         self.client.login(username="mobile_user", password="test12345")
-        routine = Routine.objects.create(owner=self.user, name="Routine Session", is_active=True)
+        todo = TodoList.objects.create(owner=self.user, name="TodoList Session", is_active=True)
         week_start = timezone.localdate() - timedelta(days=timezone.localdate().weekday())
 
         create_response = self.client.post(
-            "/api/routines/items/create",
+            "/api/todos/items/create",
             data=json.dumps(
                 {
-                    "routine_id": routine.id,
+                    "todo_id": todo.id,
                     "title": "Session task",
                     "weekday": 1,
                 }
@@ -859,21 +859,21 @@ class MobileApiAuthTests(TestCase):
         self.assertEqual(create_response.status_code, 200)
         item_id = create_response.json()["item_id"]
 
-        list_response = self.client.get(f"/api/routines?week={week_start.isoformat()}")
+        list_response = self.client.get(f"/api/todos?week={week_start.isoformat()}")
         self.assertEqual(list_response.status_code, 200)
         body = list_response.json()
         self.assertTrue(any(row["id"] == item_id for row in body["items"]))
 
-    def test_unified_routines_api_accepts_bearer_auth(self):
-        routine = Routine.objects.create(owner=self.user, name="Routine Bearer", is_active=True)
+    def test_unified_todos_api_accepts_bearer_auth(self):
+        todo = TodoList.objects.create(owner=self.user, name="TodoList Bearer", is_active=True)
         payload = self._login()
         access = payload["access_token"]
 
         create_response = self.client.post(
-            "/api/routines/items/create",
+            "/api/todos/items/create",
             data=json.dumps(
                 {
-                    "routine_id": routine.id,
+                    "todo_id": todo.id,
                     "title": "Bearer task",
                     "weekday": 2,
                 }
@@ -884,7 +884,7 @@ class MobileApiAuthTests(TestCase):
         self.assertEqual(create_response.status_code, 200)
 
         list_response = self.client.get(
-            "/api/routines",
+            "/api/todos",
             HTTP_AUTHORIZATION=f"Bearer {access}",
         )
         self.assertEqual(list_response.status_code, 200)

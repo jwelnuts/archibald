@@ -1,0 +1,56 @@
+{% extends "todos/base.html" %}
+
+{% block title %}MIO - Update Contenitore{% endblock %}
+
+{% block content %}
+  <section class="panel narrow">
+    <h1>Aggiorna contenitore</h1>
+    <p class="muted">Seleziona un contenitore da aggiornare.</p>
+    {% if form and form.errors %}
+      <div class="warning-box">
+        Controlla i campi evidenziati.
+        <div class="form-errors">
+          {{ form.non_field_errors }}
+          {% for field in form %}
+            {{ field.errors }}
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+    {% if todo %}
+      <form class="form form-compact uk-form-stacked" method="post" action="">
+        {% csrf_token %}
+        <div class="field">
+          <label for="id_name">Nome contenitore</label>
+          {{ form.name }}
+        </div>
+        <div class="field">
+          <label for="id_description">Descrizione</label>
+          {{ form.description }}
+        </div>
+        <div class="field">
+          <label for="id_is_active">Attiva</label>
+          {{ form.is_active }}
+        </div>
+        <div class="actions">
+          <button class="btn primary" type="submit">Aggiorna</button>
+          <a class="btn" href="/todos/">Annulla</a>
+        </div>
+      </form>
+    {% else %}
+      {% if todos %}
+        <ul class="list todo-list">
+          {% for item in todos %}
+            <li class="todo-list-item">
+              <span>{{ item.name }}</span>
+              <a class="btn" href="/todos/api/update?id={{ item.id }}">Modifica</a>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="note">Nessun contenitore disponibile.</div>
+      {% endif %}
+    {% endif %}
+  </section>
+{% endblock %}

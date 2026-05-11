@@ -1,21 +1,25 @@
-{% extends "planner/base.html" %}
+{% extends "projects/base.html" %}
+{% load static %}
 
 {% block title %}MIO - Update Planner Item{% endblock %}
 
 {% block content %}
-  <section class="panel narrow">
+<div class="planner-shell">
+  <div class="planner-panel-narrow">
     <h1>Aggiorna voce</h1>
-    <p class="muted">Seleziona una voce da aggiornare.</p>
-    {% if form and form.errors %}
-      <div class="warning-box">
-        Controlla i campi evidenziati.
-        <div class="form-errors">
-          {{ form.non_field_errors }}
-          {% for field in form %}
-            {{ field.errors }}
-          {% endfor %}
-        </div>
-      </div>
+    <p class="planner-subtitle">Seleziona una voce da aggiornare.</p>
+
+    {% if form.errors %}
+    <div class="form-errors">
+      {% for field in form %}
+        {% for error in field.errors %}
+          <div>{{ field.label }}: {{ error }}</div>
+        {% endfor %}
+      {% endfor %}
+      {% for error in form.non_field_errors %}
+        <div>{{ error }}</div>
+      {% endfor %}
+    </div>
     {% endif %}
 
     {% if item %}
@@ -44,37 +48,51 @@
           <div class="field">
             <label for="id_category_choice">Categoria</label>
             {{ form.category_choice }}
-            <input id="id_category_name" name="category_name" type="text" placeholder="Nome nuova categoria" value="{{ form.category_name.value|default:'' }}" style="display:none;">
+            <input id="id_category_name" name="category_name" type="text"
+                   placeholder="Nome nuova categoria"
+                   value="{{ form.category_name.value|default:'' }}"
+                   style="display:none;">
           </div>
           <div class="field">
             <label for="id_project_choice">Progetto</label>
             {{ form.project_choice }}
-            <input id="id_project_name" name="project_name" type="text" placeholder="Nome nuovo progetto" value="{{ form.project_name.value|default:'' }}" style="display:none;">
+            <input id="id_project_name" name="project_name" type="text"
+                   placeholder="Nome nuovo progetto"
+                   value="{{ form.project_name.value|default:'' }}"
+                   style="display:none;">
           </div>
         </div>
         <div class="field">
           <label for="id_note">Note</label>
           {{ form.note }}
         </div>
-        <div class="actions">
+        <div class="planner-actions">
           <button class="btn primary" type="submit">Aggiorna</button>
           <a class="btn" href="/planner/">Annulla</a>
         </div>
       </form>
     {% else %}
       {% if items %}
-        <ul class="list">
+        <ul class="planner-item-list">
           {% for item in items %}
-            <li>
-              <span>{{ item.title }}</span>
-              <a class="btn" href="/planner/update?id={{ item.id }}">Modifica</a>
-            </li>
+          <li>
+            <div>
+              <div class="item-title">{{ item.title }}</div>
+              <div class="item-meta">
+                {% if item.due_date %}{{ item.due_date|date:"d/m/Y" }}{% endif %}
+                · {{ item.get_status_display }}
+                {% if item.project %}· {{ item.project.name|truncatechars:30 }}{% endif %}
+              </div>
+            </div>
+            <a class="btn" href="/planner/update?id={{ item.id }}">Modifica</a>
+          </li>
           {% endfor %}
         </ul>
       {% else %}
-        <div class="note">Nessuna voce disponibile.</div>
+        <div class="timeline-weekly-empty">Nessuna voce disponibile.</div>
       {% endif %}
     {% endif %}
+
     <script>
       (function () {
         function bindSelect(selectId, inputId) {
@@ -84,9 +102,7 @@
           function toggle() {
             var isNew = select.value === "__new__";
             input.style.display = isNew ? "block" : "none";
-            if (!isNew) {
-              input.value = "";
-            }
+            if (!isNew) input.value = "";
           }
           select.addEventListener("change", toggle);
           toggle();
@@ -95,5 +111,6 @@
         bindSelect("id_project_choice", "id_project_name");
       })();
     </script>
-  </section>
+  </div>
+</div>
 {% endblock %}

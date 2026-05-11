@@ -374,7 +374,7 @@ define("dojox/date/persian/locale", ["dojox/main", "dojo/_base/lang", "dojo/_bas
 	ilocale.addCustomFormats = function(/*String*/packageName, /*String*/bundleName){
 		// summary:
 		//		Add a reference to a bundle containing localized custom formats to be
-		//		used by date/time formatting and parsing routines.
+		//		used by date/time formatting and parsing todos.
 		_customFormats.push({pkg:packageName,name:bundleName});
 	};
 

@@ -156,7 +156,7 @@ Various apps expose HTMX partial endpoints for dynamic content:
 - `/finance/subscriptions/board` - Dashboard board
 
 ### Routines
-- `/routines/check` - Check item
+- `/todos/check` - Check item
 
 ---
 

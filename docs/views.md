@@ -180,20 +180,20 @@ This document lists all views and URL routes by Django app.
 
 ## routines
 
-**Base URL:** `/routines/`
+**Base URL:** `/todos/`
 
 ### Views
 | View | URL | Description |
 |------|-----|-------------|
-| `dashboard` | `/routines/` | Routines dashboard |
-| `stats` | `/routines/stats` | Statistics |
-| `check_item` | `/routines/check` | Check item (POST) |
-| `add_routine` | `/routines/api/add` | Add routine |
-| `update_routine` | `/routines/api/update` | Update routine |
-| `remove_routine` | `/routines/api/remove` | Remove routine |
-| `add_item` | `/routines/items/add` | Add routine item |
-| `update_item` | `/routines/items/update` | Edit item |
-| `remove_item` | `/routines/items/remove` | Delete item |
+| `dashboard` | `/todos/` | Routines dashboard |
+| `stats` | `/todos/stats` | Statistics |
+| `check_item` | `/todos/check` | Check item (POST) |
+| `add_routine` | `/todos/api/add` | Add routine |
+| `update_routine` | `/todos/api/update` | Update routine |
+| `remove_routine` | `/todos/api/remove` | Remove routine |
+| `add_item` | `/todos/items/add` | Add routine item |
+| `update_item` | `/todos/items/update` | Edit item |
+| `remove_item` | `/todos/items/remove` | Delete item |
 
 ---
 
@@ -329,7 +329,7 @@ This document lists all views and URL routes by Django app.
 | `/agenda/` | agenda |
 | `/workbench/` | workbench |
 | `/planner/` | planner |
-| `/routines/` | routines |
+| `/todos/` | routines |
 | `/archibald/` | archibald |
 | `/archibald-mail/` | archibald_mail |
 | `/memory-stock/` | memory_stock |

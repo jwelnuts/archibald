@@ -1,6 +1,6 @@
 # MI.Organizzo — ERP personale, senza dimenticazioni
 
-Monolite Django per organizzazione personale: finanza, progetti, planner/todo/routine, knowledge link, vault cifrato e cattura email automatica — il tutto senza flussi di dimenticazione.
+Monolite Django per organizzazione personale: finanza, progetti, planner/todo/todo, knowledge link, vault cifrato e cattura email automatica — il tutto senza flussi di dimenticazione.
 
 ## Stato attuale
 
@@ -34,7 +34,7 @@ Monolite Django per organizzazione personale: finanza, progetti, planner/todo/ro
 ### Sistema stili globale (LESS ibrido)
 
 - Entrypoint unico: `core/static/core/styles.less`
-  - importa foundation condivisa + moduli (`dashboard`, `profile`, `agenda`, `projects`, `routines`, `subscriptions`)
+  - importa foundation condivisa + moduli (`dashboard`, `profile`, `agenda`, `projects`, `todos`, `subscriptions`)
 - Modalita sviluppo: `UI_STYLE_MODE=DEV`
   - middleware compila `styles.less` ad ogni richiesta HTML GET
   - i template caricano `core/styles.css` con cache-busting
@@ -48,7 +48,7 @@ Note Stimulus:
 
 - l'app Stimulus viene avviata globalmente da `core/static/core/app.js`
 - i controller vengono registrati tramite helper in `core/static/core/stimulus.js`
-- il modulo `routines` e gia migrato a controller Stimulus (`data-controller="routines"`)
+- il modulo `todos` e gia migrato a controller Stimulus (`data-controller="todos"`)
 - nessuna dipendenza runtime a CDN (`unpkg` rimosso)
 
 ### Toolchain JS (pnpm + Vite)
@@ -68,7 +68,7 @@ Entrypoint bundle principali:
 - `core/dist/dashboard.js`
 - `core/dist/transactions.js`
 - `core/dist/todo.js`
-- `core/dist/routines.js`
+- `core/dist/todos.js`
 - `core/dist/projects_storyboard.js`
 - `core/dist/archibald.js`
 - `core/dist/agenda.js`
@@ -84,7 +84,7 @@ Entrypoint bundle principali:
   - planner
   - subscriptions
   - transactions
-  - routines
+  - todos
 - Gestione account finanziari (`/core/accounts/*`).
 - Configurazione hero actions globali utente.
 
@@ -112,7 +112,7 @@ Entrypoint bundle principali:
 - `projects` (`/projects/`):
   - CRUD project
   - CRUD category e customer
-  - detail progetto con snapshot collegato (transactions/subscriptions/planner/routines)
+  - detail progetto con snapshot collegato (transactions/subscriptions/planner/todos)
   - storyboard progetto:
     - note con allegati
     - task rapidi
@@ -127,9 +127,9 @@ Entrypoint bundle principali:
   - PlannerItem con amount/category/project/status
   - quando aggiungi item con project, crea automaticamente una `ProjectNote`
   - trasferimento rapido Planner -> Todo
-- `routines` (`/routines/`):
-  - Routine e RoutineItem settimanali
-  - check settimanali (`RoutineCheck`) con stati planned/done/skipped
+- `todos` (`/todos/`):
+  - Todo e TodoItem settimanali
+  - check settimanali (`TodoCheck`) con stati planned/done/skipped
   - autoskip dei giorni passati nella settimana corrente
   - schema JSON per campi dinamici per item
   - dashboard mobile-first con componenti UIKit
@@ -143,7 +143,7 @@ Entrypoint bundle principali:
   - chat persistente per thread con storico giornaliero
   - conversation state OpenAI per thread (conversation/response id persistiti)
   - favorite toggle messaggi
-  - insight cards per dominio (overview, tasks, expenses, subscriptions, planner, routines, projects)
+  - insight cards per dominio (overview, tasks, expenses, subscriptions, planner, todos, projects)
   - arricchimento contesto automatico dai dati utente (`archibald/services.py`)
   - endpoint quick chat
 - `archibald_mail` (`/archibald-mail/`):
@@ -155,7 +155,7 @@ Entrypoint bundle principali:
   - riepilogo email ogni 24h (destinatario configurabile da pannello in `notification_recipient`)
   - risposta email AI su richiesta esplicita via flag `[ARCHI]`
   - routing azioni da oggetto email (es. `[MEMORY]`, `#MEMORY`, `ACTION:MEMORY`)
-  - notifiche email automatiche su task/planner/subscriptions/routines
+  - notifiche email automatiche su task/planner/subscriptions/todos
   - log completo email inbound/outbound/notification/test
   - comandi management per automazione cron:
     - `python manage.py process_archibald_inbox`
@@ -191,7 +191,7 @@ Entrypoint bundle principali:
   - `finance_hub.Quote`, `finance_hub.Invoice`, `finance_hub.WorkOrder` per ciclo commerciale/operativo
 - Scheduler:
   - `subscriptions.Subscription` -> `SubscriptionOccurrence`
-  - `routines.Routine` -> `RoutineItem` -> `RoutineCheck`
+  - `todos.Todo` -> `TodoItem` -> `TodoCheck`
 - Progetti:
   - `Project` con `Customer`, `Category`, `ProjectNote`
 
@@ -521,7 +521,7 @@ python manage.py test
 Verifica recente (27 febbraio 2026):
 
 - `python manage.py check` -> `OK`
-- `python manage.py test routines.tests` -> `OK` (`2` test)
+- `python manage.py test todos.tests` -> `OK` (`2` test)
 
 ## Struttura repository (essenziale)
 
@@ -536,7 +536,7 @@ mio_master/
   transactions/      # ledger unificato
   projects/          # progetti, clienti, categorie, storyboard
   todo/ planner/     # task e pianificazione
-  routines/          # routine settimanali con check
+  todos/          # todo settimanali con check
   archibald/         # assistente AI contestuale
   archibald_mail/    # inbox email Archibald + notifiche
   memory_stock/      # archivio memorie salvate anche da email

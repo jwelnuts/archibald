@@ -1,62 +1,49 @@
-{% extends "planner/base.html" %}
+{% extends "projects/base.html" %}
+{% load static %}
 
 {% block title %}MIO - Planner{% endblock %}
 
 {% block content %}
-  <section class="hero" id="app-head">
-    <div class="hero-copy" id="app-header">
-      <h1>Planner</h1>
-      <p>Wishlist personale per spese future, idee e obiettivi.</p>
-      <div class="hero-actions" id="app-actions" data-module="planner">
-        <a class="btn primary" href="/planner/add" data-action="add">Nuova voce</a>
-      </div>
-    </div>
-    <div class="hero-card" id="planner-upcoming-panel">
-      <div class="card-title" id="upcoming-title">Prossime voci wishlist</div>
-      <ul class="list" id="planner-upcoming-list">
-        {% if upcoming %}
-          {% for item in upcoming %}
-            <li>
-              <span class="dot dot-amber"></span>
-              <span>{{ item.title }}</span>
-              <span class="muted">{{ item.due_date|default:"-" }}</span>
-              <a class="btn" href="/planner/update?id={{ item.id }}">Aggiorna</a>
-            </li>
-          {% endfor %}
-        {% else %}
-          <li class="muted">Nessuna voce pianificata.</li>
-        {% endif %}
-      </ul>
-    </div>
-  </section>
+<!-- HTMX swap target for dashboard content -->
+<form id="planner-dashboard-form" class="uk-hidden"
+      hx-get="/planner/"
+      hx-target="#planner-dashboard-content"
+      hx-swap="innerHTML">
+</form>
 
-  <section class="grid" id="planner-info-grid">
-    <article class="panel" id="planner-info-panel">
-      <h2 id="planner-stats-title">Stato wishlist</h2>
-      <div class="stat-row" id="planner-info">
-        <div class="stat">
-          <div class="stat-label">Pianificati</div>
-          <div class="stat-value">{{ counts.planned }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Completati</div>
-          <div class="stat-value">{{ counts.done }}</div>
-        </div>
-        <div class="stat">
-          <div class="stat-label">Saltati</div>
-          <div class="stat-value">{{ counts.skipped }}</div>
-        </div>
-      </div>
-    </article>
+<div class="planner-shell" data-controller="planner">
+  <!-- Header -->
+  <div class="planner-head">
+    <div>
+      <p class="planner-kicker">Wishlist e spese future</p>
+      <h1 class="planner-title">Planner</h1>
+      <p class="planner-subtitle">Organizza desideri, spese future e obiettivi personali.</p>
+    </div>
+    <div class="planner-actions">
+      <a class="btn primary" href="/planner/add">
+        <span uk-icon="icon: plus; ratio: 0.85"></span>
+        <span style="margin-left:4px;">Nuova voce</span>
+      </a>
+    </div>
+  </div>
 
-    <article class="panel" id="planner-notes-panel">
-      <h2 id="planner-notes-title">Come usarlo</h2>
-      <div class="note">Usa Planner per organizzare desideri e spese future. Quando una voce diventa operativa, gestiscila direttamente in Todo.</div>
-      <ul class="list">
-        <li>Stima una data obiettivo con la colonna scadenza.</li>
-        <li>Inserisci importo per tenere traccia del budget futuro.</li>
-        <li>Usa stato <strong>Planned/Done/Skipped</strong> per monitorare priorita e decisioni.</li>
-      </ul>
-    </article>
-  </section>
+  <!-- Dashboard content (initial server render, then HTMX swaps) -->
+  <div id="planner-dashboard-content">
+    {% include "planner/partials/dashboard_content.html" %}
+  </div>
+
+  <!-- Info panel -->
+  <div class="planner-info-panel">
+    <h2>Come usarlo</h2>
+    <div class="note">Pianifica spese e obiettivi futuri. Quando una diventa operativa, gestiscila in Todo o Projects.</div>
+    <ul>
+      <li>Imposta una <strong>data di scadenza</strong> per tenere traccia delle tempistiche.</li>
+      <li>Inserisci un <strong>importo</strong> per monitorare il budget futuro.</li>
+      <li>Collega voci a <strong>categorie</strong> e <strong>progetti</strong> esistenti.</li>
+      <li>Usa gli stati <strong>Planned → Done → Skipped</strong> per monitorare le decisioni.</li>
+    </ul>
+  </div>
+</div>
+
+<script type="module" src="{% static 'core/dist/planner.js' %}"></script>
 {% endblock %}

@@ -96,7 +96,7 @@ from core.models import Payee
 from finance_hub.models import IncomeSource, Account, Subscription, SubscriptionOccurrence, Tag
 from planner.models import PlannerItem
 from projects.models import Category, Customer, Project, ProjectNote
-from routines.models import Routine, RoutineCheck, RoutineItem
+from todos.models import Routine, RoutineCheck, RoutineItem
 from todo.models import Task
 from transactions.models import Transaction
 ```

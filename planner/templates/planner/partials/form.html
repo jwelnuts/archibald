@@ -1,0 +1,80 @@
+{% load static %}
+<!-- Partial: Planner form (for HTMX) -->
+<form class="form" method="post" action="">
+  {% csrf_token %}
+  <div class="field" data-controller="planner">
+    <label for="id_title">Titolo</label>
+    {{ form.title }}
+  </div>
+  <div class="form-row">
+    <div class="field">
+      <label for="id_due_date">Data</label>
+      {{ form.due_date }}
+    </div>
+    <div class="field">
+      <label for="id_amount">Importo (opz.)</label>
+      {{ form.amount }}
+    </div>
+    <div class="field">
+      <label for="id_status">Status</label>
+      {{ form.status }}
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="field">
+      <label for="id_category_choice">Categoria</label>
+      {{ form.category_choice }}
+      <input id="id_category_name" name="category_name" type="text"
+             placeholder="Nome nuova categoria"
+             value="{{ form.category_name.value|default:'' }}"
+             style="display:none;"
+             data-planner-target="categoryName">
+    </div>
+    <div class="field">
+      <label for="id_project_choice">Progetto</label>
+      {{ form.project_choice }}
+      <input id="id_project_name" name="project_name" type="text"
+             placeholder="Nome nuovo progetto"
+             value="{{ form.project_name.value|default:'' }}"
+             style="display:none;"
+             data-planner-target="projectName">
+    </div>
+  </div>
+  <div class="field">
+    <label for="id_note">Note</label>
+    {{ form.note }}
+  </div>
+
+  <script>
+    // Initialize quick-create toggles immediately
+    (function () {
+      function bindSelect(selectId, inputId) {
+        var select = document.getElementById(selectId);
+        var input = document.getElementById(inputId);
+        if (!select || !input) return;
+        function toggle() {
+          var isNew = select.value === "__new__";
+          input.style.display = isNew ? "block" : "none";
+          if (!isNew) input.value = "";
+        }
+        select.addEventListener("change", toggle);
+        toggle();
+      }
+      // Use IDs from the form fields
+      var categorySelect = document.querySelector('[name="category_choice"]');
+      var categoryName = document.getElementById("id_category_name");
+      var projectSelect = document.querySelector('[name="project_choice"]');
+      var projectName = document.getElementById("id_project_name");
+      if (categorySelect && categoryName) {
+        categorySelect.id = categorySelect.id || "id_category_choice";
+        categoryName.id = "id_category_name";
+        bindSelect(categorySelect.id, "id_category_name");
+      }
+      if (projectSelect && projectName) {
+        projectSelect.id = projectSelect.id || "id_project_choice";
+        projectName.id = "id_project_name";
+        bindSelect(projectSelect.id, "id_project_name");
+      }
+    })();
+  </script>
+</form>

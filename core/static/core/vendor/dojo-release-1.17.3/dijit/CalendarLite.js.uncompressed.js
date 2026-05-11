@@ -61,7 +61,7 @@ define("dijit/CalendarLite", [
 		// TODO: for 2.0 make this a string (ISO format) rather than a Date
 
 		// datePackage: String
-		//		JavaScript namespace to find calendar routines.	 If unspecified, uses Gregorian calendar routines
+		//		JavaScript namespace to find calendar todos.	 If unspecified, uses Gregorian calendar routines
 		//		at dojo/date and dojo/date/locale.
 		datePackage: "",
 		//		TODO: for 2.0, replace datePackage with dateModule and dateLocalModule attributes specifying MIDs,

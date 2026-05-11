@@ -52,7 +52,7 @@ class Migration(migrations.Migration):
                 ('notification_include_tasks', models.BooleanField(default=True)),
                 ('notification_include_planner', models.BooleanField(default=True)),
                 ('notification_include_subscriptions', models.BooleanField(default=True)),
-                ('notification_include_routines', models.BooleanField(default=True)),
+                ('notification_include_todos', models.BooleanField(default=True)),
                 ('latest_poll_at', models.DateTimeField(blank=True, null=True)),
                 ('latest_poll_status', models.CharField(blank=True, max_length=32)),
                 ('latest_poll_error', models.TextField(blank=True)),

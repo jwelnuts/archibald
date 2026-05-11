@@ -1,35 +1,47 @@
-{% extends "planner/base.html" %}
+{% extends "projects/base.html" %}
+{% load static %}
 
 {% block title %}MIO - Remove Planner Item{% endblock %}
 
 {% block content %}
-  <section class="panel narrow">
+<div class="planner-shell">
+  <div class="planner-panel-narrow">
     <h1>Rimuovi voce</h1>
-    <p class="muted">Seleziona una voce da eliminare.</p>
+    <p class="planner-subtitle">Seleziona una voce da eliminare.</p>
 
     {% if item %}
-      <div class="warning-box">
-        Stai per rimuovere: <strong>{{ item.title }}</strong>.
-        Questa azione non e reversibile.
+      <div class="planner-warning">
+        Stai per rimuovere: <strong>{{ item.title }}</strong>.<br>
+        <small>Questa azione non è reversibile.</small>
       </div>
-      <form class="actions" method="post" action="">
+      <form class="form" method="post" action="">
         {% csrf_token %}
-        <button class="btn danger" type="submit">Conferma rimozione</button>
-        <a class="btn" href="/planner/">Annulla</a>
+        <div class="planner-actions">
+          <button class="btn danger" type="submit">Conferma rimozione</button>
+          <a class="btn" href="/planner/">Annulla</a>
+        </div>
       </form>
     {% else %}
       {% if items %}
-        <ul class="list">
+        <ul class="planner-item-list">
           {% for item in items %}
-            <li>
-              <span>{{ item.title }}</span>
-              <a class="btn" href="/planner/remove?id={{ item.id }}">Rimuovi</a>
-            </li>
+          <li>
+            <div>
+              <div class="item-title">{{ item.title }}</div>
+              <div class="item-meta">
+                {% if item.due_date %}{{ item.due_date|date:"d/m/Y" }}{% endif %}
+                · {{ item.get_status_display }}
+                {% if item.project %}· {{ item.project.name|truncatechars:30 }}{% endif %}
+              </div>
+            </div>
+            <a class="btn danger" href="/planner/remove?id={{ item.id }}">Rimuovi</a>
+          </li>
           {% endfor %}
         </ul>
       {% else %}
-        <div class="note">Nessuna voce disponibile.</div>
+        <div class="timeline-weekly-empty">Nessuna voce disponibile.</div>
       {% endif %}
     {% endif %}
-  </section>
+  </div>
+</div>
 {% endblock %}

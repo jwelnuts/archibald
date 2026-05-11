@@ -3,7 +3,7 @@
 .is-user-hidden,
 .tx-hidden,
 .todo-hidden,
-.routines-hidden {
+.todos-hidden {
   display: none !important;
 }
 

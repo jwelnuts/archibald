@@ -621,7 +621,7 @@ var _cachedGregorianBundles = {};
 exports.addCustomFormats = function(/*String*/ packageName, /*String*/ bundleName){
 	// summary:
 	//		Add a reference to a bundle containing localized custom formats to be
-	//		used by date/time formatting and parsing routines.
+	//		used by date/time formatting and parsing todos.
 	//
 	// description:
 	//		The user may add custom localized formats where the bundle has properties following the

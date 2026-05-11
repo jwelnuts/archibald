@@ -9,7 +9,7 @@ from zoneinfo import ZoneInfo
 
 from agenda.models import WorkLog
 from memory_stock.models import MemoryStockItem
-from routines.models import Routine, RoutineItem
+from todos.models import TodoList, TodoItem
 from .actions import EmailActionOutcome, detect_action_from_subject, execute_action_from_email, execute_action_manually
 from .forms import ArchibaldEmailFlagRuleForm, ArchibaldMailboxConfigForm
 from .models import ArchibaldEmailFlagRule, ArchibaldEmailMessage, ArchibaldInboundCategory, ArchibaldMailboxConfig
@@ -80,7 +80,7 @@ class ArchibaldMailFormTests(TestCase):
                 "notification_include_reminders": "on",
                 "notification_include_planner": "on",
                 "notification_include_subscriptions": "on",
-                "notification_include_routines": "on",
+                "notification_include_todos": "on",
             },
             instance=config,
         )
@@ -538,7 +538,7 @@ class ArchibaldMailActionsTests(TestCase):
 
     def test_detect_action_from_subject(self):
         self.assertEqual(detect_action_from_subject("[MEMORY] Articolo"), "memory_stock.save")
-        self.assertEqual(detect_action_from_subject("[TODO] Task rapido"), "todo.capture")
+        self.assertEqual(detect_action_from_subject("[TODO] TodoItem rapido"), "todo.capture")
         self.assertEqual(detect_action_from_subject("#TRANSACTION Spesa"), "transaction.capture")
         self.assertEqual(detect_action_from_subject("[REMINDER] Evento"), "reminder.capture")
         self.assertEqual(detect_action_from_subject("[ARCHI] Rispondi al volo"), "archi.reply")
@@ -877,7 +877,7 @@ class ArchibaldMailDigestTests(TestCase):
             notification_include_tasks=False,
             notification_include_planner=False,
             notification_include_subscriptions=False,
-            notification_include_routines=False,
+            notification_include_todos=False,
             notification_include_reminders=True,
         )
 

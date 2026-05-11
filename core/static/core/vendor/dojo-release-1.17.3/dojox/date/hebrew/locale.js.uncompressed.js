@@ -438,7 +438,7 @@ define("dojox/date/hebrew/locale", ["dojox/main", "dojo/_base/lang", "dojo/_base
 	hlocale.addCustomFormats = function(/*String*/packageName, /*String*/bundleName){
 		// summary:
 		//		Add a reference to a bundle containing localized custom formats to be
-		//		used by date/time formatting and parsing routines.
+		//		used by date/time formatting and parsing todos.
 		// description:
 		//		The user may add custom localized formats where the bundle has properties following the
 		//		same naming convention used by dojo.cldr: `dateFormat-xxxx` / `timeFormat-xxxx`

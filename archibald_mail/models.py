@@ -79,7 +79,7 @@ class ArchibaldMailboxConfig(OwnedModel, TimeStampedModel):
     notification_include_reminders = models.BooleanField(default=True)
     notification_include_planner = models.BooleanField(default=True)
     notification_include_subscriptions = models.BooleanField(default=True)
-    notification_include_routines = models.BooleanField(default=True)
+    notification_include_todos = models.BooleanField(default=True)
 
     latest_poll_at = models.DateTimeField(null=True, blank=True)
     latest_poll_status = models.CharField(max_length=32, blank=True)

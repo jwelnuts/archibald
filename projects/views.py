@@ -25,7 +25,7 @@ from .models import (
     SubProject,
     SubProjectActivity,
 )
-from .storyboard_forms import StoryboardPlannerForm, StoryboardTaskForm
+from .storyboard_forms import StoryboardPlannerForm, StoryboardTodoItemForm
 from .storyboard_commands import StoryboardCommandParser
 from .helpers import HERO_ACTIONS_MODULES, _hero_actions_for_project
 
@@ -107,7 +107,7 @@ def _storyboard_page_context(request, project, note_form=None, task_form=None, p
     context = {
         "project": project,
         "note_form": note_form if note_form is not None else ProjectNoteForm(),
-        "task_form": task_form if task_form is not None else StoryboardTaskForm(prefix="task"),
+        "task_form": task_form if task_form is not None else StoryboardTodoItemForm(prefix="task"),
         "planner_form": planner_form if planner_form is not None else StoryboardPlannerForm(prefix="planner"),
         "active_form": active_form,
     }
@@ -117,7 +117,7 @@ def _storyboard_page_context(request, project, note_form=None, task_form=None, p
 
 def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80, result_limit=120):
     from planner.models import PlannerItem
-    from todo.models import Task
+    from todos.models import TodoItem
     from transactions.models import Transaction
 
     query = filters["q"]
@@ -133,7 +133,7 @@ def _build_storyboard_activity_context(user, project, filters, per_kind_limit=80
     if date_to:
         notes_qs = notes_qs.filter(created_at__date__lte=date_to)
 
-    tasks_qs = Task.objects.filter(owner=user, project=project)
+    tasks_qs = TodoItem.objects.filter(owner=user, project=project)
     if query:
         tasks_qs = tasks_qs.filter(Q(title__icontains=query) | Q(note__icontains=query))
     if date_from:
@@ -418,9 +418,9 @@ def dashboard(request):
     project_rows = []
     if project_ids:
         from planner.models import PlannerItem
-        from routines.models import RoutineItem
+        from todos.models import TodoItem
         from finance_hub.models import Subscription
-        from todo.models import Task
+        from todos.models import TodoItem
         from transactions.models import Transaction
 
         tx_map = {
@@ -451,11 +451,11 @@ def dashboard(request):
         todo_map = {
             row["project_id"]: row
             for row in (
-                Task.objects.filter(owner=user, project_id__in=project_ids)
+                TodoItem.objects.filter(owner=user, project_id__in=project_ids)
                 .values("project_id")
                 .annotate(
                     total=Count("id"),
-                    open_count=Count("id", filter=Q(status__in=[Task.Status.OPEN, Task.Status.IN_PROGRESS])),
+                    open_count=Count("id", filter=Q(status__in=[TodoItem.Status.OPEN, TodoItem.Status.IN_PROGRESS])),
                 )
             )
         }
@@ -470,10 +470,10 @@ def dashboard(request):
                 )
             )
         }
-        routine_map = {
+        todo_map = {
             row["project_id"]: row
             for row in (
-                RoutineItem.objects.filter(owner=user, project_id__in=project_ids)
+                TodoItem.objects.filter(owner=user, project_id__in=project_ids)
                 .values("project_id")
                 .annotate(
                     total=Count("id"),
@@ -487,7 +487,7 @@ def dashboard(request):
             subs = sub_map.get(project.id, {})
             todo = todo_map.get(project.id, {})
             planner = planner_map.get(project.id, {})
-            routine = routine_map.get(project.id, {})
+            todo = todo_map.get(project.id, {})
 
             income_total = tx.get("income") or 0
             expense_total = tx.get("expense") or 0
@@ -508,7 +508,7 @@ def dashboard(request):
                     "todo_total": todo.get("total", 0),
                     "planner_planned": planner.get("planned", 0),
                     "planner_total": planner.get("total", 0),
-                    "routines_active": routine.get("active", 0),
+                    "todos_active": todo.get("active", 0),
                 }
             )
 
@@ -529,7 +529,7 @@ def dashboard(request):
         "planner_total": sum((row["planner_total"] for row in project_rows), 0),
         "subs_active_total": sum((row["subscriptions_active"] for row in project_rows), 0),
         "subs_total": sum((row["subscriptions_total"] for row in project_rows), 0),
-        "routines_active_total": sum((row["routines_active"] for row in project_rows), 0),
+        "todos_active_total": sum((row["todos_active"] for row in project_rows), 0),
     }
     summary["balance_total"] = summary["income_total"] - summary["expense_total"]
     return render(
@@ -667,7 +667,7 @@ def project_detail(request):
     from planner.models import PlannerItem
     from finance_hub.models import Subscription
     from transactions.models import Transaction
-    from routines.models import RoutineItem
+    from todos.models import TodoItem
 
     planner_modal_open = False
     if request.method == "POST":
@@ -748,7 +748,7 @@ def project_detail(request):
     sub_qs = Subscription.objects.filter(owner=request.user, project=project)
     planner_qs = PlannerItem.objects.filter(owner=request.user, project=project)
     quote_qs = Quote.objects.filter(owner=request.user, project=project)
-    routine_qs = RoutineItem.objects.filter(owner=request.user, project=project, is_active=True)
+    todo_qs = TodoItem.objects.filter(owner=request.user, project=project, is_active=True)
     subproject_qs = (
         SubProject.objects.filter(owner=request.user, project=project)
         .annotate(
@@ -767,13 +767,13 @@ def project_detail(request):
         "subscriptions": sub_qs.select_related("currency").order_by("next_due_date", "id")[:5],
         "planner_items": planner_qs.order_by("due_date", "id")[:5],
         "quotes": quote_qs.select_related("currency", "customer").order_by("-issue_date", "-id")[:5],
-        "routine_items": routine_qs.order_by("weekday", "time_start", "time_end", "title")[:5],
+        "todo_items": todo_qs.order_by("weekday", "time_start", "time_end", "title")[:5],
         "counts": {
             "transactions": tx_qs.count(),
             "subscriptions": sub_qs.count(),
             "planner_items": planner_qs.count(),
             "quotes": quote_qs.count(),
-            "routine_items": routine_qs.count(),
+            "todo_items": todo_qs.count(),
             "subprojects": subproject_qs.count(),
         },
         "tx_type_counts": _choice_counts(tx_qs, "tx_type", Transaction.Type),
@@ -938,7 +938,7 @@ def project_storyboard(request):
         if active_form == "task":
             note_form = ProjectNoteForm()
             planner_form = StoryboardPlannerForm(prefix="planner")
-            task_form = StoryboardTaskForm(request.POST, prefix="task")
+            task_form = StoryboardTodoItemForm(request.POST, prefix="task")
             if task_form.is_valid():
                 task = task_form.save(commit=False)
                 task.owner = request.user
@@ -947,7 +947,7 @@ def project_storyboard(request):
                 return redirect(f"/projects/storyboard?id={project.id}")
         elif active_form == "planner":
             note_form = ProjectNoteForm()
-            task_form = StoryboardTaskForm(prefix="task")
+            task_form = StoryboardTodoItemForm(prefix="task")
             planner_form = StoryboardPlannerForm(request.POST, prefix="planner")
             if planner_form.is_valid():
                 planner_item = planner_form.save(commit=False)
@@ -957,7 +957,7 @@ def project_storyboard(request):
                 return redirect(f"/projects/storyboard?id={project.id}")
         elif active_form == "command":
             note_form = ProjectNoteForm()
-            task_form = StoryboardTaskForm(prefix="task")
+            task_form = StoryboardTodoItemForm(prefix="task")
             planner_form = StoryboardPlannerForm(prefix="planner")
             command_text = (request.POST.get("command") or "").strip()
             if command_text:
@@ -969,7 +969,7 @@ def project_storyboard(request):
             else:
                 command_error = "Inserisci un testo di comando."
         else:
-            task_form = StoryboardTaskForm(prefix="task")
+            task_form = StoryboardTodoItemForm(prefix="task")
             planner_form = StoryboardPlannerForm(prefix="planner")
             note_form = ProjectNoteForm(request.POST, request.FILES)
             if note_form.is_valid():
@@ -990,7 +990,7 @@ def project_storyboard(request):
                 return redirect(f"/projects/storyboard?id={project.id}")
     else:
         note_form = ProjectNoteForm()
-        task_form = StoryboardTaskForm(prefix="task")
+        task_form = StoryboardTodoItemForm(prefix="task")
         planner_form = StoryboardPlannerForm(prefix="planner")
     context = _storyboard_page_context(
         request,
@@ -1043,6 +1043,64 @@ def project_storyboard_delete_note(request):
     filters = _storyboard_filters_from_request(request)
     querystring = _storyboard_querystring(project.id, filters)
     return redirect(f"/projects/storyboard?{querystring}")
+
+
+@login_required
+def project_storyboard_edit_note(request):
+    project_id = request.GET.get("id") or request.POST.get("id")
+    note_id = request.GET.get("note_id") or request.POST.get("note_id")
+    if not project_id or not note_id:
+        return redirect("/projects/")
+
+    project = get_object_or_404(Project, id=project_id, owner=request.user)
+    note = get_object_or_404(ProjectNote, id=note_id, project=project, owner=request.user)
+
+    if request.method == "POST":
+        form = ProjectNoteForm(request.POST, request.FILES, instance=note)
+        if form.is_valid():
+            form.save()
+            if _is_htmx_request(request):
+                context = _storyboard_page_context(request, project, active_form="note")
+                return render(request, "projects/partials/storyboard_content.html", context)
+            return redirect(f"/projects/storyboard?id={project.id}")
+        if _is_htmx_request(request):
+            return render(request, "projects/partials/storyboard_note_edit.html", {
+                "project": project,
+                "note": note,
+                "edit_form": form,
+                "mode": "edit",
+            })
+    else:
+        form = ProjectNoteForm(instance=note)
+
+    if _is_htmx_request(request):
+        return render(request, "projects/partials/storyboard_note_edit.html", {
+            "project": project,
+            "note": note,
+            "edit_form": form,
+            "mode": "edit",
+        })
+
+    return redirect(f"/projects/storyboard?id={project.id}")
+
+
+@login_required
+def project_storyboard_cancel_edit_note(request):
+    project_id = request.GET.get("id")
+    note_id = request.GET.get("note_id")
+    if not project_id or not note_id:
+        return redirect("/projects/")
+
+    project = get_object_or_404(Project, id=project_id, owner=request.user)
+    note = get_object_or_404(ProjectNote, id=note_id, project=project, owner=request.user)
+
+    if _is_htmx_request(request):
+        return render(request, "projects/partials/storyboard_note_view.html", {
+            "project": project,
+            "note": note,
+        })
+
+    return redirect(f"/projects/storyboard?id={project.id}")
 
 
 @login_required

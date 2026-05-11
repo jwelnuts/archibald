@@ -1,0 +1,18 @@
+<li class="storyboard-log-item kind-note" id="storyboard-log-item-{{ note.id }}">
+  <div class="storyboard-log-head">
+    <span class="uk-label storyboard-log-kind kind-note">Appunto</span>
+    <span class="uk-text-meta">{{ note.created_at|date:"d/m/Y H:i" }}</span>
+  </div>
+  <div class="storyboard-log-title">Appunto progetto</div>
+  {% if note.content %}
+    <div class="storyboard-log-body is-html">{{ note.content|safe }}</div>
+  {% endif %}
+  {% if note.attachment %}
+    <div class="storyboard-log-actions">
+      <a class="uk-button uk-button-text uk-button-small" href="{{ note.attachment.url }}" target="_blank" rel="noopener">
+        <span uk-icon="icon: download; ratio: .75"></span>
+        Apri allegato
+      </a>
+    </div>
+  {% endif %}
+</li>

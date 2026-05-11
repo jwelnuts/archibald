@@ -12,9 +12,9 @@ from django.contrib.auth import get_user_model
 from contacts.models import Contact, ContactDeliveryAddress, ContactPriceList, ContactPriceListItem, ContactToolbox
 from finance_hub.models import PaymentMethod, Quote, ShippingMethod
 from planner.models import PlannerItem
-from routines.models import Routine, RoutineItem
+from todos.models import TodoList, TodoItem
 from finance_hub.models import Account, Currency, Subscription
-from todo.models import Task
+from todos.models import TodoItem
 from transactions.models import Transaction
 from contacts.models import Contact
 
@@ -43,15 +43,15 @@ class ProjectStoryboardFormsTests(TestCase):
             f"/projects/storyboard?id={self.project.id}",
             {
                 "form_kind": "task",
-                "task-title": "Task da storyboard",
+                "task-title": "TodoItem da storyboard",
                 "task-due_date": "",
-                "task-status": Task.Status.OPEN,
-                "task-priority": Task.Priority.HIGH,
+                "task-status": TodoItem.Status.OPEN,
+                "task-priority": TodoItem.Priority.HIGH,
                 "task-note": "dettaglio task",
             },
         )
         self.assertEqual(response.status_code, 302)
-        task = Task.objects.get(owner=self.user, title="Task da storyboard")
+        task = TodoItem.objects.get(owner=self.user, title="TodoItem da storyboard")
         self.assertEqual(task.project_id, self.project.id)
 
     def test_storyboard_add_planner_item(self):
@@ -171,7 +171,7 @@ class ProjectStoryboardLogTests(TestCase):
             is_active=True,
         )
         ProjectNote.objects.create(owner=self.user, project=self.project, content="<p>Nota storyboard</p>")
-        Task.objects.create(owner=self.user, project=self.project, title="Task storyboard", status=Task.Status.OPEN)
+        TodoItem.objects.create(owner=self.user, project=self.project, title="TodoItem storyboard", status=TodoItem.Status.OPEN)
         PlannerItem.objects.create(
             owner=self.user, project=self.project, title="Reminder storyboard", status=PlannerItem.Status.PLANNED
         )
@@ -190,7 +190,7 @@ class ProjectStoryboardLogTests(TestCase):
         response = self.client.get(f"/projects/storyboard/log?id={self.project.id}&kind=note")
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Appunto progetto")
-        self.assertNotContains(response, "Task storyboard")
+        self.assertNotContains(response, "TodoItem storyboard")
         self.assertNotContains(response, "Reminder storyboard")
 
     def test_storyboard_log_search_filter(self):
@@ -360,17 +360,17 @@ class ProjectDashboardContextTests(TestCase):
             status=Subscription.Status.ACTIVE,
             project=self.active_project,
         )
-        Task.objects.create(
+        TodoItem.objects.create(
             owner=self.user,
             project=self.active_project,
-            title="Task aperta",
-            status=Task.Status.OPEN,
+            title="TodoItem aperta",
+            status=TodoItem.Status.OPEN,
         )
-        Task.objects.create(
+        TodoItem.objects.create(
             owner=self.user,
             project=self.active_project,
-            title="Task chiusa",
-            status=Task.Status.DONE,
+            title="TodoItem chiusa",
+            status=TodoItem.Status.DONE,
         )
         PlannerItem.objects.create(
             owner=self.user,
@@ -384,12 +384,12 @@ class ProjectDashboardContextTests(TestCase):
             title="Planner done",
             status=PlannerItem.Status.DONE,
         )
-        routine = Routine.objects.create(owner=self.user, name="Routine progetto", is_active=True)
-        RoutineItem.objects.create(
+        todo = TodoList.objects.create(owner=self.user, name="TodoList progetto", is_active=True)
+        TodoItem.objects.create(
             owner=self.user,
-            routine=routine,
+            todo=todo,
             project=self.active_project,
-            title="Routine item",
+            title="TodoList item",
             is_active=True,
         )
 
@@ -408,7 +408,7 @@ class ProjectDashboardContextTests(TestCase):
         self.assertEqual(row["subscriptions_active"], 1)
         self.assertEqual(row["todo_open"], 1)
         self.assertEqual(row["planner_planned"], 1)
-        self.assertEqual(row["routines_active"], 1)
+        self.assertEqual(row["todos_active"], 1)
 
     def test_dashboard_archived_scope_filters_rows(self):
         response = self.client.get("/projects/?scope=archived")
@@ -762,13 +762,13 @@ class ProjectStoryboardCommandTests(TestCase):
             f"/projects/storyboard?id={self.project.id}",
             {
                 "form_kind": "command",
-                "command": "!Task di prova @domani #high",
+                "command": "!TodoItem di prova @domani #high",
             },
         )
         self.assertEqual(response.status_code, 302)
-        task = Task.objects.get(owner=self.user, title="Task di prova")
+        task = TodoItem.objects.get(owner=self.user, title="TodoItem di prova")
         self.assertEqual(task.project_id, self.project.id)
-        self.assertEqual(task.priority, Task.Priority.HIGH)
+        self.assertEqual(task.priority, TodoItem.Priority.HIGH)
 
     def test_storyboard_command_creates_planner(self):
         response = self.client.post(

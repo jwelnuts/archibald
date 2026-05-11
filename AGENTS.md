@@ -18,6 +18,14 @@ L0 common → L1 core → L2 hubs (finance_hub, projects, contacts) → L3 ops (
 
 ## 📝 Code Patterns
 
+### Timeline (Weekly Calendar)
+- Route: `/projects/timeline` — `projects/timeline_views.py`
+- Rendered server-side with Jinja (no HTMX on the page itself)
+- `timeline_views._build_week_data()` collects SubProjects, Tasks, and PlannerItems that overlap the selected week
+- `_week_options()` generates ±4 weeks of navigation choices
+- JS Stimulus controller (`timeline`) handles prev/next week navigation via `<select>` and button clicks
+- Styles in `core/static/core/styles/timeline-weekly.less` — light theme with grid-based weekly table
+
 ### Models
 ```python
 from common.models import OwnedModel, TimeStampedModel
@@ -41,13 +49,10 @@ def my_view(request):
 
 ### Forms in Templates
 ```html
-<form hx-post="/url/" hx-target="#result" hx-swap="innerHTML">
-  {% csrf_token %}  <!-- ALWAYS! -->
+<form method="post" action="">
+  {% csrf_token %}
   <input name="field" class="uk-input">
-  <button class="uk-button uk-button-primary">
-    <span class="htmx-indicator" uk-spinner></span>
-    <span class="btn-text">Save</span>
-  </button>
+  <button class="btn primary" type="submit">Save</button>
 </form>
 ```
 
@@ -57,9 +62,9 @@ import { registerStimulusController } from "@core/stimulus.js";
 
 class MyController extends window.StimulusModule.Controller {
   static targets = ["input"];
-  
+
   connect() { /* init */ }
-  
+
   action(event) {
     event.preventDefault();
     // logic

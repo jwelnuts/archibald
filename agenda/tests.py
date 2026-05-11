@@ -7,8 +7,8 @@ from django.test import TestCase
 
 from core.models import UserNavConfig
 from planner.models import PlannerItem
-from routines.models import Routine, RoutineCheck, RoutineItem
-from todo.models import Task
+from todos.models import TodoList, TodoRecurrence, TodoItem
+from todos.models import TodoItem
 
 from .models import AgendaItem, WorkLog
 
@@ -25,12 +25,12 @@ class AgendaDashboardTests(TestCase):
             due_date=due,
             item_type=AgendaItem.ItemType.ACTIVITY,
         )
-        Task.objects.create(
+        TodoItem.objects.create(
             owner=self.user,
             title="Mandare mail",
             due_date=due,
-            item_type=Task.ItemType.REMINDER,
-            status=Task.Status.OPEN,
+            item_type=TodoItem.ItemType.REMINDER,
+            status=TodoItem.Status.OPEN,
         )
         PlannerItem.objects.create(
             owner=self.user,
@@ -38,23 +38,23 @@ class AgendaDashboardTests(TestCase):
             due_date=due,
             status=PlannerItem.Status.PLANNED,
         )
-        routine = Routine.objects.create(
+        todo = TodoList.objects.create(
             owner=self.user,
-            name="Routine ufficio",
+            name="TodoList ufficio",
             is_active=True,
         )
-        routine_item = RoutineItem.objects.create(
+        todo_item = TodoItem.objects.create(
             owner=self.user,
-            routine=routine,
+            todo=todo,
             title="Standup team",
             weekday=due.weekday(),
             is_active=True,
         )
-        RoutineCheck.objects.create(
+        TodoRecurrence.objects.create(
             owner=self.user,
-            item=routine_item,
+            item=todo_item,
             week_start=due - timedelta(days=due.weekday()),
-            status=RoutineCheck.Status.DONE,
+            status=TodoRecurrence.Status.DONE,
         )
         WorkLog.objects.create(owner=self.user, work_date=due, hours=Decimal("7.50"))
 
@@ -74,19 +74,19 @@ class AgendaDashboardTests(TestCase):
             {
                 "action": "add_todo_item",
                 "title": "Ricordati revisione",
-                "item_type": Task.ItemType.REMINDER,
+                "item_type": TodoItem.ItemType.REMINDER,
                 "due_date": "2026-02-11",
                 "due_time": "15:45",
-                "status": Task.Status.OPEN,
-                "priority": Task.Priority.MEDIUM,
+                "status": TodoItem.Status.OPEN,
+                "priority": TodoItem.Priority.MEDIUM,
                 "project_choice": "",
                 "project_name": "",
                 "note": "Porta il report",
             },
         )
         self.assertEqual(response.status_code, 302)
-        task = Task.objects.get(owner=self.user, title="Ricordati revisione")
-        self.assertEqual(task.item_type, Task.ItemType.REMINDER)
+        task = TodoItem.objects.get(owner=self.user, title="Ricordati revisione")
+        self.assertEqual(task.item_type, TodoItem.ItemType.REMINDER)
         self.assertEqual(task.due_time.strftime("%H:%M"), "15:45")
 
     def test_log_hours_updates_same_day(self):

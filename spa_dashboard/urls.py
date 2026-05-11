@@ -7,4 +7,5 @@ urlpatterns = [
     path("api/spa/layout/save", views.api_layout_save, name="spa-layout-save"),
     path("api/spa/widget/<str:widget_id>/data", views.api_widget_data, name="spa-widget-data"),
     path("api/spa/subscriptions/pay", views.api_subscription_pay, name="spa-subs-pay"),
+    path("api/spa/transactions/quick", views.api_transaction_quick, name="spa-tx-quick"),
 ]

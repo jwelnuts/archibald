@@ -1,0 +1,94 @@
+<li class="storyboard-log-item kind-note" id="storyboard-log-item-{{ note.id }}">
+  <div class="storyboard-log-head">
+    <span class="uk-label storyboard-log-kind kind-note">Appunto</span>
+    <span class="uk-text-meta">{{ note.created_at|date:"d/m/Y H:i" }}</span>
+  </div>
+
+  <form
+    class="uk-form-stacked storyboard-edit-form"
+    method="post"
+    action="/projects/storyboard/note/edit"
+    enctype="multipart/form-data"
+    novalidate
+    hx-post="/projects/storyboard/note/edit"
+    hx-target="#storyboard-content"
+    hx-swap="outerHTML"
+    hx-encoding="multipart/form-data"
+  >
+    {% csrf_token %}
+    <input type="hidden" name="id" value="{{ project.id }}">
+    <input type="hidden" name="note_id" value="{{ note.id }}">
+
+    {% if edit_form.errors %}
+      <div class="uk-alert-danger uk-margin-small-bottom">
+        Correggi i campi.
+        {{ edit_form.non_field_errors }}
+        {{ edit_form.content.errors }}
+        {{ edit_form.attachment.errors }}
+      </div>
+    {% endif %}
+
+    <div class="storyboard-edit-toolbar" id="edit-note-toolbar-{{ note.id }}">
+      <span class="ql-formats">
+        <button class="ql-bold"></button>
+        <button class="ql-italic"></button>
+        <button class="ql-underline"></button>
+      </span>
+      <span class="ql-formats">
+        <button class="ql-list" value="ordered"></button>
+        <button class="ql-list" value="bullet"></button>
+      </span>
+      <span class="ql-formats">
+        <button class="ql-link"></button>
+      </span>
+    </div>
+    <div class="rich-editor storyboard-edit-editor" id="edit-note-editor-{{ note.id }}"></div>
+    <div style="display:none;">
+      {{ edit_form.content }}
+    </div>
+
+    <div class="uk-margin-small">
+      <label class="uk-form-label" for="{{ edit_form.attachment.id_for_label }}">Allega file</label>
+      {{ edit_form.attachment }}
+      {% if note.attachment %}
+        <div class="uk-text-meta uk-margin-small-top">File corrente: {{ note.attachment.name|slice:"20:" }}</div>
+      {% endif %}
+    </div>
+
+    <div class="uk-margin-small-top uk-flex uk-flex-wrap uk-gap-small">
+      <button class="uk-button uk-button-primary uk-button-small" type="submit">
+        <span class="htmx-indicator" uk-spinner="ratio: .5"></span>
+        <span class="btn-text">Salva modifiche</span>
+      </button>
+      <button
+        class="uk-button uk-button-default uk-button-small"
+        type="button"
+        hx-get="/projects/storyboard/note/cancel-edit?id={{ project.id }}&note_id={{ note.id }}"
+        hx-target="#storyboard-log-item-{{ note.id }}"
+        hx-swap="outerHTML"
+      >
+        Annulla
+      </button>
+    </div>
+  </form>
+
+  <script>
+    (function() {
+      if (typeof Quill === 'undefined') return;
+      var el = document.getElementById('edit-note-editor-{{ note.id }}');
+      var tb = document.getElementById('edit-note-toolbar-{{ note.id }}');
+      var ta = document.querySelector('#storyboard-log-item-{{ note.id }} #{{ edit_form.content.id_for_label }}');
+      if (!el || !tb || !ta || el.dataset.quillReady === 'true') return;
+      el.dataset.quillReady = 'true';
+      ta.required = false;
+      var q = new Quill(el, { theme: 'snow', modules: { toolbar: tb } });
+      if (ta.value) { q.clipboard.dangerouslyPasteHTML(ta.value); }
+      var form = el.closest('form');
+      if (form) {
+        form.addEventListener('submit', function() {
+          ta.value = q.root.innerHTML.trim();
+        });
+      }
+    })();
+  </script>
+</li>

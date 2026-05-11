@@ -1,0 +1,30 @@
+<div
+  id="todo-status-{{ item.id }}"
+  class="uk-text-meta uk-margin-xsmall-top todo-entry-status"
+  data-todo-status
+  data-todo-status-value="{{ status }}"
+  hx-swap-oob="outerHTML"
+>{{ status }}</div>
+
+{% with item_id=item.id|stringformat:"s" %}
+{% with data_id="todo-data-"|add:item_id data_container_id="todo-data-container-"|add:item_id %}
+<div id="{{ data_container_id }}" hidden hx-swap-oob="outerHTML">
+  {{ data|default:""|json_script:data_id }}
+</div>
+{% endwith %}
+{% endwith %}
+
+<div id="todo-values-{{ item.id }}" class="todo-entry-values" hx-swap-oob="outerHTML">
+  {% if data_rows %}
+    <div class="todo-entry-values-title">Valori salvati (settimana corrente)</div>
+    <ul class="todo-entry-values-list">
+      {% for row in data_rows %}
+        <li><strong>{{ row.label }}:</strong> {{ row.value }}</li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+</div>
+
+<strong id="todo-stat-planned" data-todo-stat="PLANNED" hx-swap-oob="outerHTML">{{ stats.planned }}</strong>
+<strong id="todo-stat-done" data-todo-stat="DONE" hx-swap-oob="outerHTML">{{ stats.done }}</strong>
+<strong id="todo-stat-skipped" data-todo-stat="SKIPPED" hx-swap-oob="outerHTML">{{ stats.skipped }}</strong>

@@ -123,10 +123,71 @@ def _fetch_projects(user, slot):
     }
 
 
+def _fetch_transaction_quick(user, slot):
+    from transactions.models import Transaction
+    from finance_hub.models import Account, Currency
+    from projects.models import Category as ProjectCategory, Project
+
+    today = timezone.now().date()
+    week_ago = today - timedelta(days=7)
+
+    recent_count = Transaction.objects.filter(
+        owner=user, date__gte=week_ago,
+    ).count()
+
+    accounts = list(
+        Account.objects.filter(owner=user, is_active=True)
+        .select_related("currency")
+        .order_by("name")
+        .values("id", "name", "currency__code")
+    )
+    accounts_serialized = [
+        {"id": a["id"], "name": a["name"], "currency": a["currency__code"] or "EUR"}
+        for a in accounts
+    ]
+
+    projects = list(
+        Project.objects.filter(owner=user, is_archived=False)
+        .order_by("name")
+        .values("id", "name")[:20]
+    )
+    projects_serialized = [{"id": p["id"], "name": p["name"]} for p in projects]
+
+    categories = list(
+        ProjectCategory.objects.filter(owner=user)
+        .order_by("name")
+        .values("id", "name")[:30]
+    )
+    categories_serialized = [{"id": c["id"], "name": c["name"]} for c in categories]
+
+    currencies = list(
+        Currency.objects.all().order_by("code")
+        .values("id", "code")
+    )
+    currencies_serialized = [{"id": c["id"], "code": c["code"]} for c in currencies]
+
+    tx_types = [
+        {"value": "OUT", "label": "Uscita"},
+        {"value": "IN", "label": "Entrata"},
+        {"value": "XFER", "label": "Trasferimento"},
+    ]
+
+    return {
+        "recent_count": recent_count,
+        "accounts": accounts_serialized,
+        "projects": projects_serialized,
+        "categories": categories_serialized,
+        "currencies": currencies_serialized,
+        "tx_types": tx_types,
+        "today": today.isoformat(),
+    }
+
+
 WIDGET_FETCHERS = {
     "placeholder": lambda user, slot: {},
     "subscriptions": _fetch_subscriptions,
     "projects": _fetch_projects,
+    "transaction_quick": _fetch_transaction_quick,
 }
 
 

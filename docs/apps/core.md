@@ -45,10 +45,10 @@ Core functionality including authentication, payees, DAV/CalDAV support, mobile 
 | `/api/mobile/auth/logout` | mobile-auth-logout |
 | `/api/mobile/dashboard` | mobile-dashboard |
 | `/api/mobile/routines` | mobile-routines |
-| `/api/mobile/routines/check` | mobile-routines-check |
-| `/api/mobile/routines/items/create` | mobile-routines-item-create |
-| `/api/mobile/routines/items/update` | mobile-routines-item-update |
-| `/api/mobile/routines/items/delete` | mobile-routines-item-delete |
+| `/api/mobile/todos/check` | mobile-todos-check |
+| `/api/mobile/todos/items/create` | mobile-todos-item-create |
+| `/api/mobile/todos/items/update` | mobile-todos-item-update |
+| `/api/mobile/todos/items/delete` | mobile-todos-item-delete |
 
 ### Core Features
 | Route | Name |
