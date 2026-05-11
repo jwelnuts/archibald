@@ -81,6 +81,12 @@
           Storyboard
         </a>
       {% endif %}
+      {% if project.enabled_modules.social_media %}
+        <a class="uk-button uk-button-default uk-button-small" href="{% url 'social-media-dashboard' project.id %}" data-action="social_media">
+          <span uk-icon="icon: world; ratio: 0.8"></span>
+          <span class="uk-margin-small-left">Social</span>
+        </a>
+      {% endif %}
       {% if "config" in allowed_actions %}
         <a class="uk-button uk-button-default uk-button-small" href="/projects/hero-actions?id={{ project.id }}" data-action="config">
           Configura tasti
