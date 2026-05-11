@@ -1,0 +1,39 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="page">
+  <div class="site-header">
+    <div class="sh-brand">
+      <span class="sh-logo-dot">&#9670;</span>
+      <span class="sh-logo-text">MI.Organizzo</span>
+      <span class="sh-sep">/</span>
+      <span class="sh-module">{{ title }} – {{ project.name }}</span>
+    </div>
+    <nav class="sh-nav">
+      <a href="{% url 'social-media-dashboard' project.id %}" class="sh-link">Social Media</a>
+      <a href="/projects/view?id={{ project.id }}" class="sh-link">Progetto</a>
+    </nav>
+  </div>
+
+  <div class="content">
+    <section class="hero-card">
+      <h2 class="card-title">{{ title }}</h2>
+      <form method="post" class="form" style="max-width:700px;">
+        {% csrf_token %}
+        {% for field in form %}
+          <div class="field">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}
+              <div class="form-errors">{{ field.errors }}</div>
+            {% endif %}
+          </div>
+        {% endfor %}
+        <div class="actions">
+          <button class="btn primary" type="submit">Salva</button>
+          <a class="btn" href="{% url 'social-media-dashboard' project.id %}">Annulla</a>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -31,6 +31,7 @@ class Project(OwnedModel, TimeStampedModel):
         "projects.Category", null=True, blank=True, on_delete=models.SET_NULL, related_name="projects"
     )
     is_archived = models.BooleanField(default=False)
+    enabled_modules = models.JSONField(default=dict, blank=True)
 
     class Meta:
         unique_together = [("owner", "name")]
@@ -40,6 +41,11 @@ class Project(OwnedModel, TimeStampedModel):
 
     def __str__(self):
         return self.name
+
+    def is_module_enabled(self, module_key):
+        if not isinstance(self.enabled_modules, dict):
+            return False
+        return bool(self.enabled_modules.get(module_key, False))
 
 
 class SubProject(OwnedModel, TimeStampedModel):

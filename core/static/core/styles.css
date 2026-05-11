@@ -2789,26 +2789,34 @@ body.todos-skin {
   }
 }
 .storyboard-shell {
-  border-top: 4px solid rgba(30, 135, 240, 0.35);
+  border-top: 3px solid rgba(30, 135, 240, 0.35);
+  padding: 16px 20px;
 }
 
 .storyboard-shell-head {
-  gap: 12px;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.storyboard-shell-head h1 {
+  font-size: 1.35rem;
+  line-height: 1.2;
 }
 
 .storyboard-kicker {
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 600;
+  font-size: 0.68rem;
 }
 
 .storyboard-health-pill {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 0.78rem;
+  padding: 3px 10px;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.02em;
 }
@@ -2832,49 +2840,63 @@ body.todos-skin {
 }
 
 .storyboard-kpi-card {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 12px;
-  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 10px;
+  padding: 8px 10px;
   background: linear-gradient(155deg, #ffffff, #f6f9ff);
 }
 
 .storyboard-kpi-label {
-  font-size: 0.75rem;
+  font-size: 0.68rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: #5a6473;
 }
 
 .storyboard-kpi-value {
-  margin-top: 4px;
-  font-size: 1.5rem;
+  margin-top: 2px;
+  font-size: 1.15rem;
   line-height: 1.1;
   font-weight: 700;
   color: #111827;
 }
 
 .storyboard-layout .storyboard-panel {
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 12px;
+}
+
+.storyboard-layout .storyboard-panel .uk-card-body {
+  padding: 14px;
 }
 
 .storyboard-panel-head {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
+}
+
+.storyboard-panel-head h2 {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.storyboard-panel-head .uk-text-meta {
+  font-size: 0.72rem;
+  margin-top: 2px;
 }
 
 .storyboard-panel-forms {
   position: sticky;
-  top: 12px;
+  top: 8px;
 }
 
 .storyboard-tabs {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .storyboard-tabs > li > a {
-  font-size: 0.82rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  padding: 6px 14px;
+  padding: 4px 10px;
 }
 
 .storyboard-switcher {
@@ -2887,87 +2909,117 @@ body.todos-skin {
   margin-top: 0;
 }
 
+.storyboard-form .uk-margin-small {
+  margin-top: 6px;
+}
+
+.storyboard-form .uk-margin-small-top {
+  margin-top: 8px;
+}
+
 .storyboard-form .uk-alert-danger {
-  border-radius: 10px;
-  margin-bottom: 10px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
+.storyboard-form .uk-form-label {
+  font-size: 0.78rem;
+  margin-bottom: 2px;
 }
 
 .storyboard-form .uk-input,
 .storyboard-form .uk-select,
 .storyboard-form .uk-textarea {
-  font-size: 0.88rem;
+  font-size: 0.82rem;
+  padding: 5px 8px;
+  border-radius: 6px;
 }
 
 .storyboard-command-input {
   font-family: "SF Mono", "Fira Code", "Consolas", monospace;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  min-height: 90px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  min-height: 64px;
   resize: vertical;
+  padding: 6px 8px;
 }
 
 .storyboard-command-help {
-  font-size: 0.72rem;
-  line-height: 1.5;
+  font-size: 0.68rem;
+  line-height: 1.4;
   color: #6b7280;
-  padding: 6px 8px;
+  padding: 4px 6px;
   background: #f9fafb;
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid #e5e7eb;
 }
 
 #note-editor-toolbar {
-  border: 1px solid rgba(15, 23, 42, 0.14);
+  border: 1px solid rgba(15, 23, 42, 0.12);
   border-bottom: none;
-  border-radius: 10px 10px 0 0;
+  border-radius: 8px 8px 0 0;
   background: #f8fbff;
 }
 
+#note-editor-toolbar .ql-formats {
+  margin-right: 8px;
+}
+
+#note-editor-toolbar button {
+  width: 24px;
+  height: 24px;
+  padding: 2px;
+}
+
 .rich-editor {
-  min-height: 140px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  border-radius: 0 0 10px 10px;
+  min-height: 90px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0 0 8px 8px;
   background: #fff;
 }
 
 .storyboard-filter-form {
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 12px;
-  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  padding: 8px 10px;
   background: #f9fbff;
+  margin-bottom: 8px;
 }
 
 .storyboard-filter-row {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   justify-content: space-between;
 }
 
 .storyboard-filter-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
+  gap: 4px;
 }
 
 .storyboard-filter-chips .uk-button {
   text-transform: none;
   letter-spacing: 0;
   border-radius: 999px;
-  font-size: 0.78rem;
-  padding: 4px 10px;
+  font-size: 0.72rem;
+  padding: 3px 8px;
+  line-height: 1.3;
 }
 
 .storyboard-chip-count {
   display: inline-block;
-  margin-left: 4px;
+  margin-left: 3px;
   background: rgba(255,255,255,0.5);
   border-radius: 999px;
-  padding: 0 6px;
-  font-size: 0.7rem;
+  padding: 0 5px;
+  font-size: 0.65rem;
   font-weight: 600;
-  min-width: 18px;
+  min-width: 16px;
   text-align: center;
 }
 
@@ -2978,17 +3030,19 @@ body.todos-skin {
 .storyboard-filter-inputs {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 
 .storyboard-filter-sep {
   color: #9ca3af;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .storyboard-filter-inputs .uk-input {
-  width: 140px;
-  font-size: 0.8rem;
+  width: 120px;
+  font-size: 0.78rem;
+  padding: 4px 6px;
+  border-radius: 6px;
 }
 
 .storyboard-filter-actions {
@@ -2996,11 +3050,12 @@ body.todos-skin {
 }
 
 .storyboard-log-summary {
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin-top: 8px;
+  margin-bottom: 6px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 0.75rem;
 }
 
 .storyboard-log-list {
@@ -3008,56 +3063,56 @@ body.todos-skin {
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 8px;
-  max-height: 70vh;
+  gap: 6px;
+  max-height: 72vh;
   overflow: auto;
 }
 
 .storyboard-log-item {
-  border: 1px solid rgba(15, 23, 42, 0.1);
-  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
   background: #fff;
-  padding: 10px 12px;
+  padding: 8px 10px;
   display: grid;
-  gap: 5px;
+  gap: 3px;
   transition: border-color 150ms ease;
 }
 
 .storyboard-log-item:hover {
-  border-color: rgba(15, 23, 42, 0.2);
+  border-color: rgba(15, 23, 42, 0.18);
 }
 
 .storyboard-log-item.kind-note {
-  border-left: 4px solid #1e87f0;
+  border-left: 3px solid #1e87f0;
 }
 
 .storyboard-log-item.kind-task {
-  border-left: 4px solid #f59e0b;
+  border-left: 3px solid #f59e0b;
 }
 
 .storyboard-log-item.kind-planner {
-  border-left: 4px solid #14b8a6;
+  border-left: 3px solid #14b8a6;
 }
 
 .storyboard-log-item.kind-transaction {
-  border-left: 4px solid #334155;
+  border-left: 3px solid #334155;
 }
 
 .storyboard-log-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .storyboard-log-kind {
-  font-size: 0.65rem;
-  line-height: 1.1;
+  font-size: 0.6rem;
+  line-height: 1;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 4px;
+  padding: 2px 6px;
+  border-radius: 3px;
 }
 
 .storyboard-log-kind.kind-note {
@@ -3083,25 +3138,27 @@ body.todos-skin {
 .storyboard-log-title {
   font-weight: 700;
   color: #0f172a;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  line-height: 1.3;
 }
 
 .storyboard-log-subtitle {
   color: #4b5563;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
+  line-height: 1.3;
 }
 
 .storyboard-log-body {
   color: #1f2937;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 
 .storyboard-log-body.is-html > * {
   margin-top: 0;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 
 .storyboard-log-body.is-html > *:last-child {
@@ -3111,7 +3168,7 @@ body.todos-skin {
 .storyboard-log-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -3128,7 +3185,7 @@ body.todos-skin {
 
 @media (max-width: 959px) {
   .storyboard-kpi-value {
-    font-size: 1.35rem;
+    font-size: 1.1rem;
   }
 
   .storyboard-log-list {
@@ -3152,16 +3209,16 @@ body.todos-skin {
 }
 
 .storyboard-edit-toolbar {
-  border: 1px solid rgba(15, 23, 42, 0.14);
+  border: 1px solid rgba(15, 23, 42, 0.12);
   border-bottom: none;
-  border-radius: 10px 10px 0 0;
+  border-radius: 8px 8px 0 0;
   background: #f8fbff;
 }
 
 .storyboard-edit-editor {
-  min-height: 100px;
-  border: 1px solid rgba(15, 23, 42, 0.14);
-  border-radius: 0 0 10px 10px;
+  min-height: 80px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 0 0 8px 8px;
   background: #fff;
 }
 .subproject-shell {

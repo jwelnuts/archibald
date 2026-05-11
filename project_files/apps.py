@@ -1,0 +1,7 @@
+from django.apps import AppConfig
+
+
+class ProjectFilesConfig(AppConfig):
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "project_files"
+    verbose_name = "Project Files"

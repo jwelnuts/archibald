@@ -42,4 +42,6 @@ urlpatterns = [
     path('finance/', include('finance_hub.urls')),
     path('link_storage/', include('link_storage.urls')),
     path('contacts/', include('contacts.urls')),
+    path('', include('social_media.urls')),
+    path('', include('project_files.urls')),
 ]

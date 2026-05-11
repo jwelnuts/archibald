@@ -8,7 +8,7 @@
 {% endblock %}
 
 {% block content %}
-  <section class="uk-card uk-card-default uk-card-small uk-card-body uk-margin storyboard-shell">
+  <section class="uk-card uk-card-default uk-card-small uk-margin storyboard-shell">
     <div class="uk-flex uk-flex-between uk-flex-middle uk-flex-wrap storyboard-shell-head">
       <div>
         <p class="uk-text-meta storyboard-kicker uk-margin-remove">Project storyboard</p>
@@ -37,6 +37,10 @@
               <span class="uk-margin-small-left">Progetto</span>
             </a>
           {% endif %}
+          <a class="uk-button uk-button-default uk-button-small" href="{% url 'project-files-list' project.id %}">
+            <span uk-icon="icon: folder"></span>
+            <span class="uk-margin-small-left">File</span>
+          </a>
           {% if "edit" in allowed_actions %}
             <a class="uk-button uk-button-primary uk-button-small" href="/projects/api/update?id={{ project.id }}" data-action="edit">
               <span uk-icon="icon: file-edit"></span>

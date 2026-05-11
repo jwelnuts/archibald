@@ -1,0 +1,86 @@
+{% extends "core/base.html" %}
+{% block content %}
+<div class="page">
+  <div class="site-header">
+    <div class="sh-brand">
+      <span class="sh-logo-dot">&#9670;</span>
+      <span class="sh-logo-text">MI.Organizzo</span>
+      <span class="sh-sep">/</span>
+      <span class="sh-module">Social Media – {{ project.name }}</span>
+    </div>
+    <nav class="sh-nav">
+      <a href="/projects/view?id={{ project.id }}" class="sh-link">Progetto</a>
+      <a href="/projects/" class="sh-link">Progetti</a>
+    </nav>
+  </div>
+
+  <div class="content">
+    <section class="hero-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2 class="card-title">Canali social</h2>
+        <a class="btn primary" href="{% url 'social-media-channel-create' project.id %}">+ Nuovo canale</a>
+      </div>
+      {% if channels %}
+        <ul class="list">
+          {% for ch in channels %}
+            <li style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span class="uk-label" style="text-transform:uppercase; font-size:11px;">{{ ch.get_platform_display }}</span>
+                <strong>{{ ch.name }}</strong>
+                {% if ch.handle %}<span class="muted">{{ ch.handle }}</span>{% endif %}
+                {% if not ch.is_active %}<span class="uk-label uk-label-warning">Disattivato</span>{% endif %}
+              </div>
+              <div style="display:flex; gap:8px;">
+                <a class="btn" href="{% url 'social-media-channel-edit' project.id ch.id %}">Modifica</a>
+                <form method="post" action="{% url 'social-media-channel-toggle' project.id ch.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <button class="btn" type="submit">{% if ch.is_active %}Disattiva{% else %}Attiva{% endif %}</button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">Nessun canale configurato.</p>
+      {% endif %}
+    </section>
+
+    <section class="hero-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <h2 class="card-title">Post recenti</h2>
+        <a class="btn primary" href="{% url 'social-media-post-create' project.id %}">+ Nuovo post</a>
+      </div>
+      {% if posts %}
+        <ul class="list">
+          {% for p in posts %}
+            <li style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+              <div style="flex:1;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                  <span class="uk-label" style="text-transform:uppercase; font-size:11px;">{{ p.channel.get_platform_display }}</span>
+                  <span class="uk-label {% if p.status == 'published' %}uk-label-success{% elif p.status == 'scheduled' %}uk-label-primary{% elif p.status == 'draft' %}uk-label-default{% else %}uk-label-warning{% endif %}">{{ p.get_status_display }}</span>
+                  {% if p.scheduled_at %}<span class="muted">{{ p.scheduled_at|date:"d/m/Y H:i" }}</span>{% endif %}
+                </div>
+                <div>{{ p.content|linebreaksbr|truncatewords:30 }}</div>
+              </div>
+              <div style="display:flex; gap:8px; flex-shrink:0;">
+                <a class="btn" href="{% url 'social-media-post-edit' project.id p.id %}">Modifica</a>
+                <form method="post" action="{% url 'social-media-post-status' project.id p.id %}" style="display:inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="status" value="published">
+                  <button class="btn primary" type="submit">Pubblica</button>
+                </form>
+                <form method="post" action="{% url 'social-media-post-delete' project.id p.id %}" style="display:inline;" onsubmit="return confirm('Cancellare questo post?');">
+                  {% csrf_token %}
+                  <button class="btn danger" type="submit">Elimina</button>
+                </form>
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">Nessun post ancora.</p>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

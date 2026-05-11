@@ -130,6 +130,8 @@ INSTALLED_APPS = [
     'subscriptions',
     'income',
     'contacts',
+    'social_media',
+    'project_files',
 ]
 
 MIDDLEWARE = [
