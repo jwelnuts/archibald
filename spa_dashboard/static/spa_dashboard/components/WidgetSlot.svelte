@@ -3,11 +3,13 @@
   import WidgetPlaceholder from './WidgetPlaceholder.svelte'
   import SubscriptionsWidget from './SubscriptionsWidget.svelte'
   import ProjectsWidget from './ProjectsWidget.svelte'
+  import TransactionsQuickWidget from './TransactionsQuickWidget.svelte'
 
   const WIDGET_COMPONENTS = {
     placeholder: WidgetPlaceholder,
     subscriptions: SubscriptionsWidget,
     projects: ProjectsWidget,
+    transaction_quick: TransactionsQuickWidget,
   }
 
   let { slot } = $props()
