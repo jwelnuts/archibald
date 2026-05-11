@@ -1,86 +1,211 @@
 {% extends "core/base.html" %}
 {% block content %}
-<div class="page">
-  <div class="site-header">
-    <div class="sh-brand">
-      <span class="sh-logo-dot">&#9670;</span>
-      <span class="sh-logo-text">MI.Organizzo</span>
-      <span class="sh-sep">/</span>
-      <span class="sh-module">Social Media – {{ project.name }}</span>
+<style>
+  .sm-shell { padding: 16px 20px; }
+  .sm-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; }
+  .sm-head h1 { font-size:1.25rem; margin:0; }
+  .sm-kpi-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap:8px; margin-bottom:16px; }
+  .sm-kpi { border:1px solid rgba(15,23,42,0.1); border-radius:10px; padding:10px 12px; background: linear-gradient(155deg, #fff, #f6f9ff); }
+  .sm-kpi-label { font-size:0.65rem; text-transform:uppercase; letter-spacing:0.04em; color:#5a6473; }
+  .sm-kpi-value { font-size:1.15rem; font-weight:700; color:#111827; margin-top:2px; }
+  .sm-section { border:1px solid rgba(15,23,42,0.1); border-radius:12px; background:#fff; padding:14px; }
+  .sm-section h3 { font-size:0.85rem; font-weight:700; margin:0 0 10px; }
+  .sm-calendar { width:100%; border-collapse:collapse; font-size:0.75rem; }
+  .sm-calendar th { text-align:center; padding:4px; color:#6b7280; font-weight:600; text-transform:uppercase; font-size:0.65rem; }
+  .sm-calendar td { width:14.28%; height:72px; vertical-align:top; padding:4px; border:1px solid rgba(15,23,42,0.06); }
+  .sm-calendar .day-num { font-weight:700; font-size:0.75rem; color:#374151; }
+  .sm-calendar .day-today { background:#eff6ff; }
+  .sm-calendar .day-today .day-num { color:#1e87f0; }
+  .sm-calendar .cal-post { display:block; padding:1px 4px; border-radius:3px; margin-top:2px; font-size:0.6rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600; }
+  .sm-calendar .cal-post.draft { background:#e5e7eb; color:#374151; }
+  .sm-calendar .cal-post.scheduled { background:#dbeafe; color:#1e40af; }
+  .sm-calendar .cal-post.published { background:#dcfce7; color:#166534; }
+  .sm-channel-row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:6px 0; border-bottom:1px solid rgba(15,23,42,0.06); }
+  .sm-channel-row:last-child { border-bottom:none; }
+  .sm-channel-name { display:flex; align-items:center; gap:6px; font-size:0.82rem; font-weight:600; }
+  .sm-channel-meta { font-size:0.72rem; color:#6b7280; }
+  .sm-post-row { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:8px 0; border-bottom:1px solid rgba(15,23,42,0.06); }
+  .sm-post-row:last-child { border-bottom:none; }
+  .sm-post-body { flex:1; min-width:0; }
+  .sm-post-channel { font-size:0.65rem; text-transform:uppercase; font-weight:700; padding:2px 6px; border-radius:3px; display:inline-block; margin-bottom:3px; }
+  .sm-post-text { font-size:0.8rem; line-height:1.35; color:#1f2937; word-break:break-word; }
+  .sm-post-date { font-size:0.7rem; color:#6b7280; margin-top:2px; }
+  .sm-actions { display:flex; gap:4px; flex-shrink:0; }
+  .sm-btn { font-size:0.72rem; padding:3px 8px; border-radius:6px; border:1px solid rgba(15,23,42,0.12); background:#fff; color:#374151; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:4px; transition:all 120ms; }
+  .sm-btn:hover { border-color:#667eea; color:#667eea; }
+  .sm-btn.primary { background:#667eea; color:#fff; border-color:transparent; }
+  .sm-btn.primary:hover { background:#5a6fd6; }
+  .sm-btn.danger { color:#dc2626; }
+  .sm-btn.danger:hover { background:#fee2e2; border-color:#dc2626; }
+  .sm-nav { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+  .sm-month-nav { display:flex; align-items:center; gap:8px; font-size:0.8rem; font-weight:600; }
+</style>
+
+<div class="sm-shell">
+  <div class="sm-head">
+    <div>
+      <div class="sh-brand" style="margin-bottom:6px;">
+        <span class="sh-logo-dot">&#9670;</span>
+        <span class="sh-logo-text">MI.Organizzo</span>
+        <span class="sh-sep">/</span>
+        <span class="sh-module">Social Media – {{ project.name }}</span>
+      </div>
+      <h1>Pannello di controllo</h1>
     </div>
-    <nav class="sh-nav">
-      <a href="/projects/view?id={{ project.id }}" class="sh-link">Progetto</a>
-      <a href="/projects/" class="sh-link">Progetti</a>
-    </nav>
+    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <a class="sm-btn" href="{% url 'social-media-channel-create' project.id %}">+ Canale</a>
+      <a class="sm-btn primary" href="{% url 'social-media-post-create' project.id %}">+ Post</a>
+      <a class="sm-btn" href="/projects/view?id={{ project.id }}">Progetto</a>
+    </div>
   </div>
 
-  <div class="content">
-    <section class="hero-card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h2 class="card-title">Canali social</h2>
-        <a class="btn primary" href="{% url 'social-media-channel-create' project.id %}">+ Nuovo canale</a>
-      </div>
-      {% if channels %}
-        <ul class="list">
-          {% for ch in channels %}
-            <li style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-              <div style="display:flex; align-items:center; gap:10px;">
-                <span class="uk-label" style="text-transform:uppercase; font-size:11px;">{{ ch.get_platform_display }}</span>
-                <strong>{{ ch.name }}</strong>
-                {% if ch.handle %}<span class="muted">{{ ch.handle }}</span>{% endif %}
-                {% if not ch.is_active %}<span class="uk-label uk-label-warning">Disattivato</span>{% endif %}
-              </div>
-              <div style="display:flex; gap:8px;">
-                <a class="btn" href="{% url 'social-media-channel-edit' project.id ch.id %}">Modifica</a>
-                <form method="post" action="{% url 'social-media-channel-toggle' project.id ch.id %}" style="display:inline;">
-                  {% csrf_token %}
-                  <button class="btn" type="submit">{% if ch.is_active %}Disattiva{% else %}Attiva{% endif %}</button>
-                </form>
-              </div>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="muted">Nessun canale configurato.</p>
-      {% endif %}
-    </section>
+  <div class="sm-kpi-grid">
+    <div class="sm-kpi">
+      <div class="sm-kpi-label">Canali attivi</div>
+      <div class="sm-kpi-value">{{ active_channels_count }}</div>
+    </div>
+    <div class="sm-kpi">
+      <div class="sm-kpi-label">Post totali</div>
+      <div class="sm-kpi-value">{{ total_posts }}</div>
+    </div>
+    <div class="sm-kpi">
+      <div class="sm-kpi-label">Bozze</div>
+      <div class="sm-kpi-value">{{ draft_count }}</div>
+    </div>
+    <div class="sm-kpi">
+      <div class="sm-kpi-label">Programmati</div>
+      <div class="sm-kpi-value">{{ scheduled_count }}</div>
+    </div>
+    <div class="sm-kpi">
+      <div class="sm-kpi-label">Pubblicati</div>
+      <div class="sm-kpi-value">{{ published_count }}</div>
+    </div>
+    <div class="sm-kpi">
+      <div class="sm-kpi-label">Archiviati</div>
+      <div class="sm-kpi-value">{{ archived_count }}</div>
+    </div>
+  </div>
 
-    <section class="hero-card">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-        <h2 class="card-title">Post recenti</h2>
-        <a class="btn primary" href="{% url 'social-media-post-create' project.id %}">+ Nuovo post</a>
+  <div class="uk-grid-small" uk-grid>
+    <div class="uk-width-1-3@l">
+      <div class="sm-section" style="margin-bottom:10px;">
+        <div class="sm-month-nav">
+          <a class="sm-btn" href="?month={{ prev_month }}">&larr;</a>
+          <span>{{ month_label }}</span>
+          <a class="sm-btn" href="?month={{ next_month }}">&rarr;</a>
+        </div>
+        <table class="sm-calendar">
+          <thead>
+            <tr>
+              <th>Lun</th><th>Mar</th><th>Mer</th><th>Gio</th><th>Ven</th><th>Sab</th><th>Dom</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for week in calendar_weeks %}
+              <tr>
+                {% for day in week %}
+                  {% if day %}
+                    <td class="{% if day.is_today %}day-today{% endif %}">
+                      <div class="day-num">{{ day.day }}</div>
+                      {% for p in day.posts %}
+                        <span class="cal-post {{ p.status }}" title="{{ p.channel.name }}: {{ p.content|truncatewords:8 }}">{{ p.channel.platform|upper }} {{ p.content|truncatewords:3 }}</span>
+                      {% endfor %}
+                    </td>
+                  {% else %}
+                    <td></td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
       </div>
-      {% if posts %}
-        <ul class="list">
-          {% for p in posts %}
-            <li style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
-              <div style="flex:1;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-                  <span class="uk-label" style="text-transform:uppercase; font-size:11px;">{{ p.channel.get_platform_display }}</span>
-                  <span class="uk-label {% if p.status == 'published' %}uk-label-success{% elif p.status == 'scheduled' %}uk-label-primary{% elif p.status == 'draft' %}uk-label-default{% else %}uk-label-warning{% endif %}">{{ p.get_status_display }}</span>
-                  {% if p.scheduled_at %}<span class="muted">{{ p.scheduled_at|date:"d/m/Y H:i" }}</span>{% endif %}
-                </div>
-                <div>{{ p.content|linebreaksbr|truncatewords:30 }}</div>
+
+      <div class="sm-section">
+        <h3>Canali</h3>
+        {% for cs in channel_stats %}
+          <div class="sm-channel-row">
+            <div>
+              <div class="sm-channel-name">
+                <span class="uk-label" style="text-transform:uppercase; font-size:10px;">{{ cs.channel.get_platform_display }}</span>
+                {{ cs.channel.name }}
+                {% if not cs.channel.is_active %}<span class="uk-label uk-label-warning" style="font-size:10px;">Off</span>{% endif %}
               </div>
-              <div style="display:flex; gap:8px; flex-shrink:0;">
-                <a class="btn" href="{% url 'social-media-post-edit' project.id p.id %}">Modifica</a>
+              <div class="sm-channel-meta">{{ cs.total }} post · {{ cs.draft }} bozze · {{ cs.scheduled }} prog · {{ cs.published }} pub</div>
+            </div>
+            <div class="sm-actions">
+              <a class="sm-btn" href="{% url 'social-media-channel-edit' project.id cs.channel.id %}">Mod</a>
+              <form method="post" action="{% url 'social-media-channel-toggle' project.id cs.channel.id %}" style="display:inline;">
+                {% csrf_token %}
+                <button class="sm-btn" type="submit">{% if cs.channel.is_active %}Dis{% else %}Att{% endif %}</button>
+              </form>
+            </div>
+          </div>
+        {% empty %}
+          <p class="muted" style="font-size:0.8rem;">Nessun canale. <a href="{% url 'social-media-channel-create' project.id %}">Crea il primo</a>.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="uk-width-expand@l">
+      <div class="sm-section" style="margin-bottom:10px;">
+        <h3>Prossime pubblicazioni</h3>
+        {% for p in upcoming %}
+          <div class="sm-post-row">
+            <div class="sm-post-body">
+              <span class="sm-post-channel" style="background:#dbeafe; color:#1e40af;">{{ p.channel.get_platform_display }}</span>
+              <div class="sm-post-text">{{ p.content|truncatewords:20 }}</div>
+              <div class="sm-post-date">{{ p.scheduled_at|date:"d/m/Y H:i" }} · {{ p.get_status_display }}</div>
+            </div>
+            <div class="sm-actions">
+              <a class="sm-btn" href="{% url 'social-media-post-edit' project.id p.id %}">Mod</a>
+              <form method="post" action="{% url 'social-media-post-status' project.id p.id %}" style="display:inline;">
+                {% csrf_token %}
+                <input type="hidden" name="status" value="published">
+                <button class="sm-btn primary" type="submit">Pub</button>
+              </form>
+            </div>
+          </div>
+        {% empty %}
+          <p class="muted" style="font-size:0.8rem;">Nessun post programmato nei prossimi 7 giorni.</p>
+        {% endfor %}
+      </div>
+
+      <div class="sm-section">
+        <h3>Feed recente</h3>
+        {% for p in recent_posts %}
+          <div class="sm-post-row">
+            <div class="sm-post-body">
+              <span class="sm-post-channel"
+                style="
+                  {% if p.status == 'published' %}background:#dcfce7; color:#166534;{% elif p.status == 'scheduled' %}background:#dbeafe; color:#1e40af;{% elif p.status == 'archived' %}background:#f3f4f6; color:#6b7280;{% else %}background:#e5e7eb; color:#374151;{% endif %}">
+                {{ p.channel.get_platform_display }} · {{ p.get_status_display }}
+              </span>
+              <div class="sm-post-text">{{ p.content|truncatewords:25 }}</div>
+              <div class="sm-post-date">
+                {% if p.published_at %}Pubblicato {{ p.published_at|date:"d/m/Y H:i" }}{% elif p.scheduled_at %}Programmato {{ p.scheduled_at|date:"d/m/Y H:i" }}{% else %}Creato {{ p.created_at|date:"d/m/Y H:i" }}{% endif %}
+              </div>
+            </div>
+            <div class="sm-actions">
+              <a class="sm-btn" href="{% url 'social-media-post-edit' project.id p.id %}">Mod</a>
+              {% if p.status != 'published' %}
                 <form method="post" action="{% url 'social-media-post-status' project.id p.id %}" style="display:inline;">
                   {% csrf_token %}
                   <input type="hidden" name="status" value="published">
-                  <button class="btn primary" type="submit">Pubblica</button>
+                  <button class="sm-btn primary" type="submit">Pub</button>
                 </form>
-                <form method="post" action="{% url 'social-media-post-delete' project.id p.id %}" style="display:inline;" onsubmit="return confirm('Cancellare questo post?');">
-                  {% csrf_token %}
-                  <button class="btn danger" type="submit">Elimina</button>
-                </form>
-              </div>
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p class="muted">Nessun post ancora.</p>
-      {% endif %}
-    </section>
+              {% endif %}
+              <form method="post" action="{% url 'social-media-post-delete' project.id p.id %}" style="display:inline;" onsubmit="return confirm('Eliminare questo post?');">
+                {% csrf_token %}
+                <button class="sm-btn danger" type="submit">Del</button>
+              </form>
+            </div>
+          </div>
+        {% empty %}
+          <p class="muted" style="font-size:0.8rem;">Nessun post ancora. <a href="{% url 'social-media-post-create' project.id %}">Crea il primo</a>.</p>
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
